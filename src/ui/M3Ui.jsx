@@ -19,7 +19,7 @@ export function DecisionPanel({ game, act }) {
     const o = d[key]
     const chosen = d.resolved && d.choice === key
     return (
-      <div className="panel" style={{ flex: '1 1 320px', borderColor: chosen ? '#0b6b2b' : undefined, borderWidth: chosen ? 2 : 1 }}>
+      <div className="panel" style={{ flex: '1 1 320px', borderColor: chosen ? 'var(--good)' : undefined, borderWidth: chosen ? 2 : 1 }}>
         <b>{key.toUpperCase()}: {o.label}</b>
         <p>{o.text}</p>
         {!d.resolved && <button className="primary" onClick={() => act((g) => { resolveDecision(g, key) })}>Choose {key.toUpperCase()}</button>}
