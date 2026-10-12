@@ -382,7 +382,7 @@ The 11 real teams run a simplified version of the same development model, with t
 - **Reading the new rules.** Each winter each rival's Aero and Chassis move by a random ±0.9 points (typical) on top of its development. Without this the front of the field never changed: diminishing returns hold a top car so close to its starting rating that the fastest team won about 80% of titles.
 - **Drivers** age, regress, move teams, get dropped and retire (section 5.6).
 - **Poaching:** from reputation 25, rivals approach key staff rated 65 or more (about 10–35% a year each, more for better staff and a better team). Matching costs 30% more salary; otherwise a deputy 8–15 points weaker steps up. Rivals bid for drivers as in section 5.6.
-- **Pressure (tuned).** A rival with reputation 65 or more that is slower than the fastest car develops faster: +6% for each 0.1 s a lap it is behind, up to +25%. This is what bears on a runaway leader, the player included.
+- **Pressure (tuned).** A rival with reputation 65 or more that is slower than the fastest car develops faster: +6% for each 0.1 s a lap it is behind, up to +25%. It is there mainly so the rival world does not settle into one team winning everything; it applies whoever leads, but it is not meant to make defending a title hard.
 - **Race operations drift.** Each winter a rival's pit crew, strategy and setup ratings move by a random ±1.5, pulled back towards where the team started.
 - **Supplier drift:** each winter Power moves by a random ±0.7 plus 20% of the gap to the best supplier, with a slow pull back towards 88; Reliability likewise. Prices follow Power.
 
@@ -456,7 +456,7 @@ Target curve for good play on Normal:
 |---|---|---|---|---|---|---|---|---|---|---|
 | Median position | 12th | 11th | 10th | 8th | 6th | 5th | 4th | 3rd | 2nd | 1st |
 
-First points in season 3, first podium in season 7 and first win in season 9 (medians). The first title comes in seasons 8–12 in 45% of saves and by season 15 in 89%. The curve is met to season 5; seasons 6 to 9 sit at 5th, a season or two behind the curve, because the top four teams are a clear step above the rest and breaking into them takes a front-running organisation; the title then follows quickly. Once champion, a well-run team usually stays there (77% of these saves are champions in season 15): staying on top is harder than it should be only in the sense of the pressure mechanic in section 5.11, and this is the main thing left to tune.
+First points in season 3, first podium in season 7 and first win in season 9 (medians). The first title comes in seasons 8–12 in 45% of saves and by season 15 in 89%. The curve is met to season 5; seasons 6 to 9 sit at 5th, a season or two behind the curve, because the top four teams are a clear step above the rest and breaking into them takes a front-running organisation; the title then follows quickly. Once champion, a well-run team usually stays there (77% of these saves are champions in season 15). That is intended: a player good enough to reach the top has earned it, and staying there gets no extra difficulty beyond the rules that already bear on every leader (annual loss, aero allowance, cost cap).
 
 A manager that does nothing at all now climbs slowly to about 10th, because designers with nothing queued bank their work for free and the starting staff produce more than before tuning. It has no sponsors left after two seasons and wins nothing.
 
@@ -667,7 +667,7 @@ World health with no player (30 seasons, six saves): the front-to-back gap stays
 | Without a rules reset nothing would reshuffle the order | Percentage-based annual loss, diminishing returns, supplier drift and rival form events |
 | An endless save needs a world that renews | Driver ageing, retirement and new drivers; rivals whose resources follow results; an honours board and objectives that continue after a title |
 | "No definite end" conflicts with game over on bankruptcy or sacking | Replaced by the crisis in section 4 |
-| A runaway leader would make a long save dull, whether it is the player or a rival | The annual loss, aero allowance and cost cap all bear hardest on the leader; rivals poach from the top; checked by the world-health test |
+| A runaway leader would make a long save dull, whether it is the player or a rival | For the rival world: the annual loss, aero allowance, cost cap and rival pressure bear hardest on the leader, checked by the world-health test. For the player: decided against adding difficulty to staying on top; a player who gets there has earned it |
 | A/B decisions could become coin flips or have one obvious answer | The right answer depends on context, information quality depends on staff, and the harness measures what good choices are worth |
 | Reloading a save to re-roll a decision or race | Outcomes are fixed from the save's seed when the round starts |
 | Real juniors are contracted to rival academies | Loan mechanic |
