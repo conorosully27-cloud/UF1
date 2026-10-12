@@ -1,0 +1,33 @@
+/* Functional styling only. Visual design comes later. */
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 14px; color: #1b1b1b; background: #f3f3f1; }
+h1 { font-size: 20px; margin: 0; }
+h2 { font-size: 16px; margin: 20px 0 8px; }
+h3 { font-size: 14px; margin: 14px 0 6px; }
+p { margin: 6px 0; }
+.app { max-width: 1180px; margin: 0 auto; padding: 12px 16px 60px; }
+.top { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; padding: 8px 0; border-bottom: 2px solid #1b1b1b; }
+.top .stat { color: #444; }
+.top .stat b { color: #1b1b1b; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0 14px; }
+.tabs button { border: 1px solid #999; background: #fff; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
+.tabs button.on { background: #1b1b1b; color: #fff; border-color: #1b1b1b; }
+button { font: inherit; padding: 5px 10px; border: 1px solid #777; background: #fff; border-radius: 4px; cursor: pointer; }
+button.primary { background: #b3261e; border-color: #b3261e; color: #fff; font-weight: 600; padding: 8px 16px; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+select, input { font: inherit; padding: 4px 6px; }
+table { border-collapse: collapse; background: #fff; margin: 4px 0 10px; }
+th, td { border: 1px solid #d2d2ce; padding: 3px 8px; text-align: left; white-space: nowrap; }
+th { background: #e8e8e4; font-weight: 600; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+tr.me td { background: #fff3c4; font-weight: 600; }
+.panel { background: #fff; border: 1px solid #d2d2ce; padding: 10px 12px; margin: 8px 0; border-radius: 4px; }
+.row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.muted { color: #666; }
+.good { color: #0b6b2b; }
+.bad { color: #a11818; }
+.err { background: #fde2e0; border: 1px solid #b3261e; padding: 6px 10px; margin: 8px 0; border-radius: 4px; }
+.scroll { overflow-x: auto; }
+ul.plain { margin: 4px 0; padding-left: 18px; }
+.gap { margin-left: 8px; }
+label { margin-right: 12px; }

@@ -1,0 +1,621 @@
+# Ultimate F1 Manager — game mechanics plan (v4)
+
+Status: milestones 1 to 3 are built and checked (section 10). Milestones 4 and 5 are not. Every number is a first-pass value; balance tuning is milestone 5, and section 6 says where the build currently falls short of the target.
+
+To play: `npm run dev` in this folder. To check: `npm test`.
+
+## 1. The game
+
+You run the 12th and newest team on the real grid, starting in the 2027 season against the 11 real teams and their 22 real drivers. You begin with a rented wind tunnel, 160 staff, a bought-in gearbox, one small sponsor and an owner whose money runs out after three seasons.
+
+The long-term goal is the Constructors' Championship, which good play should make possible in about eight to ten seasons. The game does not end there, or anywhere else.
+
+## 2. Design pillars
+
+1. **Cash is the bottleneck.** Every pound has three competing uses: pace now (upgrades), pace later (facilities, staff, next year's car) and income later (commercial, academy).
+2. **Being poor means uncertainty, not just slowness.** Weak facilities and staff give wide upgrade outcome ranges and vague information on the round decisions. Investment buys information as well as speed.
+3. **Risk appetite flips as you climb.** Only the top ten score, so a backmarker gains from high-variance choices and a front-runner loses from them.
+4. **Standing still is going backwards.** Every car loses performance each winter, so every team has to develop just to hold its place.
+5. **Every result is explained.** Race results, upgrade outcomes and decisions come with a readable breakdown, so good decisions can be learned.
+
+## 3. Structure
+
+A season is 16 rounds on real circuits. Seasons continue indefinitely.
+
+| Phase | When | What the player does |
+|---|---|---|
+| Pre-season | Once | Change drivers and supply deals, line up upgrades, staff and sponsors; then set three season targets (section 5.12), which fixes drivers and power unit for the year |
+| HQ turn | Before each round | Start upgrades and builds, hire and fire, handle sponsor offers, check the cash forecast |
+| Round decision | Every round | One A/B call (section 5.9) |
+| Race weekend | Every round | Simulated. The player reads qualifying, the race result and the report |
+| Off-season | Once | Rules tighten, prize position locks in, drivers' ratings change, contracts expire, the driver market runs in three stages, rivals evolve |
+
+A typical round takes one to two minutes; a season about half an hour.
+
+## 4. Goals, the owner and crises
+
+There is no win screen and no game over.
+
+- **Season targets.** Three a season, each at a chosen level of ambition (section 5.12). They are the main driver of owner confidence. After a first title the targets move on to defending it, winning the drivers' title too, and winning several in a row.
+- **Honours board.** Points, podiums, wins, titles and streaks are recorded for the life of the save.
+- **Crisis instead of game over.** A crisis starts if cash is below the −£5m overdraft limit for two consecutive rounds, or owner confidence (0–100) reaches zero. An investor clears the debt and takes a permanent 5% of prize money (stacking to a maximum of 25%). One austerity season follows: no facility builds, a hiring freeze, and the forced sale of the most valuable driver or key staff contract. Reputation falls by 10 and confidence resets to 40.
+
+## 5. Systems
+
+### 5.1 The car
+
+Five ratings, 0–100.
+
+| Rating | Effect |
+|---|---|
+| Aero | Pace, weighted most at high-downforce tracks |
+| Chassis | Pace, weighted most at slow, technical tracks |
+| Power | Pace, weighted most at power tracks. Comes from the engine supplier |
+| Reliability | Chance of a mechanical retirement. The power unit's own reliability counts for 35% of the car's as raced |
+| Tyre Care | Race pace relative to qualifying pace |
+
+Each track has its own Aero/Chassis/Power weighting, plus overtaking difficulty, safety-car likelihood and rain likelihood. One weighted rating point is worth about 0.05 s a lap.
+
+The 16 rounds are Melbourne, Suzuka, Miami, Monaco, Montreal, Barcelona, Spielberg, Silverstone, Spa, Budapest, Monza, Baku, Singapore, Austin, São Paulo and Abu Dhabi: five power tracks, five downforce tracks and six balanced. A small team can build a specialist car and target a handful of rounds.
+
+### 5.2 Development and the annual tightening
+
+Staff and facilities produce **engineering capacity** each round. It has two sinks.
+
+**Upgrades to the current car.** Each project has:
+
+| Choice | Options |
+|---|---|
+| Area | Aero, Chassis, Reliability, Tyre Care |
+| Size | Minor (10 units of work, +1.0), major (23 units, +2.5) or package (52 units, +6.0) |
+| Approach | Safe, standard, or aggressive (+40% expected gain, 20% chance of a dud) |
+| Rush | Optional: shorter lead time for more money |
+
+Gain = base gain × diminishing-returns factor × a random roll.
+
+- **Diminishing returns.** The closer a rating is to 100, the less each unit of work adds. A car rated 50 gains about five times as much per unit as a car rated 90.
+- **Roll width** depends on Wind Tunnel and CFD level, the Head of Aero and driver Feedback. Poor facilities mean a +3 project could deliver anything from +1 to +4.
+- **Understanding a part.** A new part runs at 70% of its value in its first race. Better facilities shorten this.
+- **Manufacturing.** Finished designs need building. A design finished this round is fitted next round at the earliest, and the factory's own capacity can become the bottleneck.
+- **Two design departments.** Aero works only on Aero. Mechanical Design covers Chassis, Reliability and Tyre Care, so it has three ratings to hold up.
+- **Repeat.** Each department can be told to keep starting the same upgrade whenever it runs out of work.
+
+**Next year's car.** Any share of capacity, 0–100%, can be banked for next year from round 1. Banked work is no more efficient than an in-season upgrade. Its advantages are that it costs nothing to manufacture and is added after the winter's rule change, so none of it is lost. An in-season upgrade helps now, costs money to build, and is then cut by the winter like the rest of the car. Designers with nothing queued bank their work. Banked mechanical work goes 60% to Chassis and 20% each to Tyre Care and Reliability.
+
+**Annual tightening.** After the final round the rules tighten and every car on the grid loses performance:
+
+| Rating | Loss each winter |
+|---|---|
+| Aero and Chassis | 8% of the current rating on average. One is named at round 8 as the area hit hardest and loses 11%; the other loses 5% |
+| Tyre Care | 4% |
+| Reliability | 2% |
+
+Each team's banked work is then added. A team that banked nothing starts the new season slower than it finished the old one. Because the loss is a percentage, fast cars lose more points than slow ones, which keeps the field from stretching.
+
+**Aero testing allowance.** Aero capacity is scaled by championship position, from 70% for the champions to 125% for 12th in steps of 5%, reset at mid-season and season end. This mirrors the real rule.
+
+### 5.3 Supply deals
+
+Five real power unit suppliers. Customers run one Power point below the works team.
+
+| Supplier | Customer Power | Reliability | Price per season | Reputation needed |
+|---|---|---|---|---|
+| Red Bull Ford | 92 | 82 | £18m | 35 |
+| Mercedes | 90 | 90 | £17m | 30 |
+| Ferrari | 84 | 86 | £13m | None |
+| Audi | 82 | 78 | £10m | None |
+| Honda | 80 | 72 | £9m | None |
+
+Supplier ratings drift each winter. Weaker suppliers gain more, as the real catch-up rules intend, so the order can change over a long save.
+
+The supplier also sells a **parts package** (gearbox, suspension, hydraulics) for £4m a season. It keeps Chassis from falling below 45 and adds 15% to mechanical design capacity, but limits Chassis to 8 below the supplier's own car. Going in-house needs Design Office and Factory at level 3 and removes the limit.
+
+### 5.4 Facilities
+
+Eight facilities, levels 0–5. Two builds can run at once.
+
+| Facility | Effect | Start |
+|---|---|---|
+| Design Office | Engineer headcount cap | 1 |
+| CFD Cluster | Aero capacity multiplier | 1 |
+| Wind Tunnel | Narrows upgrade outcome ranges. Level 0 is a rented tunnel with a per-round fee | 0 |
+| Factory | Build cost and lead time, Reliability | 1 |
+| Simulator | Setup quality, driver development | 0 |
+| Race Operations | Strategy quality, pit-stop time and error rate | 1 |
+| Commercial Centre | Sponsor slots, merchandise income | 1 |
+| Academy | Quality of junior drivers | 0 |
+
+| Level | Build cost | Build time |
+|---|---|---|
+| 1 | £3m | 3 rounds |
+| 2 | £6m | 4 rounds |
+| 3 | £12m | 6 rounds |
+| 4 | £22m | 8 rounds |
+| 5 | £38m | 10 rounds |
+
+Upkeep is 6% of cumulative build cost per season. A build is paid for in equal instalments over its rounds. The Academy cannot be built until milestone 4.
+
+### 5.5 Staff
+
+**Departments:** Aero, Mechanical Design, Manufacturing, Race Team, Commercial. Each has a headcount and an average skill. Headcount is capped by the matching facility; Aero and Mechanical Design share the Design Office. New hires take three rounds to become productive; redundancy costs a quarter of a year's pay. Skill moves half a point a round towards a target set by the department's facility, its pay level (low, market, premium) and its head of department.
+
+**Key staff:** Technical Director, Head of Aero, Chief Strategist, two Race Engineers, Commercial Director. Each has ratings, a salary and a contract. Poaching one from a rival costs a buyout plus 4–12 rounds of gardening leave. Rivals poach in return as the team rises. Key staff use generated names in v1; real engineers are not modelled.
+
+### 5.6 Drivers
+
+Two race drivers and a reserve.
+
+| Attribute | Used for |
+|---|---|
+| Pace | Qualifying and race lap time. One point is about 0.02 s a lap |
+| Racecraft | Starts, overtaking, tyre management |
+| Consistency | Error and crash rate |
+| Wet | Performance in rain |
+| Feedback | Setup quality and upgrade outcome ranges |
+| Marketability | Sponsor income |
+
+Overall = 40% Pace, 25% Racecraft, 20% Consistency, 15% Wet.
+
+- **Visible and hidden.** Every driver's current ratings are visible. Potential, next year's change and the personal factor in negotiations are hidden.
+- **Contracts:** salary, length, bonuses, number-one status, release clause.
+- **Loans:** a rival's junior can be taken on a one-season loan for a low salary. The parent team can recall them at season end.
+- **New drivers:** real juniors fill the market first. Generated drivers join each winter so the grid never runs dry.
+- **Until milestone 4** the market is a simple list: a driver whose interest is under 60 signs for 5% over their demand per point short, rivals' line-ups do not change, ratings do not age, and expiring contracts roll over at the driver's current demand.
+
+#### Signing a driver
+
+No driver has a fixed price, a fixed backing figure or a fixed yes/no. Each comes from a formula with a random part, and the player sees an estimate before committing.
+
+**Interest** is a score from 0 to 100. The driver signs at 60 or more.
+
+| Factor | Effect |
+|---|---|
+| Base | 50 |
+| Team appeal | (Team reputation − driver ambition) ÷ 2, limited to ±25. Ambition = 2.5 × (Overall − 70), less 2 for each year of age over 30 |
+| Seat hunger | +15 without a top-level race seat, +5 if settled in another top-level series such as IndyCar, Formula E or endurance racing |
+| Offer | Salary against demand (up to ±20), number-one status +8, preferred contract length +5, release clause +5 |
+| Personal factor | −10 to +10, rolled each winter and hidden |
+| Competition | −10 for each rival offer on the table |
+
+Each driver accepts three approaches per winter, so offers cannot be nudged up a pound at a time.
+
+**Salary demand** rises steeply with Overall: about £0.5m at 75, £1.5m at 80, £5m at 85, £15m at 90 and £35m at 95, with a personal variation of ±15%.
+
+**Backing** = (Marketability − 60) × £0.2m × sponsor pull × a yearly roll of 0.7–1.3.
+
+- Sponsor pull is a fixed trait from 0 to 3. It is hand-set for real drivers and rolled for generated ones.
+- Before signing, backing is shown as a range. The Commercial Director's rating sets how wide the range is.
+- It is paid per race started. Benching the driver stops the money.
+- It is rolled again each winter and moves with results: a backed driver who beats expectations attracts more, one who trails loses backers.
+
+**Market timing.** The off-season market runs in three stages. Unsigned drivers cut their salary demand by about 15% at each stage, and rivals sign drivers between stages. Waiting is cheaper and risks losing the driver.
+
+The decisions this creates: move early or wait; pay more or offer status and a release clause instead; trust a wide backing estimate or pay for a better Commercial Director; take the backed driver for the money or the quicker one for the results that raise prize money and next year's backing.
+
+#### Ageing, regression and replacement
+
+Ratings change at mid-season and at season end. Each change is the age trend, plus a personal roll, plus a results adjustment, so two drivers of the same age can go different ways.
+
+**Results adjustment:** −1, 0 or +1 Overall at each update, so at most ±2 a year. It is +1 if the driver clearly beat expectation over those rounds, −1 if clearly below, and 0 otherwise. Expectation is what the car and the driver's own rating should have achieved, checked against the team-mate, so a fast car does not inflate a driver and a slow one does not sink them. The change goes mainly to Pace and Consistency.
+
+| Age | Typical yearly change in Overall |
+|---|---|
+| Up to 23 | +1 to +3, towards potential |
+| 24–27 | 0 to +2 |
+| 28–32 | −1 to +1 |
+| 33–35 | −2 to 0 |
+| 36–39 | −3 to −1 |
+| 40 and over | −4 to −2 |
+
+- **Longevity** is a hidden trait that shifts the decline by −2 to +5 years.
+- **What goes first:** Pace and Consistency. Racecraft and Feedback hold, and can still rise, until late.
+- **Rust:** a season without racing costs one or two points, and a young driver without seat time does not develop.
+- **Not every junior makes it.** Some stall well short of their potential.
+- **Retirement:** from 36 the chance rises each year, and sooner for a driver left unsigned for a season.
+
+**Rivals review their drivers** every winter and once at mid-season.
+
+- A team judges a driver on a perceived level: the true Overall blended with that season's results against the team-mate and against what the car should have achieved. Results are noisy, so teams sometimes misjudge.
+- It weighs that level, the trend, age, salary, backing and remaining contract against the best replacement it could realistically sign.
+- It then keeps the driver, lets the contract run out, or buys it out early.
+- Each team has a patience trait. Red Bull is low and will swap a driver mid-season; Williams is high.
+
+Released drivers join the market, usually cheaper and with extra seat hunger. This is where the player finds bargains: a driver dropped after an unlucky season, or a fading veteran whose Feedback is still excellent.
+
+The same applies to the player. A driver who has regressed can be released by paying 60% of the remaining salary, so long contracts for drivers over 33 carry real risk.
+
+### 5.7 Finance
+
+Cash moves every round. A forecast screen projects the balance to season end under current commitments.
+
+| Income | Notes |
+|---|---|
+| Prize money | By last season's championship position, paid per round. P1 £140m, P6 £90m, P11 £61m, P12 £56m. Season 1 pays a £36m new-entrant amount |
+| Sponsors | £8m–£12m in season 1; £80m+ for a front-runner |
+| Driver backing | Typically £2m–£10m a season per backed driver (section 5.6) |
+| Merchandise | Scales with reputation |
+| Owner funding | £20m, £12m, £6m, then nothing |
+| Target rewards | Owner bonuses for season targets met (section 5.12) |
+
+| Cost | Season 1 scale |
+|---|---|
+| Workforce | £13m (160 staff) |
+| Key staff | £3m |
+| Drivers | £0.5m–£5m each |
+| Power unit and parts package | £13m–£17m |
+| Race operations | £0.9m a round, £14m a season |
+| Car build | £7m |
+| Facility upkeep and tunnel rental | £5m |
+| Development | Discretionary, £5m–£15m |
+| Crash damage | Variable |
+
+Season 1 roughly breaks even on a modest development budget.
+
+**Borrowing:** a bank loan (limit set by reputation, 8–14% interest) or an advance of up to half the remaining season's prize payments at a 10% discount.
+
+**Reputation** moves 30% of the way each winter towards a level set by championship position (about 9 for 12th, 95 for 1st), plus a little for points, podiums and wins.
+
+**Cost cap:** £150m on performance spending (development, technical staff, race operations). Drivers, power units, commercial staff and facility construction are outside it. The player starts at about a third of the cap.
+
+### 5.8 Sponsors
+
+Slots: one title, two principal, four partner. Commercial Centre level opens them.
+
+Each offer comes in three shapes:
+
+| Shape | Structure |
+|---|---|
+| Guaranteed | Flat fee, lowest total |
+| Balanced | Medium fee, medium bonuses |
+| Incentive | Low fee, large bonuses for hitting targets |
+
+Targets are scaled to the team's level, for example "both cars finish 12 races" or "a car ahead of a Cadillac car in six races", so small achievements have cash value before the team scores points. They are set from the same pre-season projection as the season targets: a balanced target is one the team meets about half the time, an incentive target about one time in four. Offers may carry demands, such as a minimum driver Marketability. Sponsor satisfaction decides renewal: a deal renews at 50 or more.
+
+### 5.9 The round decision
+
+Every round brings exactly one A/B decision. Both options cost something.
+
+**Rules:**
+
+- The deck is weighted by the team's current state, and no decision repeats within 32 rounds (two seasons).
+- The better option depends on context: cash, the next track, car strengths, driver ratings and morale. No option is always right.
+- Effects are small: one to three rating points, £0.5m–£3m, a morale shift, or a one-race modifier.
+- Information quality depends on staff. A weak Chief Strategist reports "rain possible"; a strong one reports "rain 60%".
+- Outcomes are fixed when the round starts, so reloading does not change them. The result of any chance is shown as soon as the choice is made.
+- A decision log shows what was chosen and what happened, including results that land several rounds later.
+
+**Size target:** always choosing the better option should be worth about 10% faster progress over a season than choosing at random. No single decision can wreck a season.
+
+| Type | Decision | A | B | What decides it |
+|---|---|---|---|---|
+| Technical | The new floor is ready but untested | Race it now; 25% chance it underdelivers and hurts setup | Test first; arrives next round at known value | Wind Tunnel level, whether this track suits the car |
+| Race weekend | Rain is forecast for Sunday | Wet-leaning setup | Dry setup | Forecast precision, drivers' Wet ratings |
+| Race weekend | Tyres look marginal for a one-stop | Split the cars: one gambles on a one-stop | Both run the conventional two-stop | Tyre Care, grid position, safety-car likelihood |
+| Reliability | A power unit is near the end of its life | New unit and a 10-place grid penalty here | Run the old one: less power, higher failure risk | Overtaking difficulty here, which tracks come next |
+| Commercial | A sponsor offers £1.5m for a show-car day | Accept; drivers lose preparation this round | Decline | Cash position, importance of this track |
+| People | The Head of Aero has an offer from a rival | Match it: +£0.8m a season | Promote the deputy: weaker for six rounds, cheaper after | The deputy's rating, budget |
+| Drivers | The junior wants three practice outings | Agree: junior develops, race driver's setup suffers | Refuse: junior's morale drops | Junior's potential, championship position |
+| Regulatory | Engineers have found a loophole | Build it: +3 Aero, 30% chance of a ban and a £1m fine | Stay legal | Cash buffer, how much three points is worth now |
+| Factory | An upgrade could arrive two rounds early | Overtime: extra cost, staff morale drops | Wait | Next two tracks, morale |
+| Finance | The supplier offers 10% off next year for payment now | Pay early | Keep the cash | Cash forecast |
+| Race weekend | Qualifying starts on a drying track | Run early and bank a lap on intermediates | Wait and gamble on slicks at the end; a red flag or more rain leaves the car at the back | Forecast precision, drivers' Wet and Consistency, overtaking difficulty here |
+| Race weekend | The two cars are likely to run together in the race | Agree team orders: the quicker car is let through, and the driver who yields is 5 points less interested at the next contract talks | Let them race: a small chance of contact | Number-one clauses, both drivers' Consistency, how close the points are |
+| Race weekend | A race engineer wants to try an unproven setup | One car runs it: between +0.15 s and −0.2 s this weekend, and better setups for the next three rounds either way | Both cars stay on the known setup | Simulator level, that driver's Feedback, importance of this track |
+| Reliability | The engine supplier warns of overheating at this race | Open up the cooling: both cars lose 0.15 s a lap | Run as normal: failure risk doubles this race | Reliability rating, how much this track rewards Power, whether points are realistic here |
+| Technical | A front-runner's new sidepod idea is visible in photos | Copy it: a cheap +2 Aero, 30% chance it does not suit the car and the work is wasted | Stay on your own development path | Head of Aero rating, how much capacity is spare |
+| Regulatory | A rival just ahead in the standings appears to be running an illegal part | Protest: £0.3m deposit, about a one-in-three chance they lose that race's result; fail and lose the deposit and 1 reputation | Let it go | How close that rival is, the Technical Director's read on the odds |
+| Commercial | A sponsor offers to swap its end-of-season bonus for cash now | Take £1m guaranteed | Keep the £3m bonus target | How likely the target is, cash forecast |
+| Drivers | A bigger team is sounding out your best driver | Open talks now: about 20% over their demand, two more years | Wait for winter: cheaper if results dip, and they may leave | Driver's age and trend, their interest score, cash |
+| People | A rival's senior engineer has fallen out with their boss | Sign them now at a premium: one department gains skill immediately | Wait for the winter market: cheaper, and they may be gone | Which department is weakest, budget |
+| Academy | A young karting prospect needs funding to carry on | Fund them: £0.5m a season, and a high-potential junior in two seasons if they develop | Pass | Academy level, how far ahead the team can afford to plan |
+
+About half the deck is race-weekend calls, which stand in for live race control. All 80 decisions are written (`src/engine/data/deck.js`): 40 race-weekend and reliability calls and 40 HQ decisions. The table above shows the style; some of its numbers were changed in the build so that each option is the better one in some situations.
+
+### 5.10 Race weekend simulation
+
+The weekend is simulated with no live control. Two standing settings apply until changed:
+
+- **Race approach:** conservative, balanced or aggressive. Aggressive widens the spread of strategy outcomes and raises error risk.
+- **Driver priority:** equal, or favour one driver for new parts and strategy.
+
+**Qualifying.** Lap time = car pace at this track + driver Pace + setup roll + random variation, with a small chance of an error or crash. Grid penalties are then applied.
+
+**Race.** Each car's total race time is built from:
+
+| Element | Driven by |
+|---|---|
+| Base race pace | Car ratings at this track, Tyre Care, driver Pace and Racecraft, setup |
+| Start and first lap | Racecraft, a random shuffle, first-lap incident chance |
+| Strategy | Chief Strategist rating, race approach, luck with safety-car timing |
+| Traffic | Slower cars ahead on the grid × track overtaking difficulty, reduced by Racecraft |
+| Pit stops | Race Team skill; rare botched stops |
+| Mechanical retirement | Reliability |
+| Driver errors and crashes | Consistency, race approach, weather |
+| Collisions and penalties | Random, weighted by Racecraft and Consistency |
+| Weather | Track rain likelihood. A wet race weights the Wet attribute, widens variation and doubles error rates |
+| Safety car and red flag | Track likelihood and incidents. Compresses the gaps |
+
+The output is a classification, a list of key events, and a breakdown for the player's cars: car pace rank, driver contribution, setup, strategy luck and incidents.
+
+The race runs in segments of about five laps, so track position, overtaking difficulty, pit phases and safety cars shape the result without a lap-by-lap model.
+
+**Calibration**, measured over 1,000 simulated seasons with the cars held fixed. The targets are my estimates of recent real-world rates and have not yet been checked against published data:
+
+| Measure | Target | Built |
+|---|---|---|
+| Retirements per start | 10–12% | 11.8% |
+| Races with a safety car | 55–60% overall, set per track | 55.9% |
+| Wet or mixed races | 10–15% | 13.0% |
+| Pole converts to a win | 45–50% | 48.1% |
+| The fastest car on the day wins | 55–65% | 50.1% |
+| A car from the three slowest rival teams scores points | 5–10% of starts | 4.7% |
+
+The two misses are linked: four cars start within 0.15 s of each other, so the quickest on the day is rarely clear of the next, and anything that helps slow cars score also costs the quickest car wins. With one car made 0.3 s clear, it wins 71% of races. The player's own cars score in almost no starts in season 1 and beat at least one Cadillac in about a third of races.
+
+**Points:** 25-18-15-12-10-8-6-4-2-1 across 24 cars. Ties in the constructors' table are broken by best finishes, so 11th against 12th matters on zero points.
+
+The simulation sits behind a single interface, so a lap-by-lap model with live race control can replace it later without touching the rest of the game.
+
+### 5.11 Rivals and the living world
+
+The 11 real teams run a simplified version of the same development model, with the same diminishing returns, annual tightening, aero testing allowance and cost cap. Each has a resource level that follows its results and prize money.
+
+- **Development rate.** Each rival's rate is set so that it holds its starting ratings against the annual tightening. Half a year's work lands over the winter and half as three in-season upgrades. The rate then drifts a little each winter.
+- **Form events:** a rival can gain an investor, lose its technical chief, or change engine supplier (milestone 4).
+- **Drivers** age, regress, move teams, get dropped and retire (section 5.6, milestone 4).
+- **Poaching:** rivals bid for the player's best staff and drivers (milestone 4).
+
+### 5.12 Season targets
+
+Each pre-season the game offers six objectives built from the team's current state: two Sporting, two Commercial and two Technical. The player picks one from each category and sets a level for each.
+
+| Level | A typical team in this position meets it | Reward |
+|---|---|---|
+| Safe | About four times in five | 1× |
+| Standard | About half the time | 2.5× |
+| Stretch | About one time in five | 6× |
+
+**Rules:**
+
+- The reward is paid only if the chosen level is reached. Reaching the Standard mark after choosing Stretch pays nothing.
+- A met target adds 3, 5 or 8 owner confidence by level. A missed target costs 5, whatever its level.
+- Meeting all three adds 3 reputation.
+- Levels are locked once the season starts.
+
+**How the marks are set.** Before the season the game runs 150 quick simulations of the year from the team's current car, drivers, cash and facilities, under average management: designers kept busy, a little banked from mid-season, empty sponsor slots filled, nothing built and nobody hired.
+
+- **Results targets** (position, points, best finish, races ahead of a rival, podiums, wins, both cars classified) are placed where that average team reaches them in about 80%, 50% and 20% of runs. Measured over 120 seasons of average management the rates were 79%, 45% and 22%.
+- **Management targets** (cash, sponsor fees, rating gained, facility levels) depend mostly on the player's own choices, so they are set against what the average manager achieves: for example Standard for rating gained is 15% more than the average manager manages.
+- **Cash** is counted net of bank debt, so borrowing cannot meet the target.
+
+Setting targets is the last step of pre-season. Drivers and power unit are fixed from then on, so the marks cannot be lowered by setting them with a weak line-up and then changing it.
+
+| Category | Reward at 1× | Objectives it draws from |
+|---|---|---|
+| Sporting | Owner bonus of 2% of annual income, +1 reputation | Championship position, points, best finish, races ahead of a named rival, podiums, wins, titles |
+| Commercial | Sponsor offers worth 3% more next season | Cash at season end, sponsor income signed, merchandise income, reputation gained |
+| Technical | +2% engineering capacity next season | Rating gained in one car area, races with both cars classified, facility levels completed, pit-stop ranking, junior development |
+
+At 2.5× and 6× those rewards scale directly: a Stretch sporting target pays 12% of annual income and +6 reputation.
+
+Examples at three stages:
+
+| Stage | Category | Objective | Safe | Standard | Stretch |
+|---|---|---|---|---|---|
+| Season 1 | Sporting | Races finished ahead of a Cadillac | 3 | 6 | 10 |
+| Season 1 | Commercial | Cash at season end | £4m | £10m | £18m |
+| Season 1 | Technical | Aero rating gained during the season | +5 | +9 | +13 |
+| Midfield | Sporting | Championship position | 9th | 8th | 6th |
+| Midfield | Commercial | Sponsor income signed for next season | £30m | £38m | £48m |
+| Midfield | Technical | Races with both cars classified | 10 | 12 | 14 |
+| Front-runner | Sporting | Wins | 1 | 3 | 6 |
+| Front-runner | Commercial | Merchandise income | £14m | £18m | £24m |
+| Front-runner | Technical | Average pit-stop rank | 4th | 2nd | 1st |
+
+Season targets are separate from sponsor targets (section 5.8), which are agreed deal by deal.
+
+## 6. Progression and difficulty
+
+Target curve for good play on Normal:
+
+| Season | Championship position | Milestone |
+|---|---|---|
+| 1 | 12th | Beat Cadillac on merit at least once, stay solvent |
+| 2 | 11th–10th | First points |
+| 3 | 10th–8th | Regular points, owner funding ends |
+| 4 | 8th–7th | Established midfield |
+| 5 | 6th–5th | First podium, approaching the cost cap |
+| 6–7 | 5th–3rd | First win |
+| 8–10 | 3rd–1st | Title contention |
+| After | — | Staying there |
+
+**Where the build stands.** With the first-pass numbers, a simple scripted manager that takes sponsors, keeps the designers busy and invests whatever the forecast can spare scores its first point in season 8 and reaches 8th in seasons 9 to 12. That is well behind this curve, and it never changes its drivers. A manager that does nothing stays 12th. Closing the gap to the curve is the job of milestone 5.
+
+**Why progress is always available:** diminishing returns favour slow cars, the aero allowance favours low finishers, the annual tightening costs fast cars more, each place gained is worth £5m–£12m in prize money, and the cost cap limits the leaders.
+
+**Why it is not easy:** owner funding tapers to nothing, rivals poach from a rising team, driver and sponsor expectations climb, the aero allowance shrinks with success, and the final approach to the front needs several times the development capacity that reaching midfield does.
+
+| Level | Start cash | Owner funding | AI development |
+|---|---|---|---|
+| Easy | £20m | Tapers from season 5 | −15% |
+| Normal | £10m | Tapers from season 1 | Baseline |
+| Hard | £5m | Tapers from season 1 | +15% |
+
+## 7. Strategic routes
+
+| Route | Idea | Cost |
+|---|---|---|
+| Backed drivers | Two funded drivers for two seasons, money into facilities | Slower drivers, sponsor targets missed |
+| Bought-in car | Lean on supplier parts and a small design team | Chassis cap, later in-house transition |
+| Specialist car | Low-drag car that scores at five power tracks | Nowhere at the downforce tracks |
+| Sacrifice season | Bank most capacity for next year from mid-season | A poor finish hits prize money and confidence |
+| Loans and academy | Borrow rivals' juniors now, grow your own later | Recalls, slow payback |
+| Commercial first | Build sponsor income before lap time | Stays slow for longer |
+| Star hire | Poach a top Technical Director early | Buyout, gardening leave, large salary |
+| Borrowing | Loans and advances to accelerate | Interest, crisis risk |
+
+## 8. Starting grid
+
+The game starts at the 2027 season with the grid as it stood on 11 October 2026. Haas, Racing Bulls and Mercedes had not formally confirmed 2027 line-ups, so they are assumed unchanged.
+
+Ratings are a judgement of underlying ability and car quality, not a conversion of this season's points. They are in the style of the official game's ratings but use different attributes and are not copied from it. All of them live in one data file and can be edited.
+
+### Cars
+
+| Team | Power unit | Aero | Chassis | Power | Reliability | Tyre Care | Gap to fastest (balanced track) |
+|---|---|---|---|---|---|---|---|
+| Mercedes | Mercedes | 93 | 92 | 91 | 90 | 86 | — |
+| McLaren | Mercedes | 91 | 90 | 90 | 88 | 90 | +0.09 s |
+| Ferrari | Ferrari | 93 | 91 | 85 | 86 | 88 | +0.09 s |
+| Red Bull | Red Bull Ford | 88 | 88 | 93 | 83 | 84 | +0.15 s |
+| Racing Bulls | Red Bull Ford | 78 | 80 | 92 | 82 | 78 | +0.50 s |
+| Alpine | Mercedes | 76 | 74 | 90 | 82 | 74 | +0.67 s |
+| Haas | Ferrari | 73 | 74 | 84 | 82 | 74 | +0.80 s |
+| Audi | Audi | 72 | 73 | 83 | 76 | 76 | +0.85 s |
+| Williams | Mercedes | 68 | 66 | 90 | 80 | 70 | +0.97 s |
+| Aston Martin | Honda | 70 | 62 | 81 | 70 | 68 | +1.11 s |
+| Cadillac | Ferrari | 58 | 60 | 84 | 74 | 64 | +1.35 s |
+| **Player** | Chosen | 48 | 50 | By supplier | 60 | 55 | +1.72 s with Ferrari power |
+
+Track type changes the order. On power tracks Red Bull moves level with McLaren and Williams passes Audi. On downforce tracks Ferrari is within 0.05 s of Mercedes and the player's gap grows to 2.0 s.
+
+### Drivers
+
+Age is at the start of the 2027 season. Potential is shown for drivers aged 25 or under.
+
+| Driver | Team | Age | Pace | Racecraft | Consistency | Wet | Feedback | Marketability | Overall | Potential |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Max Verstappen | Red Bull | 29 | 98 | 97 | 95 | 98 | 92 | 95 | 97 | — |
+| Lewis Hamilton | Ferrari | 42 | 91 | 94 | 90 | 96 | 94 | 99 | 92 | — |
+| Lando Norris | McLaren | 27 | 95 | 90 | 88 | 90 | 88 | 92 | 92 | — |
+| Charles Leclerc | Ferrari | 29 | 96 | 90 | 86 | 86 | 88 | 93 | 91 | — |
+| George Russell | Mercedes | 29 | 94 | 89 | 91 | 88 | 90 | 82 | 91 | — |
+| Oscar Piastri | McLaren | 25 | 93 | 91 | 90 | 84 | 85 | 84 | 91 | 94 |
+| Fernando Alonso | Aston Martin | 45 | 88 | 95 | 92 | 92 | 97 | 90 | 91 | — |
+| Kimi Antonelli | Mercedes | 20 | 95 | 88 | 84 | 86 | 80 | 88 | 90 | 98 |
+| Carlos Sainz | Williams | 32 | 89 | 88 | 89 | 88 | 95 | 84 | 89 | — |
+| Pierre Gasly | Alpine | 31 | 88 | 86 | 86 | 88 | 85 | 78 | 87 | — |
+| Alexander Albon | Williams | 30 | 86 | 86 | 87 | 82 | 86 | 78 | 86 | — |
+| Nico Hülkenberg | Audi | 39 | 86 | 84 | 88 | 89 | 90 | 74 | 86 | — |
+| Isack Hadjar | Red Bull | 22 | 88 | 83 | 82 | 82 | 78 | 74 | 85 | 93 |
+| Esteban Ocon | Haas | 30 | 84 | 84 | 84 | 87 | 82 | 72 | 84 | — |
+| Oliver Bearman | Haas | 21 | 87 | 84 | 78 | 80 | 78 | 76 | 83 | 93 |
+| Liam Lawson | Racing Bulls | 25 | 85 | 85 | 81 | 80 | 78 | 72 | 83 | 87 |
+| Gabriel Bortoleto | Audi | 22 | 85 | 81 | 82 | 78 | 80 | 74 | 82 | 91 |
+| Sergio Pérez | Cadillac | 37 | 80 | 88 | 82 | 80 | 86 | 88 | 82 | — |
+| Valtteri Bottas | Cadillac | 37 | 82 | 79 | 86 | 78 | 90 | 76 | 81 | — |
+| Arvid Lindblad | Racing Bulls | 19 | 82 | 79 | 76 | 78 | 72 | 72 | 79 | 92 |
+| Franco Colapinto | Alpine | 23 | 81 | 80 | 74 | 76 | 74 | 86 | 79 | 86 |
+| Lance Stroll | Aston Martin | 28 | 78 | 79 | 76 | 86 | 74 | 70 | 79 | — |
+
+### Available drivers at the start
+
+Ratings first, then what each driver would cost and bring. Sponsor pull is a game value, not a real figure, and academy ties are as best known.
+
+| Driver | Age | Pace | Racecraft | Consistency | Wet | Feedback | Marketability | Overall | Potential |
+|---|---|---|---|---|---|---|---|---|---|
+| Yuki Tsunoda | 26 | 85 | 82 | 80 | 80 | 80 | 80 | 83 | — |
+| Pato O'Ward | 27 | 82 | 84 | 78 | 82 | 78 | 86 | 82 | — |
+| Zhou Guanyu | 27 | 79 | 78 | 84 | 76 | 80 | 82 | 79 | — |
+| Colton Herta | 26 | 80 | 80 | 74 | 76 | 76 | 80 | 78 | — |
+| Felipe Drugovich | 26 | 79 | 77 | 80 | 76 | 78 | 68 | 78 | — |
+| Kevin Magnussen | 34 | 78 | 80 | 76 | 78 | 82 | 70 | 78 | — |
+| Leonardo Fornaroli | 22 | 79 | 76 | 82 | 74 | 76 | 62 | 78 | 87 |
+| Rafael Câmara | 21 | 80 | 76 | 76 | 76 | 72 | 66 | 78 | 91 |
+| Mick Schumacher | 27 | 78 | 76 | 76 | 78 | 78 | 90 | 77 | — |
+| Alex Dunne | 21 | 80 | 76 | 68 | 82 | 70 | 70 | 77 | 90 |
+| Luke Browning | 25 | 78 | 76 | 75 | 78 | 74 | 62 | 77 | 84 |
+| Nikola Tsolov | 20 | 79 | 77 | 72 | 74 | 70 | 64 | 76 | 90 |
+| Jack Doohan | 24 | 78 | 75 | 72 | 74 | 72 | 70 | 75 | 82 |
+| Jak Crawford | 21 | 77 | 75 | 74 | 72 | 72 | 68 | 75 | 86 |
+
+Backing range and starting interest below come from the formulas in section 5.6, at the player's starting reputation of 10. Starting interest is before the offer and the hidden personal factor; 60 signs.
+
+| Driver | Sponsor pull | Backing range | Starting interest | Route |
+|---|---|---|---|---|
+| Yuki Tsunoda | 0.5 | £1.4m–£2.6m | 54 | Needs a good offer |
+| Pato O'Ward | 1.0 | £3.6m–£6.8m | 45 | Needs a very good offer or more reputation |
+| Zhou Guanyu | 2.3 | £7.1m–£13.2m | 59 | Close to signing at asking terms |
+| Colton Herta | 1.7 | £4.8m–£8.8m | 60 | Signs at asking terms |
+| Felipe Drugovich | 2.5 | £2.8m–£5.2m | 50 | Needs a good offer |
+| Kevin Magnussen | 0 | None | 54 | Needs a good offer |
+| Leonardo Fornaroli | 0.5 | Under £0.5m | 60 | Loan from McLaren |
+| Rafael Câmara | 0 | None | 60 | Loan from Ferrari |
+| Mick Schumacher | 0.8 | £3.4m–£6.2m | 51 | Needs a good offer |
+| Alex Dunne | 0.5 | £0.7m–£1.3m | 61 | Signs at asking terms |
+| Luke Browning | 0 | None | 61 | Loan from Williams |
+| Nikola Tsolov | 0 | None | 63 | Loan from Red Bull |
+| Jack Doohan | 2.0 | £2.8m–£5.2m | 64 | Signs at asking terms |
+| Jak Crawford | 0.5 | £0.6m–£1.0m | 64 | Loan from Aston Martin |
+
+### The player's team
+
+| Item | Value |
+|---|---|
+| Cash | £10m |
+| Workforce | 160: Aero 30, Mechanical 30, Manufacturing 45, Race Team 40, Commercial 15 |
+| Key staff | All rated 45–60 |
+| Facilities | As in 5.4 |
+| Sponsors | One small title sponsor and two partners, about £10m a season |
+| Reputation | 10 out of 100 |
+| Rival scale | Front-runners have about 900 staff and spend to the cap |
+
+## 9. Balance validation
+
+The engine will be plain JavaScript with a seeded random generator and no UI dependency, so whole saves can run headless in Node. Three scripted managers play it:
+
+| Bot | Behaviour | Target on Normal |
+|---|---|---|
+| Competent | Sensible priorities, follows the cash forecast, picks the better A/B option | First title in seasons 8–12 in about half of saves; a crisis in under 10% |
+| Naive | Spreads money evenly, picks A/B at random | Plateaus at 7th–9th; a title by season 15 in under 5% |
+| Reckless | Maximum spend and borrowing | A crisis in over half of saves |
+
+Further checks:
+
+- **A/B value.** The competent bot with random A/B choices should progress about 10% slower than with the better choices.
+- **Season targets.** The competent bot should meet Safe targets about 80% of the time, Standard about 50% and Stretch about 20%.
+- **World health.** With no player, 30 seasons of the 11 real teams should keep the front-to-back gap between about 1.0 s and 2.0 s, change the champion team several times, and let teams rise and fall by a few places a year without the order reshuffling completely.
+- **Driver market.** Over the same 30 seasons, three to six of the 22 rival seats should change each winter, mid-season swaps should be rare, career lengths and retirement ages should look plausible, and the average rating of the grid should stay level, not creep up or down.
+
+Each tuning change is checked against 200 saves per bot.
+
+## 10. Build order
+
+| Milestone | Contents | Playable result |
+|---|---|---|
+| M1 Race weekend (built) | Real team, driver and track data; seeded RNG; qualifying and race simulation; standings; bare UI; saves; calibration test | A full season of simulated weekends with fixed cars |
+| M2 Money and development (built) | Finance loop, sponsors, upgrades, next-year car, annual tightening, facilities, workforce, key staff, season rollover. Moved here from M4: rival car development, the aero allowance, the cost cap and the crisis | Multi-season play with real trade-offs |
+| M3 Decisions and targets (built) | The A/B deck (80 decisions), staff-dependent information, decision log; season targets with the pre-season projection | A decision every round and three targets a season |
+| M4 People and world | Driver market in three stages, the hidden personal factor, loans and recalls, academy, ageing and regression, rival driver reviews, new drivers, rival form events, poaching, supplier drift, honours board | An endless save |
+| M5 Balance | Bot managers and harness, tuning to sections 6 and 9 | A save that hits the target curve |
+
+## 11. Flaws checked
+
+| Issue | Resolution |
+|---|---|
+| Found in the build: banked work at 1.5 times the value made banking everything, every year, the best play | Banked work is now worth the same as in-season work; it is free to build and escapes the winter cut |
+| Found in the build: with no winter loss, every car's Reliability would creep towards 100 in a long save | Reliability loses 2% each winter |
+| Found in the build: one mechanical department could not hold three ratings against the winter loss | Mechanical designers produce more work per head than aerodynamicists |
+| Found in the build: a team could set easy targets with weak drivers and then sign better ones | Targets are set last; drivers and power unit are then fixed for the season |
+| Found in the build: borrowing on the last day met a cash target | Cash targets are net of bank debt |
+| Found in the build: 38 of the 80 decisions always favoured the same option | Numbers reworked; every decision now has each option come out best in some situation, by the scripted manager's own valuation |
+| Fixed backing and availability per driver left nothing to decide | Interest, salary and backing are formulas with a random part, shown as estimates, in a three-stage market |
+| If targets only had rewards, Stretch would always be the right pick | A reward is paid only at the chosen level, and every miss costs owner confidence |
+| Rivals judging drivers perfectly would leave no bargains | Rivals judge on noisy results; the player sees true current ratings |
+| The real grid already has 11 teams | The player is the 12th. 24 cars, points still to the top ten, prize and aero tables extended to 12 places |
+| The real field is more spread out than v1 assumed | One rating point is now 0.05 s. The player starts 1.7 s off the front and 0.4 s behind Cadillac |
+| Removing race control removed the player's only way to take or avoid risk on race day | The race approach setting, plus race-weekend calls in the A/B deck |
+| Practice, qualifying and component choices depended on live control | Cut. Component and setup choices appear as A/B decisions |
+| Without a rules reset nothing would reshuffle the order | Percentage-based annual loss, diminishing returns, supplier drift and rival form events |
+| An endless save needs a world that renews | Driver ageing, retirement and new drivers; rivals whose resources follow results; an honours board and objectives that continue after a title |
+| "No definite end" conflicts with game over on bankruptcy or sacking | Replaced by the crisis in section 4 |
+| A runaway leader would make a long save dull, whether it is the player or a rival | The annual loss, aero allowance and cost cap all bear hardest on the leader; rivals poach from the top; checked by the world-health test |
+| A/B decisions could become coin flips or have one obvious answer | The right answer depends on context, information quality depends on staff, and the harness measures what good choices are worth |
+| Reloading a save to re-roll a decision or race | Outcomes are fixed from the save's seed when the round starts |
+| Real juniors are contracted to rival academies | Loan mechanic |
+| Ratings will go out of date | One editable data file |
+| Real team and driver names | Fine for a personal game. They would need replacing before any public release |
+
+## 12. Left out of v1
+
+Live race control, a lap-by-lap race model, sprint weekends, becoming an engine manufacturer, real engineers and team principals, equity sales, the full 24-race calendar and all visual polish.
