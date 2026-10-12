@@ -182,12 +182,14 @@ export function takeAdvance(game, amount) {
 export function checkCrisis(game) {
   const f = game.finance
   f.overdraftRounds = f.cash < OVERDRAFT ? f.overdraftRounds + 1 : 0
-  if (f.overdraftRounds >= 2 || game.confidence <= 0) triggerCrisis(game)
+  if (f.overdraftRounds >= 2) triggerCrisis(game, 'cash')
+  else if (game.confidence <= 0) triggerCrisis(game, 'confidence')
 }
 
-export function triggerCrisis(game) {
+export function triggerCrisis(game, reason = 'confidence') {
   const f = game.finance
   f.crises++
+  f.crisisLog = [...(f.crisisLog || []), { season: game.season, round: game.round, reason }]
   f.cash = Math.max(f.cash, 0) + 3
   f.bank = 0
   f.overdraftRounds = 0

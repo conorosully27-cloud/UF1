@@ -26,8 +26,8 @@ export const AREAS = {
   tyreCare: { label: 'Tyre Care', pool: 'mech' },
 }
 
-export const AERO_OUTPUT = 0.10 // work units per aerodynamicist per round at skill 50
-export const MECH_OUTPUT = 0.17 // per mechanical designer: one department covers three ratings
+export const AERO_OUTPUT = 0.16 // work units per aerodynamicist per round at skill 50
+export const MECH_OUTPUT = 0.27 // per mechanical designer: one department covers three ratings
 export const BUILD_OUTPUT = 0.24 // build units per factory worker per round at skill 50
 // Work banked for next year is no more efficient than an in-season upgrade.
 // Its advantages are that it costs nothing to manufacture and is added after
@@ -39,8 +39,10 @@ const MECH_BANK_SPLIT = { chassis: 0.6, tyreCare: 0.2, reliability: 0.2 }
 export const TIGHTENING = { hard: 0.11, soft: 0.05, tyreCare: 0.04, reliability: 0.02 }
 export const CHASSIS_FLOOR = 45 // with the bought-in parts package
 
-// The closer a rating is to 100, the less each unit of work adds.
-export const diminishing = (rating) => Math.max(0.05, (100 - rating) / 50)
+// The closer a rating is to 100, the less each unit of work adds. Above 50
+// the curve steepens, so the last few points cost the most.
+export const DIMINISHING_POWER = 1.3
+export const diminishing = (rating) => Math.max(0.03, rating <= 50 ? (100 - rating) / 50 : Math.pow((100 - rating) / 50, DIMINISHING_POWER))
 
 export function initialDev() {
   return {
@@ -49,7 +51,8 @@ export function initialDev() {
   }
 }
 
-const leadMult = (rating) => 0.8 + rating / 250
+// A strong Technical Director or Head of Aero gets more out of the same people.
+export const leadMult = (rating) => 0.6 + rating / 125
 
 export function capacity(game) {
   const o = game.org
@@ -99,6 +102,8 @@ export function expectedGain(game, area, size, approach) {
 export function startProject(game, { area, size, approach = 'standard', rush = false }, quiet = false) {
   if (!AREAS[area] || !SIZES[size] || !APPROACHES[approach]) throw new Error('Unknown project')
   if (area === 'chassis' && game.teams[PLAYER].car.chassis >= chassisCap(game) - 0.05) {
+    // A repeating project at the cap stops quietly; the designers bank the work instead.
+    if (quiet) return null
     throw new Error('Chassis is at the limit of the bought-in parts package. Go in-house to develop it further.')
   }
   const cost = projectCost(game, size, rush)

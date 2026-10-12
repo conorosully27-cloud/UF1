@@ -12,8 +12,8 @@ export const FACILITIES = {
   academy: { name: 'Academy', start: 0, effect: 'Takes on junior drivers; better juniors at higher levels' },
 }
 
-export const FACILITY_COST = [3, 6, 12, 22, 38] // £m to reach level 1..5
-export const FACILITY_TIME = [3, 4, 6, 8, 10] // rounds to reach level 1..5
+export const FACILITY_COST = [3, 6, 10, 16, 24] // £m to reach level 1..5
+export const FACILITY_TIME = [3, 4, 5, 6, 8] // rounds to reach level 1..5
 export const MAX_BUILDS = 2
 export const TUNNEL_RENT = 0.15 // £m per round while the Wind Tunnel is level 0
 export const ACADEMY_COST = 0.3 // £m a season for each junior in the academy

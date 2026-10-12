@@ -4,7 +4,7 @@
 // estimate what an option is worth for the scripted managers.
 
 import { PLAYER, ROUNDS, clamp, clock, currentTrack, effectiveCar, playerPosition, playerDrivers } from './core.js'
-import { earn, spend, forecast, perRound } from './economy.js'
+import { earn, spend, forecast, perRound, OVERDRAFT } from './economy.js'
 import { capacity, diminishing, chassisCap, rushFirstBuild, plannedSpendPerRound } from './development.js'
 import { headcountCap, engineerCount } from './org.js'
 import { mechFailureChance, crashChance } from './weekend.js'
@@ -236,8 +236,10 @@ function effectValue(game, c, e, rain) {
   const dealWorth = (d, x) => 0.003 * d.fee * x * (d.seasonsLeft <= 1 ? 3 : 1)
   if ('cash' in e) {
     // Money matters more when there is none: a cost the team cannot cover, or income when the forecast is negative.
-    const tight = (e.cash < 0 && c.cash + e.cash < 1) || (e.cash > 0 && c.forecast < 0)
-    v += e.cash * (tight ? 1.5 : 1)
+    // A cost that would take the season's forecast past the overdraft limit risks a crisis.
+    const tight = (e.cash < 0 && (c.cash + e.cash < 1 || c.forecast + e.cash < 0)) || (e.cash > 0 && c.forecast < 0)
+    const danger = e.cash < 0 && c.forecast + e.cash < OVERDRAFT
+    v += e.cash * (danger ? 3 : tight ? 1.5 : 1)
   }
   if ('rating' in e) {
     const [area, x] = e.rating

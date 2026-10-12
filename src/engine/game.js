@@ -272,7 +272,7 @@ function updateReputation(game, standings) {
   const target = clamp(100 - (pos - 1) * 8.3, 5, 95)
   const milestones = (me.points > 0 ? 1 : 0) + Math.min(3, me.podiums) + Math.min(6, me.wins * 2)
   const before = game.reputation
-  game.reputation = clamp(before + 0.3 * (target - before) + milestones, 0, 100)
+  game.reputation = clamp(before + 0.4 * (target - before) + milestones, 0, 100)
   return game.reputation - before
 }
 
@@ -327,7 +327,7 @@ export function endSeason(game) {
   game.decision = null
   game.insured = false
   game.teams[PLAYER].powerBonus = 0
-  if (game.confidence <= 0) triggerCrisis(game)
+  if (game.confidence <= 0) triggerCrisis(game, 'confidence')
   resetAtr(game, game.lastStandings)
   scheduleRivalUpgrades(game)
   sponsorsNewSeason(game, sponsorReport)
