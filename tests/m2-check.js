@@ -75,7 +75,6 @@ function hasBadNumber(x, path = '') {
   check('a facility cannot be built twice at once', expectThrow(() => buildFacility(g, 'designOffice')))
   buildFacility(g, 'cfd')
   check('only two builds run at once', expectThrow(() => buildFacility(g, 'factory')))
-  check('the Academy is locked until milestone 4', expectThrow(() => buildFacility(g, 'academy')))
   for (let r = 0; r < 4; r++) simulateRound(g)
   check('the Design Office finishes after 4 rounds', g.org.facilities.designOffice.level === lvl + 1 && !g.org.facilities.designOffice.building)
 

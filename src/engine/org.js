@@ -9,13 +9,14 @@ export const FACILITIES = {
   simulator: { name: 'Simulator', start: 0, effect: 'Setup quality' },
   raceOps: { name: 'Race Operations', start: 1, effect: 'Strategy, pit stops; Race Team headcount cap and skill' },
   commercial: { name: 'Commercial Centre', start: 1, effect: 'Sponsor slots, merchandise; Commercial headcount cap and skill' },
-  academy: { name: 'Academy', start: 0, effect: 'Junior drivers (arrives in milestone 4)', locked: true },
+  academy: { name: 'Academy', start: 0, effect: 'Takes on junior drivers; better juniors at higher levels' },
 }
 
 export const FACILITY_COST = [3, 6, 12, 22, 38] // £m to reach level 1..5
 export const FACILITY_TIME = [3, 4, 6, 8, 10] // rounds to reach level 1..5
 export const MAX_BUILDS = 2
 export const TUNNEL_RENT = 0.15 // £m per round while the Wind Tunnel is level 0
+export const ACADEMY_COST = 0.3 // £m a season for each junior in the academy
 
 export const DEPTS = {
   aero: { name: 'Aero', facility: 'windTunnel', start: 30 },

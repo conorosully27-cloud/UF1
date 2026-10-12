@@ -9,6 +9,9 @@ import CarTab from './ui/CarTab.jsx'
 import HqTab from './ui/HqTab.jsx'
 import { CommercialTab, FinanceTab, TeamTab } from './ui/MoneyTabs.jsx'
 import { DecisionPanel, DecisionLog, TargetPicker, TargetReport, TargetsTab } from './ui/M3Ui.jsx'
+import DriversTab, { Approaches, MarketStatus } from './ui/Drivers.jsx'
+import HonoursTab from './ui/Honours.jsx'
+import { seatsReady } from './engine/people.js'
 import { ordinal, money } from './ui/format.js'
 
 const KEY = 'uf1-save'
@@ -69,15 +72,21 @@ function LastSeason({ game }) {
   )
 }
 
-function Home({ game, act, last }) {
+function Home({ game, act, last, setTab }) {
   const track = currentTrack(game)
   if (game.phase === 'preseason') {
+    const expired = game.teams[PLAYER].drivers.map((id) => game.drivers[id]).filter((d) => d.contract?.expired)
     return (
       <div>
         <h2>{year(game)} pre-season</h2>
-        <p>{game.calendar.length} rounds. This is the time to change drivers or power unit (Team), and to line up upgrades, staff and sponsors.</p>
-        <p>When the team is as you want it, set the season's targets. Drivers and power unit are fixed from that point.</p>
+        <p>{game.calendar.length} rounds. This is the time to sign drivers (Drivers), change power unit (Team), and line up upgrades, staff and sponsors.</p>
+        <p>When the team is as you want it, set the season's targets. The driver market then closes, and drivers and power unit are fixed for the season.</p>
+        {expired.length > 0 && <div className="err">Out of contract: {expired.map((d) => d.name).join(' and ')}. Re-sign them on the <button onClick={() => setTab('drivers')}>Drivers</button> tab or they leave when the market closes.</div>}
+        {!seatsReady(game) && expired.length === 0 && <div className="err">A race seat is empty. Sign a driver on the <button onClick={() => setTab('drivers')}>Drivers</button> tab.</div>}
+        <MarketStatus game={game} act={act} />
+        <Approaches game={game} act={act} />
         <button className="primary" onClick={() => act((g) => (g.options.targets ? prepareTargets(g) : startSeason(g)))}>{game.options.targets ? 'Set season targets' : 'Start the season'}</button>
+        <News game={game} />
         <LastSeason game={game} />
       </div>
     )
@@ -166,7 +175,7 @@ function SaveTab({ game, setGame }) {
   )
 }
 
-const TABS = [['home', 'Home'], ['car', 'Car'], ['hq', 'HQ'], ['commercial', 'Sponsors'], ['finance', 'Finance'], ['team', 'Team'], ['targets', 'Targets'], ['decisions', 'Decisions'], ['standings', 'Standings'], ['results', 'Results'], ['grid', 'Grid'], ['save', 'Save']]
+const TABS = [['home', 'Home'], ['car', 'Car'], ['hq', 'HQ'], ['drivers', 'Drivers'], ['commercial', 'Sponsors'], ['finance', 'Finance'], ['team', 'Team'], ['targets', 'Targets'], ['decisions', 'Decisions'], ['standings', 'Standings'], ['results', 'Results'], ['grid', 'Grid'], ['honours', 'Honours'], ['save', 'Save']]
 
 export default function App() {
   const [game, setGame] = useState(loadSave)
@@ -191,13 +200,15 @@ export default function App() {
   }
 
   // Engine functions change the state in place, so each action works on a copy.
+  // Returns what the engine function returned, or undefined if it failed.
   const act = (fn) => {
     try {
       const next = JSON.parse(JSON.stringify(game))
-      fn(next)
+      const out = fn(next)
       setGame(next)
       writeSave(next)
       setError('')
+      return out
     } catch (err) { setError(err.message) }
   }
   const last = game.results[game.results.length - 1]
@@ -220,9 +231,10 @@ export default function App() {
         {TABS.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
       </div>
       {error && <div className="err">{error}</div>}
-      {tab === 'home' && <Home game={game} act={act} last={last} />}
+      {tab === 'home' && <Home game={game} act={act} last={last} setTab={setTab} />}
       {tab === 'car' && <CarTab game={game} act={act} />}
       {tab === 'hq' && <HqTab game={game} act={act} />}
+      {tab === 'drivers' && <DriversTab game={game} act={act} />}
       {tab === 'commercial' && <CommercialTab game={game} act={act} />}
       {tab === 'finance' && <FinanceTab game={game} act={act} />}
       {tab === 'team' && <TeamTab game={game} act={act} />}
@@ -231,6 +243,7 @@ export default function App() {
       {tab === 'standings' && <Standings game={game} />}
       {tab === 'results' && <Results game={game} />}
       {tab === 'grid' && <Grid game={game} />}
+      {tab === 'honours' && <HonoursTab game={game} />}
       {tab === 'save' && <SaveTab game={game} setGame={setGame} />}
     </div>
   )

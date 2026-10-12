@@ -6,9 +6,11 @@ import { PLAYER, ROUNDS, clamp } from './core.js'
 import { diminishing, tightenCar, TIGHTENING } from './development.js'
 import { DIFFICULTY } from './economy.js'
 import { streamRng } from './rng.js'
+import { repForPosition, resourceForPosition } from './world.js'
 
 const AREAS = ['aero', 'chassis', 'tyreCare', 'reliability']
 const PACKAGES = 3
+export const CONCEPT_SD = 0.9 // rating points: how far a rival's reading of new rules can be off
 const AVERAGE_LOSS = { aero: (TIGHTENING.hard + TIGHTENING.soft) / 2, chassis: (TIGHTENING.hard + TIGHTENING.soft) / 2, tyreCare: TIGHTENING.tyreCare, reliability: TIGHTENING.reliability }
 
 // One year at development rate `d`: in-season packages, the winter loss, then
@@ -40,9 +42,17 @@ export function initRivals(game) {
     const atr = game.atr[t.id]
     const dev = {}
     for (const a of AREAS) dev[a] = holdingRate(t.car[a], a === 'aero' ? atr : 1, AVERAGE_LOSS[a]) * ai
-    game.rivals[t.id] = { dev, base: { ...dev }, upgrades: [] }
+    // Reputation and resources start from last year's order and then follow results.
+    const pos = game.lastStandings.indexOf(t.id) + 1
+    const resource = resourceForPosition(pos)
+    game.rivals[t.id] = { dev, base: { ...dev }, upgrades: [], reputation: repForPosition(pos), resource, resource0: resource, event: null }
   }
   scheduleRivalUpgrades(game)
+}
+
+// Development speed relative to the team's start: prize money and form events.
+export function rivalMult(r) {
+  return (r.resource / r.resource0) * (r.event?.mult ?? 1)
 }
 
 export function scheduleRivalUpgrades(game) {
@@ -58,7 +68,7 @@ function develop(game, id, share, rng, lo, hi) {
   const gains = {}
   for (const a of AREAS) {
     const atr = a === 'aero' ? game.atr[id] : 1
-    const gain = share * r.dev[a] * diminishing(t.car[a]) * atr * rng.range(lo, hi)
+    const gain = share * r.dev[a] * rivalMult(r) * diminishing(t.car[a]) * atr * rng.range(lo, hi)
     t.car[a] = Math.min(99, t.car[a] + gain)
     gains[a] = gain
   }
@@ -81,6 +91,9 @@ export function rivalWinter(game, hard) {
     tightenCar(game.teams[id].car, hard)
     const rng = streamRng(game.seed, 'rivalWinter', game.season, id)
     develop(game, id, 0.5, rng, 0.75, 1.25)
+    // Each team reads the new rules a little better or worse than the others.
+    const t = game.teams[id]
+    for (const a of ['aero', 'chassis']) t.car[a] = clamp(t.car[a] + rng.normal(0, CONCEPT_SD), 20, 99)
     const r = game.rivals[id]
     for (const a of AREAS) {
       // A random walk that is pulled back towards the team's starting level.

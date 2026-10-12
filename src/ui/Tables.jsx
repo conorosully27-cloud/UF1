@@ -103,16 +103,17 @@ export function Grid({ game }) {
           </tbody>
         </table>
       </div>
-      <p className="muted">Reliability shown is the car as raced: the team's own build quality blended with the power unit's.</p>
+      <p className="muted">Reliability shown is the car as raced: the team's own build quality blended with the power unit's. In pre-season some rival seats can be empty until the driver market closes.</p>
       <h2>Drivers</h2>
       <div className="scroll">
         <table>
-          <thead><tr><th>Driver</th><th>Team</th><th className="n">Age</th><th className="n">Overall</th><th className="n">Pace</th><th className="n">Racecraft</th><th className="n">Consistency</th><th className="n">Wet</th><th className="n">Feedback</th><th className="n">Market.</th></tr></thead>
+          <thead><tr><th>Driver</th><th>Team</th><th className="n">Age</th><th className="n">Overall</th><th className="n">Pace</th><th className="n">Racecraft</th><th className="n">Consistency</th><th className="n">Wet</th><th className="n">Feedback</th><th className="n">Market.</th><th className="n">Contract</th><th className="n">Starts</th><th className="n">Wins</th><th className="n">Titles</th></tr></thead>
           <tbody>
             {drivers.map((d) => (
               <tr key={d.id} className={d.teamId === PLAYER ? 'me' : ''}>
                 <td>{d.name}{game.reserve === d.id ? ' (reserve)' : ''}</td><td>{game.teams[d.teamId].name}</td><td className="n">{d.age}</td><td className="n">{overall(d)}</td>
                 <td className="n">{d.pace}</td><td className="n">{d.racecraft}</td><td className="n">{d.consistency}</td><td className="n">{d.wet}</td><td className="n">{d.feedback}</td><td className="n">{d.marketability}</td>
+                <td className="n">{d.contract?.expired ? 'expired' : d.contract ? `${d.contract.years} yr` : '—'}</td><td className="n">{d.career?.starts ?? 0}</td><td className="n">{d.career?.wins || ''}</td><td className="n">{d.career?.titles || ''}</td>
               </tr>
             ))}
           </tbody>

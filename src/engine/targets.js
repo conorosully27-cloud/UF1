@@ -6,6 +6,7 @@ import { PLAYER, ROUNDS, clamp, seasonMetrics, ordinal } from './core.js'
 import { acceptOffer, freeSlots } from './sponsors.js'
 import { chassisCap } from './development.js'
 import { earn } from './economy.js'
+import { autoDrivers } from './people.js'
 
 export const LEVELS = {
   safe: { label: 'Safe', mult: 1, confidence: 3, reputation: 1, odds: 'about four times in five' },
@@ -20,10 +21,11 @@ export const CATEGORIES = {
   technical: { label: 'Technical', reward: (m) => `+${(2 * m).toFixed(0)}% engineering capacity next season` },
 }
 
-// The stand-in for "average management": keeps the designers busy, banks a
-// little for next year from mid-season, fills empty sponsor slots, and
-// neither builds nor hires.
+// The stand-in for "average management": keeps two drivers under contract,
+// keeps the designers busy, banks a little for next year from mid-season,
+// fills empty sponsor slots, and neither builds nor hires.
 export function averageManager(g) {
+  autoDrivers(g)
   for (const o of g.sponsors.offers.slice().sort((a, b) => b.value - a.value)) {
     if (freeSlots(g, o.tier) > 0) { try { acceptOffer(g, o.id, 'balanced') } catch { /* demand not met */ } }
   }

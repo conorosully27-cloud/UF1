@@ -2,7 +2,7 @@
 // cap and the crisis that replaces game over (design sections 4 and 5.7).
 
 import { PLAYER, ROUNDS, clamp } from './core.js'
-import { HEAD_COST, PAY, TUNNEL_RENT, facilityUpkeep, staffName, keyStaffSalary } from './org.js'
+import { HEAD_COST, PAY, TUNNEL_RENT, ACADEMY_COST, facilityUpkeep, staffName, keyStaffSalary } from './org.js'
 import { PARTS_PACKAGE_PRICE } from './data/suppliers.js'
 import { streamRng } from './rng.js'
 
@@ -102,13 +102,14 @@ export function perRound(game, ahead = 0) {
   const driverIds = [...team.drivers, ...(game.reserve ? [game.reserve] : [])]
   let building = 0
   for (const fac of Object.values(o.facilities)) if (fac.building && fac.building.roundsLeft > ahead) building += fac.building.perRound
+  const juniors = Object.values(game.drivers).filter((d) => d.academy && !d.teamId).length
   const costs = {
     workforce, keyStaff,
     drivers: driverIds.reduce((s, id) => s + (game.drivers[id].contract?.salary || 0), 0) / ROUNDS,
     powerUnit: (supplier.price + (game.partsPackage ? PARTS_PACKAGE_PRICE : 0)) / ROUNDS,
     raceOps: RACE_OPS,
     carBuild: CAR_BUILD / ROUNDS,
-    facilities: facilityUpkeep(o) / ROUNDS + (o.facilities.windTunnel.level === 0 ? TUNNEL_RENT : 0) + building,
+    facilities: (facilityUpkeep(o) + juniors * ACADEMY_COST) / ROUNDS + (o.facilities.windTunnel.level === 0 ? TUNNEL_RENT : 0) + building,
     interest: (f.bank * bankRate(game)) / ROUNDS,
   }
   const sum = (x) => Object.values(x).reduce((s, v) => s + v, 0)

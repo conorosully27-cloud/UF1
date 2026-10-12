@@ -1,7 +1,7 @@
 {
   "name": "ultimate-f1-manager",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,8 @@
     "test:m1": "node tests/m1-check.js",
     "test:m2": "node tests/m2-check.js",
     "test:m3": "node tests/m3-check.js",
-    "test": "node tests/m1-check.js && node tests/m2-check.js && node tests/m3-check.js"
+    "test": "node tests/m1-check.js && node tests/m2-check.js && node tests/m3-check.js && node tests/m4-check.js",
+    "test:m4": "node tests/m4-check.js"
   },
   "dependencies": {
     "react": "^18.3.1",

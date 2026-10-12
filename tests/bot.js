@@ -7,16 +7,18 @@ import { capacity, chassisCap, plannedSpendPerRound } from '../src/engine/develo
 import { buildFacility, hire, hireKeyStaff } from '../src/engine/hq.js'
 import { acceptOffer, freeSlots } from '../src/engine/sponsors.js'
 import { FACILITY_COST, MAX_BUILDS, headcountCap, engineerCount } from '../src/engine/org.js'
+import { autoDrivers } from '../src/engine/people.js'
 
 const BUILD_ORDER = ['designOffice', 'cfd', 'windTunnel', 'factory', 'raceOps', 'simulator', 'commercial']
 const tryDo = (fn) => { try { fn(); return true } catch { return false } }
 
-// Does nothing at all.
-export function passive() {}
+// Does nothing beyond keeping two drivers under contract.
+export function passive(g) { autoDrivers(g) }
 
 // Sensible but simple: takes sponsors, keeps the designers busy, banks work
 // for next year from mid-season, and invests whatever the forecast can spare.
 export function steady(g, { buffer = 4, bank = 50 } = {}) {
+  autoDrivers(g)
   for (const o of g.sponsors.offers.slice().sort((a, b) => b.value - a.value)) {
     if (freeSlots(g, o.tier) > 0) tryDo(() => acceptOffer(g, o.id, 'balanced'))
   }
