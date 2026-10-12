@@ -49,7 +49,7 @@ function hasBadNumber(x, path = '') {
   check('starting sponsors fill three slots', g.sponsors.deals.length === 3 && slotTiers(g).length === 3)
 
   const cap = capacity(g)
-  check('capacity starts near 3.8 aero and 5.9 mechanical units a round, and the factory can keep up', cap.aero > 3.2 && cap.aero < 4.4 && cap.mech > 5.2 && cap.mech < 6.6 && cap.build > cap.aero + cap.mech, `aero ${cap.aero.toFixed(2)}, mech ${cap.mech.toFixed(2)}, build ${cap.build.toFixed(2)}`)
+  check('capacity starts near 6.2 aero and 9.5 mechanical units a round, and the factory can keep up', cap.aero > 5.6 && cap.aero < 6.8 && cap.mech > 8.7 && cap.mech < 10.4 && cap.build > cap.aero + cap.mech, `aero ${cap.aero.toFixed(2)}, mech ${cap.mech.toFixed(2)}, build ${cap.build.toFixed(2)}`)
 
   const cash0 = g.finance.cash
   const aero0 = g.teams[PLAYER].car.aero

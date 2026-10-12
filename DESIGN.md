@@ -1,8 +1,8 @@
 # Ultimate F1 Manager — game mechanics plan (v4)
 
-Status: milestones 1 to 4 are built and checked (section 10). Milestone 5 is not. Every number is a first-pass value; balance tuning is milestone 5, and section 6 says where the build currently falls short of the target.
+Status: milestones 1 to 5 are built and checked (section 10). Numbers changed by the milestone 5 balance pass are marked "tuned"; section 9 gives the measured results against the targets.
 
-To play: `npm run dev` in this folder. To check: `npm test`.
+To play: `npm run dev` in this folder. To check: `npm test`. To measure balance: `npm run test:m5` (section 9).
 
 ## 1. The game
 
@@ -73,7 +73,8 @@ Staff and facilities produce **engineering capacity** each round. It has two sin
 
 Gain = base gain × diminishing-returns factor × a random roll.
 
-- **Diminishing returns.** The closer a rating is to 100, the less each unit of work adds. A car rated 50 gains about five times as much per unit as a car rated 90.
+- **Diminishing returns.** The closer a rating is to 100, the less each unit of work adds: (100 − rating) ÷ 50, raised to the power 1.3 above 50 (tuned). A car rated 50 gains about eight times as much per unit as a car rated 90, so the last few points cost the most.
+- **Leadership.** The Technical Director and Head of Aero multiply their departments' output by 0.5 + rating ÷ 100: ×1.0 at 50, ×1.4 at 90 (tuned; it was ×1.0 to ×1.16). A star hire is worth chasing.
 - **Roll width** depends on Wind Tunnel and CFD level, the Head of Aero and driver Feedback. Poor facilities mean a +3 project could deliver anything from +1 to +4.
 - **Understanding a part.** A new part runs at 70% of its value in its first race. Better facilities shorten this.
 - **Manufacturing.** Finished designs need building. A design finished this round is fitted next round at the earliest, and the factory's own capacity can become the bottleneck.
@@ -129,9 +130,11 @@ Eight facilities, levels 0–5. Two builds can run at once.
 |---|---|---|
 | 1 | £3m | 3 rounds |
 | 2 | £6m | 4 rounds |
-| 3 | £12m | 6 rounds |
-| 4 | £22m | 8 rounds |
-| 5 | £38m | 10 rounds |
+| 3 | £10m | 5 rounds |
+| 4 | £16m | 6 rounds |
+| 5 | £24m | 8 rounds |
+
+Levels 3 to 5 were tuned down from £12m, £22m and £38m (6, 8 and 10 rounds): at the old prices no sensible manager could build a front-running organisation within ten seasons.
 
 Upkeep is 6% of cumulative build cost per season. A build is paid for in equal instalments over its rounds.
 
@@ -251,7 +254,7 @@ Cash moves every round. A forecast screen projects the balance to season end und
 
 | Cost | Season 1 scale |
 |---|---|
-| Workforce | £13m (160 staff) |
+| Workforce | £15m (160 staff; tuned from £13m) |
 | Key staff | £3m |
 | Drivers | £0.5m–£5m each |
 | Power unit and parts package | £13m–£17m |
@@ -265,13 +268,13 @@ Season 1 roughly breaks even on a modest development budget.
 
 **Borrowing:** a bank loan (limit set by reputation, 8–14% interest) or an advance of up to half the remaining season's prize payments at a 10% discount.
 
-**Reputation** moves 30% of the way each winter towards a level set by championship position (about 9 for 12th, 95 for 1st), plus a little for points, podiums and wins.
+**Reputation** moves 40% of the way each winter (tuned from 30%) towards a level set by championship position (about 9 for 12th, 95 for 1st), plus a little for points, podiums and wins.
 
 **Cost cap:** £150m on performance spending (development, technical staff, race operations). Drivers, power units, commercial staff and facility construction are outside it. The player starts at about a third of the cap.
 
 ### 5.8 Sponsors
 
-Slots: one title, two principal, four partner. Commercial Centre level opens them.
+Slots: one title, two principal, four partner. Commercial Centre level opens them. An offer's headline value is a base plus an amount per reputation point (title £3m + £0.45m, principal £1m + £0.16m, partner £0.5m + £0.07m; tuned up by about 30%), scaled by the Commercial Director, the commercial staff and the drivers' Marketability. A front-runner with every slot filled is offered about £100m a season.
 
 Each offer comes in three shapes:
 
@@ -379,6 +382,8 @@ The 11 real teams run a simplified version of the same development model, with t
 - **Reading the new rules.** Each winter each rival's Aero and Chassis move by a random ±0.9 points (typical) on top of its development. Without this the front of the field never changed: diminishing returns hold a top car so close to its starting rating that the fastest team won about 80% of titles.
 - **Drivers** age, regress, move teams, get dropped and retire (section 5.6).
 - **Poaching:** from reputation 25, rivals approach key staff rated 65 or more (about 10–35% a year each, more for better staff and a better team). Matching costs 30% more salary; otherwise a deputy 8–15 points weaker steps up. Rivals bid for drivers as in section 5.6.
+- **Pressure (tuned).** A rival with reputation 65 or more that is slower than the fastest car develops faster: +6% for each 0.1 s a lap it is behind, up to +25%. This is what bears on a runaway leader, the player included.
+- **Race operations drift.** Each winter a rival's pit crew, strategy and setup ratings move by a random ±1.5, pulled back towards where the team started.
 - **Supplier drift:** each winter Power moves by a random ±0.7 plus 20% of the gap to the best supplier, with a slow pull back towards 88; Reliability likewise. Prices follow Power.
 
 ### 5.12 Season targets
@@ -401,7 +406,7 @@ Each pre-season the game offers six objectives built from the team's current sta
 **How the marks are set.** Before the season the game runs 150 quick simulations of the year from the team's current car, drivers, cash and facilities, under average management: designers kept busy, a little banked from mid-season, empty sponsor slots filled, nothing built and nobody hired.
 
 - **Results targets** (position, points, best finish, races ahead of a rival, podiums, wins, both cars classified) are placed where that average team reaches them in about 80%, 50% and 20% of runs. Measured over 120 seasons of average management the rates were 79%, 45% and 22%.
-- **Management targets** (cash, sponsor fees, rating gained, facility levels) depend mostly on the player's own choices, so they are set against what the average manager achieves: for example Standard for rating gained is 15% more than the average manager manages.
+- **Management targets** (cash, sponsor fees, rating gained, facility levels) depend mostly on the player's own choices, so they are set against what the average manager achieves. Rating gained: 70%, 100% and 135% of what the average manager manages. Cash: 30%, 65% and 105% of the cash the average manager, who neither builds nor hires, would be left with. Sponsor fees are mostly fixed by the deals already signed, so Safe is 95% of the projection, Standard adds one more partner deal and Stretch a principal deal on top (tuned: a percentage over the projection could not be reached without new slots).
 - **Cash** is counted net of bank debt, so borrowing cannot meet the target.
 
 Setting targets is the last step of pre-season. Drivers and power unit are fixed from then on, so the marks cannot be lowered by setting them with a weak line-up and then changing it.
@@ -603,7 +608,7 @@ Each tuning change is checked against 200 saves per bot.
 | M2 Money and development (built) | Finance loop, sponsors, upgrades, next-year car, annual tightening, facilities, workforce, key staff, season rollover. Moved here from M4: rival car development, the aero allowance, the cost cap and the crisis | Multi-season play with real trade-offs |
 | M3 Decisions and targets (built) | The A/B deck (80 decisions), staff-dependent information, decision log; season targets with the pre-season projection | A decision every round and three targets a season |
 | M4 People and world (built) | Driver market in three stages, the hidden personal factor, loans and recalls, academy, ageing and regression, rival driver reviews, new drivers, rival form events, poaching, supplier drift, honours board | An endless save |
-| M5 Balance | Bot managers and harness, tuning to sections 6 and 9 | A save that hits the target curve |
+| M5 Balance (built) | Bot managers and harness, tuning to sections 6 and 9 | A save that hits the target curve |
 
 ## 11. Flaws checked
 

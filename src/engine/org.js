@@ -41,7 +41,7 @@ const RACE_CAP = [30, 45, 60, 80, 100, 120]
 const COMMERCIAL_CAP = [10, 18, 30, 50, 75, 100]
 const CFD_MULT = [0.9, 1.0, 1.12, 1.25, 1.4, 1.55]
 
-export const HEAD_COST = 0.08 // £m per head per season at skill 50 on market pay
+export const HEAD_COST = 0.095 // £m per head per season at skill 50 on market pay
 export const PAY = { low: { cost: 0.9, skill: -5 }, market: { cost: 1.0, skill: 0 }, premium: { cost: 1.2, skill: 8 } }
 
 const FIRST = ['Marco', 'Elena', 'James', 'Sofia', 'Luca', 'Hannah', 'Pierre', 'Aiko', 'Tom', 'Ines', 'Rafael', 'Greta', 'Daniel', 'Priya', 'Mateo', 'Clara', 'Jonas', 'Nadia', 'Ben', 'Yara']

@@ -28,7 +28,7 @@ export const AREAS = {
 
 export const AERO_OUTPUT = 0.16 // work units per aerodynamicist per round at skill 50
 export const MECH_OUTPUT = 0.27 // per mechanical designer: one department covers three ratings
-export const BUILD_OUTPUT = 0.24 // build units per factory worker per round at skill 50
+export const BUILD_OUTPUT = 0.38 // build units per factory worker per round at skill 50
 // Work banked for next year is no more efficient than an in-season upgrade.
 // Its advantages are that it costs nothing to manufacture and is added after
 // the winter's tightening, so none of it is lost to the rule change.
@@ -52,7 +52,7 @@ export function initialDev() {
 }
 
 // A strong Technical Director or Head of Aero gets more out of the same people.
-export const leadMult = (rating) => 0.6 + rating / 125
+export const leadMult = (rating) => 0.5 + rating / 100
 
 export function capacity(game) {
   const o = game.org

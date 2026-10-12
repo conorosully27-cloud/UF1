@@ -504,7 +504,7 @@ function retireChance(game, d) {
   if (unsigned && d.age >= 24) p += d.unsigned >= 1 ? 0.35 : 0.1
   if (unsigned && overall(d) < 75 && d.age >= 26) p += 0.3
   if (d.contract && d.contract.years > 0) p *= 0.4
-  if (d.age >= 46) p = 1
+  if (d.age >= 46) return 1
   return clamp(p, 0, 0.95)
 }
 

@@ -193,8 +193,11 @@ export function competentTargets(g) {
   const offer = g.targets.offer
   const pick = (cat) => offer.filter((o) => o.category === cat)
   const top = (o, value, lowerBetter = false) => ['stretch', 'standard', 'safe'].find((l) => (lowerBetter ? value <= o.marks[l] : value >= o.marks[l] * 1.1)) ?? null
-  const sport = pick('sporting')[0]
-  const sportLevel = g.confidence < 45 ? 'safe' : 'standard'
+  // Results objectives are judged against the average team; this one is better than average, so Standard is a fair bet
+  // unless the owner is uneasy. Positions and race counts it can see coming are preferred to single best finishes.
+  const prefer = ['ahead', 'points', 'podiums', 'wins', 'pos', 'best']
+  const sport = pick('sporting').sort((a, b) => prefer.indexOf(a.id) - prefer.indexOf(b.id))[0]
+  const sportLevel = g.confidence < 60 ? 'safe' : 'standard'
   const fees = g.sponsors.deals.reduce((s, d) => s + d.fee, 0)
   const sponsor = pick('commercial').find((o) => o.id === 'sponsor')
   const cash = pick('commercial').find((o) => o.id === 'cash')
@@ -204,7 +207,10 @@ export function competentTargets(g) {
   const cap = capacity(g)
   const car = g.teams[PLAYER].car
   const aeroGain = cap.aero * 13 * 0.1 * diminishing(car.aero) // about 13 rounds of in-season aero work
-  const tech = rating ? { o: rating, level: top(rating, aeroGain) ?? 'safe' } : { o: pick('technical')[0], level: 'safe' }
+  // Facility levels are in the team's own hands, so that target is the safest technical bet.
+  const facilities = pick('technical').find((o) => o.id === 'facilities')
+  const tech = facilities ? { o: facilities, level: g.confidence < 60 ? 'safe' : 'standard' }
+    : rating && top(rating, aeroGain) ? { o: rating, level: top(rating, aeroGain) } : { o: pick('technical').find((o) => o.id === 'classified') ?? pick('technical')[0], level: 'safe' }
   return [{ o: sport, level: sportLevel }, com, tech].map(({ o, level }) => ({ id: o.id, area: o.area, level }))
 }
 
@@ -273,7 +279,10 @@ function competentInvest(g, floor) {
   const nearMidfield = carGap(g) < 0.8
   const active = Object.values(o.facilities).filter((f) => f.building).length
   if (active < MAX_BUILDS) {
-    const rank = (id) => o.facilities[id].level + order.indexOf(id) * 0.35 + (id === 'academy' ? 2 : 0) - (nearMidfield && (id === 'raceOps' || id === 'simulator') ? 2 : 0)
+    // With Chassis pressing against the parts package's cap, going in-house comes first.
+    const capped = g.partsPackage && g.teams[PLAYER].car.chassis >= chassisCap(g) - 4
+    const inHouse = (id) => capped && (id === 'factory' || id === 'designOffice') && o.facilities[id].level < 3
+    const rank = (id) => o.facilities[id].level + order.indexOf(id) * 0.35 + (id === 'academy' ? 2 : 0) - (nearMidfield && (id === 'raceOps' || id === 'simulator') ? 2 : 0) - (inHouse(id) ? 4 : 0)
     const next = order.filter((id) => !o.facilities[id].building && o.facilities[id].level < 5).sort((a, b) => rank(a) - rank(b))[0]
     const cost = next ? FACILITY_COST[o.facilities[next].level] : 0
     const instalments = Math.min(left, FACILITY_TIME[o.facilities[next]?.level ?? 0]) / FACILITY_TIME[o.facilities[next]?.level ?? 0]
@@ -282,12 +291,14 @@ function competentInvest(g, floor) {
     } else if (next && lasting > cost * 0.06 + 1) saving = Math.min(cost * instalments, 12)
   }
   // Better key staff whenever someone clearly better is available and affordable; race staff once the car is competitive.
+  let hired = 0
   const roleWeight = { technicalDirector: 3, headOfAero: 3, chiefStrategist: nearMidfield ? 3 : 1, raceEngineer1: nearMidfield ? 2 : 0.5, raceEngineer2: nearMidfield ? 2 : 0.5, commercialDirector: 1.5 }
   for (const c of g.staffMarket.slice().sort((a, b) => (b.rating - o.keyStaff[b.role].rating) * roleWeight[b.role] - (a.rating - o.keyStaff[a.role].rating) * roleWeight[a.role])) {
     const cur = o.keyStaff[c.role]
     const raise = c.salary - cur.salary
-    if (c.rating >= cur.rating + 5 && g.reputation >= c.minReputation && spare > c.buyout + 1 && lasting > raise + 1) {
-      if (tryDo(() => hireKeyStaff(g, c.id))) { spare -= c.buyout; lasting -= raise }
+    if (hired >= 2) break
+    if (c.rating >= cur.rating + 6 && g.reputation >= c.minReputation && spare > c.buyout * 2 + 1 && lasting > raise + 1) {
+      if (tryDo(() => hireKeyStaff(g, c.id))) { spare -= c.buyout; lasting -= raise; hired++ }
     }
   }
   if (nearMidfield && o.staff.raceTeam.pay !== 'premium') {

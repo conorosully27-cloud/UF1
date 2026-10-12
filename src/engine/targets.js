@@ -112,7 +112,7 @@ export function buildOffer(game, runs, yearIncome) {
   // Cash is judged against what an average manager, who neither builds nor hires, would be left with.
   const idleCash = at(sorted(runs, (m) => m.cash), 0.5)
   const commercial = [
-    { id: 'cash', marks: idleCash >= 4 ? scaled(idleCash, [0.3, 0.55, 0.9], 0.5, 1) : scaled(yearIncome, [0.03, 0.07, 0.15], 0.5, 1) },
+    { id: 'cash', marks: idleCash >= 4 ? scaled(idleCash, [0.3, 0.65, 1.05], 0.5, 1) : scaled(yearIncome, [0.03, 0.07, 0.15], 0.5, 1) },
     { id: 'sponsor', marks: sponsorMarks(game, Math.max(1, at(sorted(runs, (m) => m.sponsor), 0.5))) },
   ]
 

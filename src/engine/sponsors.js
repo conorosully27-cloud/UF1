@@ -6,9 +6,9 @@ import { mechFailureChance, crashChance } from './weekend.js'
 import { streamRng } from './rng.js'
 
 export const TIERS = {
-  title: { label: 'Title', base: 3, perRep: 0.34 },
-  principal: { label: 'Principal', base: 1, perRep: 0.12 },
-  partner: { label: 'Partner', base: 0.5, perRep: 0.055 },
+  title: { label: 'Title', base: 3, perRep: 0.45 },
+  principal: { label: 'Principal', base: 1, perRep: 0.16 },
+  partner: { label: 'Partner', base: 0.5, perRep: 0.07 },
 }
 
 // Share of the headline value paid as a flat fee, and as a bonus if the target is met.

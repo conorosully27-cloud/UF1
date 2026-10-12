@@ -1,8 +1,9 @@
 // Milestone 5: the balance harness (design sections 6 and 9). Scripted
 // managers play whole saves with every system switched on; the results are
 // compared with the target curve.
-// Usage: node tests/m5-balance.js [saves per bot] [seasons] [--quick]
-//   --quick skips the A/B comparison and the naive bot's long run.
+// Usage: node tests/m5-balance.js [saves per bot] [seasons] [--quick | --ab | --only=<bot>]
+//   --quick skips the A/B comparison; --ab runs only that comparison;
+//   --only=competent (or naive, reckless) runs one manager.
 
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads'
 import { cpus } from 'node:os'
@@ -133,8 +134,20 @@ async function abOnly() {
   process.exit(0)
 }
 
+// --only=<bot>: one manager's table, for quick tuning runs.
+async function onlyOne(bot) {
+  const seeds = Array.from({ length: SAVES }, (_, i) => 9000 + i)
+  const res = await runAll(seeds.map((seed) => ({ bot, seed, seasons: SEASONS, choose: bot === 'naive' ? 'random' : 'best', difficulty: 'normal' })))
+  const r = report(bot, res)
+  const win = r.firstTitle.filter((x) => x !== null && x >= 8 && x <= 12).length / SAVES
+  console.log(`  First title in seasons 8-12: ${pct(win)}; median final position ${median(res.map((s) => s.at(-1).pos))}`)
+  process.exit(0)
+}
+
 async function main() {
   if (process.argv.includes('--ab')) return abOnly()
+  const only = process.argv.find((a) => a.startsWith('--only='))
+  if (only) return onlyOne(only.slice(7))
   const t0 = Date.now()
   const seeds = Array.from({ length: SAVES }, (_, i) => 9000 + i)
   const jobs = []
