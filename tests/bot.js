@@ -31,13 +31,15 @@ export function steady(g, { buffer = 4, bank = 50 } = {}) {
   if (g.finance.austerity > 0) return
   const left = Math.max(1, roundsLeft(g))
   let spare = Math.min(forecast(g, plannedSpendPerRound(g)), g.finance.cash + 6) - buffer
+  // New staff are a lasting cost: next season's books must carry them too.
+  let lasting = buffer < 0 ? Infinity : nextSeasonNet(g) - plannedSpendPerRound(g) * 16 * 0.5 - 4
   const o = g.org
 
   // Fill the departments the facilities have room for, engineers first.
   const fill = (dept, room, chunk) => {
     const n = Math.min(room, chunk)
     const cost = n * headCost(o.staff[dept]) * (left / 16)
-    if (n >= 1 && spare > cost + 1 && tryDo(() => hire(g, dept, n))) spare -= cost
+    if (n >= 1 && spare > cost + 1 && lasting > n * headCost(o.staff[dept]) && tryDo(() => hire(g, dept, n))) { spare -= cost; lasting -= n * headCost(o.staff[dept]) }
   }
   const engRoom = headcountCap(o, 'aero') - engineerCount(g.org)
   if (engRoom > 0) { fill('aero', Math.ceil(engRoom / 2), 10); fill('mech', Math.floor(engRoom / 2), 10) }

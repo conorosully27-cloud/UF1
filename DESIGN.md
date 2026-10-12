@@ -450,7 +450,15 @@ Target curve for good play on Normal:
 | 8–10 | 3rd–1st | Title contention |
 | After | — | Staying there |
 
-**Where the build stands.** With the first-pass numbers, a simple scripted manager that takes sponsors, keeps the designers busy and invests whatever the forecast can spare scores its first point in season 8 and reaches 8th in seasons 9 to 12. That is well behind this curve, and it never changes its drivers. A manager that does nothing stays 12th. Closing the gap to the curve is the job of milestone 5.
+**Where the build stands** (200 saves, competent manager, section 9):
+
+| Season | 1 | 2 | 3 | 4 | 5 | 6–9 | 10 | 11 | 12 | 13–15 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Median position | 12th | 11th | 10th | 8th | 6th | 5th | 4th | 3rd | 2nd | 1st |
+
+First points in season 3, first podium in season 7 and first win in season 9 (medians). The first title comes in seasons 8–12 in 45% of saves and by season 15 in 89%. The curve is met to season 5; seasons 6 to 9 sit at 5th, a season or two behind the curve, because the top four teams are a clear step above the rest and breaking into them takes a front-running organisation; the title then follows quickly. Once champion, a well-run team usually stays there (77% of these saves are champions in season 15): staying on top is harder than it should be only in the sense of the pressure mechanic in section 5.11, and this is the main thing left to tune.
+
+A manager that does nothing at all now climbs slowly to about 10th, because designers with nothing queued bank their work for free and the starting staff produce more than before tuning. It has no sponsors left after two seasons and wins nothing.
 
 **Why progress is always available:** diminishing returns favour slow cars, the aero allowance favours low finishers, the annual tightening costs fast cars more, each place gained is worth £5m–£12m in prize money, and the cost cap limits the leaders.
 
@@ -600,6 +608,26 @@ Further checks:
 
 Each tuning change is checked against 200 saves per bot.
 
+**As built.** `tests/m5-balance.js` plays saves of 15 seasons with every system on (decisions, targets, market), four at a time on worker threads; `npm run test:m5` runs 200 saves per bot (about 12 minutes). The scripted managers are in `tests/bot.js`:
+
+- **Competent** plans a season ahead (next season's income and running costs, not just this season's cash forecast) and takes a prize advance or a bank loan rather than fall into the overdraft. It signs the drivers worth most for their cost (an Overall point is worth more as reputation rises), switches power unit when a better one is affordable without its Chassis cap falling, builds the Design Office, CFD and Factory first, goes in-house once Chassis presses against the parts package's cap, saves for the next facility by banking design work (which costs nothing to build), puts most new engineers into Aero, invests in race operations and race staff once the car is near the midfield, and picks low-risk season targets.
+- **Naive** keeps the designers busy on small safe upgrades, banks a quarter, accepts every sponsor, keeps two drivers at a fair price, and spreads the rest evenly: one facility after another in a fixed rotation and the same few heads for every department. It watches this season's forecast but plans no further, and picks A/B at random.
+- **Reckless** spends everything and borrows to the limit.
+
+Results over 200 saves per bot (all targets met):
+
+| Check | Target | Built |
+|---|---|---|
+| Competent: first title in seasons 8–12 | About half | 45% (89% by season 15) |
+| Competent: crisis | Under 10% | 0% |
+| Naive: plateau | 7th–9th | 9th from season 7, edging to 7th by season 15 |
+| Naive: title by season 15 | Under 5% | 0% |
+| Reckless: crisis | Over half | 100% |
+| A/B value | About 10% | Random choices score 92% of the points over ten seasons (first title median season 13 instead of 12) |
+| Season targets, competent | 80 / 50 / 20% | 77 / 36 / 12% over every offered objective; results objectives 71–83 / 38–54 / 11–24%. Sponsor-fee targets above Safe need an extra deal (4% and 0%), and Aero rating gained is rarely met by a manager that banks heavily for facilities (27 / 9 / 0%) |
+
+World health with no player (30 seasons, six saves): the front-to-back gap stays between 1.1 and 1.5 s, three or four teams win titles and the title changes hands several times, and teams move about half a place a year. Mercedes still wins about two-thirds of titles: its starting car settles about 0.09 s clear and it signs the best drivers; small development swings near the top barely move this because of the diminishing returns.
+
 ## 10. Build order
 
 | Milestone | Contents | Playable result |
@@ -623,6 +651,12 @@ Each tuning change is checked against 200 saves per bot.
 | Found in the build: the fastest starting team (Mercedes) won about 80% of titles over 30 seasons, because diminishing returns pin top cars to their starting ratings | Each rival's reading of the winter rules adds a random ±0.9 to Aero and Chassis. The title now changes hands several times in 30 seasons (Mercedes still wins about 70%; milestone 5) |
 | Found in the build: a driver whose contract expired had to vanish at once, before the player could react | Out-of-contract drivers stay until the market closes and can be re-signed; rivals can take them from stage 2 |
 | Found in the build: real drivers' careers before 2027 are unknown, so "retires after 32 starts" misled | Career numbers count from 2027 and are labelled as such |
+| Found in balancing: a department told to repeat a Chassis upgrade crashed the round when Chassis reached the parts package's cap | The repeat stops quietly and the designers bank the work |
+| Found in balancing: a sensible manager with the first-pass numbers reached only 5th–6th in 15 seasons, and every scripted manager kept falling into crises | Development output +60% (factory output with it), cheaper top facility levels, faster reputation, larger sponsor values; the competent manager plans a season ahead |
+| Found in balancing: with cheaper development, a manager who spread money evenly reached the top six | Staff cost £0.095m a head; key staff multiply output more strongly; steeper diminishing returns above 50 |
+| Found in balancing: the A/B valuation counted cash as tight only when the bank balance was low, so the scripted manager paid big sums early with a negative forecast | A cost that would take the season's forecast past the overdraft limit is valued at three times its size |
+| Found in balancing: sponsor-fee targets above Safe were a percentage over a figure fixed by signed deals, so almost impossible | Standard and Stretch now ask for one or two more deals |
+| Found in balancing: a crisis did not say what caused it | The finance record logs each crisis with its cause (cash or owner confidence) |
 | Fixed backing and availability per driver left nothing to decide | Interest, salary and backing are formulas with a random part, shown as estimates, in a three-stage market |
 | If targets only had rewards, Stretch would always be the right pick | A reward is paid only at the chosen level, and every miss costs owner confidence |
 | Rivals judging drivers perfectly would leave no bargains | Rivals judge on noisy results; the player sees true current ratings |
