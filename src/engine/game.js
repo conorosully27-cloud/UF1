@@ -30,13 +30,13 @@ export { SAVE_VERSION, START_YEAR, PLAYER, START_REPUTATION, year, currentTrack,
 // Last year's real-world order, used for prize money and the aero allowance in season 1.
 const START_ORDER = ['mercedes', 'ferrari', 'mclaren', 'redbull', 'racingbulls', 'alpine', 'haas', 'audi', 'williams', 'aston', 'cadillac', PLAYER]
 
-export function newGame({ seed = Date.now() >>> 0, teamName = 'New Team', supplier = 'ferrari', driverIds, reserveId = null, difficulty = 'normal', options = {} }) {
+export function newGame({ seed = Date.now() >>> 0, teamName = 'New Team', color = '#ff5a36', supplier = 'ferrari', driverIds, reserveId = null, difficulty = 'normal', involvement = 'quick', options = {} }) {
   const rng = makeRng(seed)
   if (SUPPLIERS[supplier].minReputation > START_REPUTATION) throw new Error(`${SUPPLIERS[supplier].name} will not supply a new team`)
   const teams = {}
   for (const t of TEAMS) teams[t.id] = { ...clone(t), drivers: [], isPlayer: false }
   teams[PLAYER] = {
-    id: PLAYER, name: teamName, supplier, works: false, car: clone(PLAYER_START_CAR), ops: null, drivers: [], isPlayer: true,
+    id: PLAYER, name: teamName, color, supplier, works: false, car: clone(PLAYER_START_CAR), ops: null, drivers: [], isPlayer: true,
   }
   const drivers = {}
   for (const d of [...RACE_DRIVERS, ...POOL_DRIVERS]) {
@@ -56,8 +56,9 @@ export function newGame({ seed = Date.now() >>> 0, teamName = 'New Team', suppli
     results: [],
     history: [],
     news: [],
-    // involvement: 'live' runs the weekend with the player on the pit wall (screen still to come), 'quick' simulates it.
-    settings: { approach: 'balanced', priority: 'equal', involvement: 'quick' },
+    // involvement: 'live' runs the weekend with the player on the pit wall, 'quick' simulates it.
+    // The game screen starts new teams on 'live'; scripted tests stay on 'quick'.
+    settings: { approach: 'balanced', priority: 'equal', involvement },
     weekendMods: [],
     org: { ...initialOrg(rng), arrivals: [] },
     reputation: START_REPUTATION,

@@ -60,16 +60,18 @@ export function objectiveStatus(o, result) {
   return mine.length === 2 && mine.every((r) => r.status === 'finished')
 }
 
-// After the race: each objective met adds a point of owner confidence and
-// sponsor satisfaction, and the season's tally is kept.
+// After the race: each objective met adds a little owner confidence and
+// sponsor satisfaction (a good season of them is worth about one season
+// target), and the season's tally is kept.
+export const OBJECTIVE_REWARD = { confidence: 0.3, satisfaction: 0.5 }
 export function settleObjectives(game, objectives, result) {
   let met = 0
   for (const o of objectives) {
     o.met = objectiveStatus(o, result)
     if (o.met) met++
   }
-  game.confidence = clamp(game.confidence + met, 0, 100)
-  for (const d of game.sponsors.deals) d.satisfaction = clamp(d.satisfaction + met, 0, 100)
+  game.confidence = clamp(game.confidence + met * OBJECTIVE_REWARD.confidence, 0, 100)
+  for (const d of game.sponsors.deals) d.satisfaction = clamp(d.satisfaction + met * OBJECTIVE_REWARD.satisfaction, 0, 100)
   const t = (game.objectiveTally ??= { season: game.season, met: 0, total: 0 })
   if (t.season !== game.season) Object.assign(t, { season: game.season, met: 0, total: 0 })
   t.met += met

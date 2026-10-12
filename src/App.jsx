@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { newGame, startSeason, simulateRound, endSeason, prepareTargets, backToPreseason, currentTrack, year, playerPosition, PLAYER, SAVE_VERSION } from './engine/game.js'
 import { forecast } from './engine/economy.js'
 import { plannedSpendPerRound, tighteningPlan, AREAS } from './engine/development.js'
@@ -11,8 +11,12 @@ import { CommercialTab, FinanceTab, TeamTab } from './ui/MoneyTabs.jsx'
 import { DecisionPanel, DecisionLog, TargetPicker, TargetReport, TargetsTab } from './ui/M3Ui.jsx'
 import DriversTab, { Approaches, MarketStatus } from './ui/Drivers.jsx'
 import HonoursTab from './ui/Honours.jsx'
+import LiveWeekend, { Debrief } from './ui/LiveWeekend.jsx'
+import { CalendarStrip, RivalCard, GapChart } from './ui/PitWall.jsx'
+import { beginWeekend, weekendActive } from './engine/live.js'
+import { PLAYER_COLORS } from './engine/data/teams.js'
 import { seatsReady } from './engine/people.js'
-import { ordinal, money } from './ui/format.js'
+import { ordinal, money, onColor } from './ui/format.js'
 
 const KEY = 'uf1-save'
 
@@ -100,43 +104,82 @@ function Home({ game, act, last, setTab }) {
         <h2>{year(game)} season complete</h2>
         <p>You finished <b>{ordinal(playerPosition(game))}</b> in the Constructors' Championship.</p>
         <button className="primary" onClick={() => act((g) => endSeason(g))}>Go to the {year(game) + 1} pre-season</button>
+        {last && <Debrief game={game} result={last} />}
         <News game={game} />
         {last && <WeekendReport game={game} result={last} />}
         <Standings game={game} />
       </div>
     )
   }
+  if (weekendActive(game)) return <LiveWeekend game={game} act={act} />
   const waiting = !!game.decision && !game.decision.resolved
+  const live = game.settings.involvement === 'live'
+  const goLive = <button className={live ? 'primary' : ''} disabled={waiting} onClick={() => act((g) => { beginWeekend(g) })}>{live ? 'Go to the race weekend' : 'Run this one live'}</button>
+  const goQuick = <button className={live ? 'ghost' : 'primary'} disabled={waiting} onClick={() => act((g) => { simulateRound(g) })}>{live ? 'Quick sim this one' : 'Simulate the weekend'}</button>
   return (
     <div>
+      {last && <Debrief game={game} result={last} />}
       <div className="panel">
-        <h2 style={{ marginTop: 0 }}>Next: round {game.round + 1} of {game.calendar.length}, {track.name}</h2>
+        <div className="kicker">Next: round {game.round + 1} of {game.calendar.length}</div>
+        <h2 style={{ margin: '2px 0 4px' }}>{track.name}, {track.country}</h2>
         <p><TrackLine track={track} /></p>
-        <p>
-          <label>Race approach{' '}
-            <select value={game.settings.approach} onChange={(e) => act((g) => { g.settings.approach = e.target.value })}>
-              <option value="conservative">Conservative: fewer swings, fewer errors</option>
-              <option value="balanced">Balanced</option>
-              <option value="aggressive">Aggressive: bigger strategy swings, more errors</option>
-            </select>
-          </label>
-          <label>Driver priority{' '}
-            <select value={game.settings.priority} onChange={(e) => act((g) => { g.settings.priority = e.target.value })}>
-              <option value="equal">Equal</option>
-              <option value="driver1">Favour {game.drivers[game.teams[PLAYER].drivers[0]].name}</option>
-              <option value="driver2">Favour {game.drivers[game.teams[PLAYER].drivers[1]].name}</option>
-            </select>
-          </label>
-        </p>
+        <CalendarStrip game={game} />
+        {!live && (
+          <p>
+            <label>Race approach{' '}
+              <select value={game.settings.approach} onChange={(e) => act((g) => { g.settings.approach = e.target.value })}>
+                <option value="conservative">Conservative: fewer swings, fewer errors</option>
+                <option value="balanced">Balanced</option>
+                <option value="aggressive">Aggressive: bigger strategy swings, more errors</option>
+              </select>
+            </label>
+            <label>Driver priority{' '}
+              <select value={game.settings.priority} onChange={(e) => act((g) => { g.settings.priority = e.target.value })}>
+                <option value="equal">Equal</option>
+                <option value="driver1">Favour {game.drivers[game.teams[PLAYER].drivers[0]].name}</option>
+                <option value="driver2">Favour {game.drivers[game.teams[PLAYER].drivers[1]].name}</option>
+              </select>
+            </label>
+          </p>
+        )}
         {game.tighteningKnown && <p>Next winter's rule change will hit <b>{AREAS[tighteningPlan(game)].label}</b> hardest.</p>}
-        <button className="primary" disabled={waiting} onClick={() => act((g) => { simulateRound(g) })}>Simulate the weekend</button>
-        {waiting && <span className="muted gap">Make this round's decision first.</span>}
+        <div className="row" style={{ gap: 8 }}>{live ? <>{goLive}{goQuick}</> : <>{goQuick}{goLive}</>}</div>
+        {waiting && <p className="muted">Make this round's decision first.</p>}
       </div>
       <DecisionPanel game={game} act={act} />
+      <div className="cols">
+        <RivalCard game={game} />
+        <GapChart game={game} />
+      </div>
       <News game={game} />
       {last && <WeekendReport game={game} result={last} />}
     </div>
   )
+}
+
+function SettingsTab({ game, act, theme, setTheme }) {
+  return (
+    <div>
+      <h2>Settings</h2>
+      <div className="panel">
+        <div className="kicker">Race weekends</div>
+        <div style={{ margin: '8px 0' }}><Seg value={game.settings.involvement} options={[['live', 'On the pit wall'], ['quick', 'Quick sim']]} onPick={(v) => act((g) => { g.settings.involvement = v })} /></div>
+        <p className="muted">On the pit wall you set the wing, pick start tyres and make the calls during the race; the strategist can take over at any moment. Quick sim plays the weekend in one click. Either can be overridden for a single weekend from the Race screen.</p>
+      </div>
+      <div className="panel">
+        <div className="kicker">Look</div>
+        <div style={{ margin: '8px 0' }}><Seg value={theme} options={[['dark', 'Dark'], ['light', 'Light']]} onPick={setTheme} /></div>
+        <p>Team colour</p>
+        <div className="swatches">
+          {PLAYER_COLORS.map((c) => <button key={c} aria-label={`Team colour ${c}`} className={game.teams[PLAYER].color === c ? 'on' : ''} style={{ background: c }} onClick={() => act((g) => { g.teams[PLAYER].color = c })} />)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Seg({ options, value, onPick }) {
+  return <div className="seg">{options.map(([k, label]) => <button key={k} className={value === k ? 'on' : ''} onClick={() => onPick(k)}>{label}</button>)}</div>
 }
 
 function SaveTab({ game, setGame }) {
@@ -175,12 +218,37 @@ function SaveTab({ game, setGame }) {
   )
 }
 
-const TABS = [['home', 'Home'], ['car', 'Car'], ['hq', 'HQ'], ['drivers', 'Drivers'], ['commercial', 'Sponsors'], ['finance', 'Finance'], ['team', 'Team'], ['targets', 'Targets'], ['decisions', 'Decisions'], ['standings', 'Standings'], ['results', 'Results'], ['grid', 'Grid'], ['honours', 'Honours'], ['save', 'Save']]
+// Five sections, each with its own tabs (RACE_WEEKEND.md section 8). Save and settings sit behind the menu.
+const SECTIONS = [
+  { id: 'race', label: 'Race', ico: '🏁', tabs: [['home', 'Pit wall'], ['decisions', 'Decisions']] },
+  { id: 'car', label: 'Car', ico: '🔧', tabs: [['car', 'Car']] },
+  { id: 'team', label: 'Team', ico: '👥', tabs: [['drivers', 'Drivers'], ['hq', 'Staff and HQ'], ['team', 'Power unit']] },
+  { id: 'business', label: 'Business', ico: '💷', tabs: [['commercial', 'Sponsors'], ['finance', 'Finance'], ['targets', 'Targets']] },
+  { id: 'season', label: 'Season', ico: '🏆', tabs: [['standings', 'Standings'], ['results', 'Results'], ['grid', 'Grid'], ['honours', 'Honours']] },
+  { id: 'menu', label: 'Menu', ico: '⚙', tabs: [['settings', 'Settings'], ['save', 'Save']], hidden: true },
+]
+const sectionOf = (tab) => SECTIONS.find((s) => s.tabs.some(([id]) => id === tab))
+
+const THEME_KEY = 'uf1-theme'
+function loadTheme() {
+  try { return localStorage.getItem(THEME_KEY) || 'dark' } catch { return 'dark' }
+}
 
 export default function App() {
   const [game, setGame] = useState(loadSave)
   const [tab, setTab] = useState('home')
   const [error, setError] = useState('')
+  const [theme, setThemeState] = useState(loadTheme)
+  const setTheme = (t) => { setThemeState(t); try { localStorage.setItem(THEME_KEY, t) } catch { /* not saved: fine */ } }
+  const accent = game?.teams[PLAYER].color ?? '#ff5a36'
+  const racing = !!game && weekendActive(game) && tab === 'home'
+  useEffect(() => {
+    const root = document.documentElement
+    root.dataset.theme = theme
+    root.style.setProperty('--accent', accent)
+    root.style.setProperty('--on-accent', onColor(accent))
+    document.body.classList.toggle('racing', racing)
+  }, [theme, accent, racing])
 
   if (!game) {
     return (
@@ -214,22 +282,32 @@ export default function App() {
   const last = game.results[game.results.length - 1]
   const team = game.teams[PLAYER]
   const endCash = forecast(game, plannedSpendPerRound(game))
+  const section = sectionOf(tab) ?? SECTIONS[0]
+  const alert = weekendActive(game) || (!!game.decision && !game.decision.resolved)
 
   return (
     <div className="app">
       <div className="top">
         <h1>{team.name}</h1>
-        <span className="stat"><b>{year(game)}</b> season {game.season}</span>
-        <span className="stat">{game.phase === 'season' ? <>Round <b>{game.round + 1}</b> of {game.calendar.length}</> : game.phase === 'seasonEnd' ? 'Season complete' : 'Pre-season'}</span>
-        <span className="stat">Championship <b>{game.results.length ? ordinal(playerPosition(game)) : '—'}</b></span>
+        <span className="stat"><b>{year(game)}</b></span>
+        <span className="stat">{game.phase === 'season' ? <>Round <b>{game.round + 1}</b>/{game.calendar.length}</> : game.phase === 'seasonEnd' ? 'Season complete' : 'Pre-season'}</span>
+        <span className="stat">Champ. <b>{game.results.length ? ordinal(playerPosition(game)) : '—'}</b></span>
         <span className="stat">Cash <b className={game.finance.cash < 0 ? 'bad' : ''}>{money(game.finance.cash)}</b></span>
-        <span className="stat">Forecast <b className={endCash < 0 ? 'bad' : ''}>{money(endCash)}</b></span>
-        <span className="stat">Reputation <b>{game.reputation.toFixed(0)}</b></span>
-        <span className="stat">Owner confidence <b>{game.confidence.toFixed(0)}</b></span>
+        <span className="stat wide">Forecast <b className={endCash < 0 ? 'bad' : ''}>{money(endCash)}</b></span>
+        <span className="stat wide">Reputation <b>{game.reputation.toFixed(0)}</b></span>
+        <span className="stat">Owner <b>{game.confidence.toFixed(0)}</b></span>
+        <button className="menu ghost" aria-label="Settings and save" onClick={() => setTab('settings')}>⚙</button>
       </div>
-      <div className="tabs">
-        {TABS.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
-      </div>
+      <nav className="nav">
+        {SECTIONS.filter((s) => !s.hidden).map((s) => (
+          <button key={s.id} className={section.id === s.id ? 'on' : ''} onClick={() => setTab(s.tabs[0][0])}>
+            <span className="ico">{s.ico}</span>{s.label}{s.id === 'race' && alert && <span className="dot" />}
+          </button>
+        ))}
+      </nav>
+      {section.tabs.length > 1 && (
+        <div className="subtabs">{section.tabs.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}</div>
+      )}
       {error && <div className="err">{error}</div>}
       {tab === 'home' && <Home game={game} act={act} last={last} setTab={setTab} />}
       {tab === 'car' && <CarTab game={game} act={act} />}
@@ -245,6 +323,7 @@ export default function App() {
       {tab === 'grid' && <Grid game={game} />}
       {tab === 'honours' && <HonoursTab game={game} />}
       {tab === 'save' && <SaveTab game={game} setGame={setGame} />}
+      {tab === 'settings' && <SettingsTab game={game} act={act} theme={theme} setTheme={setTheme} />}
     </div>
   )
 }

@@ -326,50 +326,63 @@ Every round brings exactly one A/B decision. Both options cost something.
 
 About half the deck is race-weekend calls, which stand in for live race control. All 80 decisions are written (`src/engine/data/deck.js`): 40 race-weekend and reliability calls and 40 HQ decisions. The table above shows the style; some of its numbers were changed in the build so that each option is the better one in some situations.
 
-### 5.10 Race weekend simulation
+### 5.10 Race weekend
 
-The weekend is simulated with no live control. Two standing settings apply until changed:
+A weekend is played one of two ways, set in Settings and changeable for a single weekend from the Race screen. New teams start on the pit wall; the scripted tests, the balance harness and the pre-season projection always use the quick sim.
 
-- **Race approach:** conservative, balanced or aggressive. Aggressive widens the spread of strategy outcomes and raises error risk.
-- **Driver priority:** equal, or favour one driver for new parts and strategy.
+- **On the pit wall (live):** briefing, qualifying, the grid, then the race block by block with the player making the calls (below). The strategist can take over at any moment.
+- **Quick sim:** one click. The strategist makes every call, and two standing settings apply: race approach (conservative, balanced or aggressive: aggressive widens the spread of strategy outcomes and raises error risk) and driver priority (equal, or favour one driver).
 
-**Qualifying.** Lap time = car pace at this track + driver Pace + setup roll + random variation, with a small chance of an error or crash. Grid penalties are then applied.
+A weekend in progress is part of the save (`game.weekend`), so it carries on where it left off.
 
-**Race.** Each car's total race time is built from:
+**Qualifying.** Lap time = car pace at this track (with the wing level) + driver Pace + setup roll + random variation, with a small chance of a mistake. Grid penalties are then applied.
+
+**The race** (`src/engine/weekend.js`) runs in blocks of about five laps (at least eight blocks). Each block every car's time comes from:
 
 | Element | Driven by |
 |---|---|
-| Base race pace | Car ratings at this track, Tyre Care, driver Pace and Racecraft, setup |
-| Start and first lap | Racecraft, a random shuffle, first-lap incident chance |
-| Strategy | Chief Strategist rating, race approach, luck with safety-car timing |
-| Traffic | Slower cars ahead on the grid × track overtaking difficulty, reduced by Racecraft |
-| Pit stops | Race Team skill; rare botched stops |
-| Mechanical retirement | Reliability |
-| Driver errors and crashes | Consistency, race approach, weather |
-| Collisions and penalties | Random, weighted by Racecraft and Consistency |
-| Weather | Track rain likelihood. A wet race weights the Wet attribute, widens variation and doubles error rates |
-| Safety car and red flag | Track likelihood and incidents. Compresses the gaps |
+| Base race pace | Car ratings at this track, driver Pace and Racecraft, setup, the wing level against the ideal |
+| Tyres | Compound pace, wear (Tyre Care, Racecraft, the track surface, the pace order) and a cliff past the tyre's life |
+| Track conditions | Dry, damp or wet, block by block. Damp wants intermediates, wet wants full wets; slicks on a wet track are slow and crash-prone. The Wet attribute and the wet setup count |
+| Pit stops | The track's pit-lane loss (18–28 s), about half under a safety car and 60% under a virtual safety car; Race Team skill and rare botched stops |
+| Strategy | Each car plans its stops from the tyre model. A rival pit wall's timing is as good as its strategy rating. A dry race must use two dry compounds or take a 20-second penalty |
+| Standing orders | Pace (push, normal, save tyres), racing (attack, normal, defend, hold), engine (high, standard, cool), and the lap-one call |
+| Traffic and passing | Track overtaking difficulty, Racecraft, the wing level and the racing orders |
+| Mechanical retirement | Reliability and the engine mode |
+| Errors and crashes | Consistency, race approach, weather and a per-race chaos factor: most races are calm, the odd one is carnage, and rain makes carnage likelier |
+| Safety car and virtual safety car | Track likelihood and incidents. A safety car compresses the gaps |
 
-The output is a classification, a list of key events, and a breakdown for the player's cars: car pace rank, driver contribution, setup, strategy luck and incidents.
+Every random roll is keyed to the save, the race, the block and the car, so the same choices give the same race, and a choice for one car does not change whether a rival breaks down.
 
-The race runs in segments of about five laps, so track position, overtaking difficulty, pit phases and safety cars shape the result without a lap-by-lap model.
+**The live weekend** (`src/engine/live.js`):
 
-**Calibration**, measured over 1,000 simulated seasons with the cars held fixed. The targets are my estimates of recent real-world rates and have not yet been checked against published data:
+1. **Briefing:** the forecast for qualifying and the race (a strong Chief Strategist's numbers lean towards what will happen, and from 70 they say roughly when the rain comes), the track's pit loss and tyre wear, the weekend objectives, and the wing level for each car (1 low drag to 5 high downforce) with the race engineer's suggestion. The wing is locked once qualifying starts.
+2. **Grid:** the qualifying result, the start tyre for each car (with the plan it leads to and how it compares with the best), and the lap-one order.
+3. **Race:** a timing tower, the race feed and team radio, and a card for each car with its tyre wear, standing orders and a Box button. The race pauses for pit-wall calls: safety car, virtual safety car, the planned stop, the tyre cliff, rain, a drying track, the compound rule, an undercut by the car behind, wing damage, and team-mates running together (swap, let them race, hold). A puncture needs no decision: the car comes in. Each call shows the strategist's pick and an estimate for each option from a few simulated futures, as a position (Chief Strategist 80+), a range (60+) or a feel (below 60). A strategist of 60 or more goes with the numbers when they clearly beat the textbook call. A driver told to let a team-mate through remembers it at contract time.
+4. **Debrief:** the result, the weekend's money, the objectives, a rating out of 10 for each drive, and what each call that went against the strategist was worth, found by replaying the race from that moment with the strategist's choice on the same luck. The whole race is also replayed with the strategist in charge, for comparison.
+
+Race-weekend cards in the decision deck that the live race covers (one-stop split, safety-car plan, start tyres, team orders, lap one, showers, driver strategy, low drag, maximum downforce) are not drawn when weekends are played live.
+
+**What the pit wall is worth** (`tests/w2-check.js`, a midfield car, Chief Strategist 90, 32 weekends): following the strategist finishes about 0.7 places a car better than the quick sim, because a live pit wall is never late with a stop; picking the worst-looking option at every call costs about 2.8 places a car; a call chosen that way loses about 1.1 places on average in the debrief. At the very back in season 1 the gaps are too big for calls to change much (under 0.1 places).
+
+**Weekend objectives.** Three small goals each weekend, set from where the car stands on pace at this track: beat one or both cars of the team just ahead (or just behind), a finishing position a little better than the car's pace suggests, and qualifying ahead of the team ahead (or both cars to the flag for the fastest car). Each one met adds 0.3 owner confidence and 0.5 satisfaction with every sponsor. About half are met, worth about 7 confidence a season. Home also shows the head-to-head with the team just ahead in last year's championship and a chart of the gap to the fastest car.
+
+**Calibration** (quick sim), measured over 1,000 simulated seasons with the cars held fixed. The targets are my estimates of recent real-world rates and have not yet been checked against published data:
 
 | Measure | Target | Built |
 |---|---|---|
 | Retirements per start | 10–12% | 11.8% |
-| Races with a safety car | 55–60% overall, set per track | 55.9% |
+| Races with a safety car | 55–60% overall, set per track | 57.0% |
 | Wet or mixed races | 10–15% | 13.0% |
-| Pole converts to a win | 45–50% | 48.1% |
-| The fastest car on the day wins | 55–65% | 50.1% |
+| Pole converts to a win | 45–50% | 49.3% |
+| The fastest car on the day wins | 55–65% | 51.9% |
 | A car from the three slowest rival teams scores points | 5–10% of starts | 4.7% |
 
-The two misses are linked: four cars start within 0.15 s of each other, so the quickest on the day is rarely clear of the next, and anything that helps slow cars score also costs the quickest car wins. With one car made 0.3 s clear, it wins 71% of races. The player's own cars score in almost no starts in season 1 and beat at least one Cadillac in about a third of races.
+The player's own season-1 cars score in almost no starts, and the better of them beats at least one Cadillac in about 40% of races.
+
+The two misses are linked: four cars start within 0.15 s of each other, so the quickest on the day is rarely clear of the next, and anything that helps slow cars score also costs the quickest car wins. With one car made 0.3 s clear, it wins about 70% of races. Average stops run from about one a car (Monza, Spa) to about two (Montreal), and a race takes about 1 ms in the quick sim.
 
 **Points:** 25-18-15-12-10-8-6-4-2-1 across 24 cars. Ties in the constructors' table are broken by best finishes, so 11th against 12th matters on zero points.
-
-The simulation sits behind a single interface, so a lap-by-lap model with live race control can replace it later without touching the rest of the game.
 
 ### 5.11 Rivals and the living world
 
@@ -504,7 +517,7 @@ Ratings are a judgement of underlying ability and car quality, not a conversion 
 | Williams | Mercedes | 68 | 66 | 90 | 80 | 70 | +0.97 s |
 | Aston Martin | Honda | 70 | 62 | 81 | 70 | 68 | +1.11 s |
 | Cadillac | Ferrari | 58 | 60 | 84 | 74 | 64 | +1.35 s |
-| **Player** | Chosen | 48 | 50 | By supplier | 60 | 55 | +1.72 s with Ferrari power |
+| **Player** | Chosen | 53 | 55 | By supplier | 60 | 55 | +1.54 s with Ferrari power |
 
 Track type changes the order. On power tracks Red Bull moves level with McLaren and Williams passes Audi. On downforce tracks Ferrari is within 0.05 s of Mercedes and the player's gap grows to 2.0 s.
 

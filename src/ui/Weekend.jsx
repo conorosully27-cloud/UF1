@@ -44,6 +44,9 @@ export default function WeekendReport({ game, result }) {
   const track = TRACK_BY_ID[result.trackId]
   const nameOf = (id) => game.drivers[id]?.name ?? id
   const teamOf = (id) => game.teams[id]?.name ?? id
+  // Routine stops by other teams are left out; yours, slow stops and everything else stay.
+  const mine = (e) => e.ids.some((id) => result.race.find((r) => r.id === id)?.teamId === PLAYER)
+  const events = result.events.filter((e) => e.type !== 'pit' || mine(e) || e.text.startsWith('Slow'))
   return (
     <div>
       <h2>Round {result.round + 1}: {track.name}</h2>
@@ -82,9 +85,9 @@ export default function WeekendReport({ game, result }) {
         </div>
       </div>
       <h3>Key events</h3>
-      {result.events.length === 0 ? <p className="muted">A quiet race.</p> : (
+      {events.length === 0 ? <p className="muted">A quiet race.</p> : (
         <ul className="plain">
-          {result.events.map((e, i) => <li key={i}><span className="muted">{e.lap === 0 ? 'Pre-race' : `Lap ${e.lap}`}:</span> {e.text}</li>)}
+          {events.map((e, i) => <li key={i}><span className="muted">{e.lap === 0 ? 'Pre-race' : `Lap ${e.lap}`}:</span> {e.text}</li>)}
         </ul>
       )}
     </div>

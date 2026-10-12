@@ -1,35 +1,22 @@
 # Ultimate F1 Manager: the race weekend (plan)
 
-Status: partly built. W1 (the simulation) is built and the live-race engine behind W2 works, but the screens for it are not built yet, so the game still plays every weekend on the quick path. When a part is finished it moves into DESIGN.md (section 5.10) and this file keeps only what is still to come.
+Status: W1 (the simulation) and W2 (the live race) are built and playable; W3 (interactive qualifying), W4 (the Friday setup mini-game) and W5 (folding in the rest of the A/B deck) are still to come. What is built is described in DESIGN.md section 5.10; this file keeps the plan, including the parts still to come.
 
-**Built so far:**
-- `src/engine/weekend.js`: a race that can be stepped block by block, with:
-  - tyres that wear and fall off a cliff, wet tyres, track conditions block by block
-  - real pit stops, cheaper under a safety car (50%) or virtual safety car (60%)
-  - wing level, with the engineers' recommendation
-  - pace, racing and engine orders, and lap-one orders
-  - rival strategies planned from the tyre model
-  - a race-to-race chaos factor, higher in the rain
-  - random rolls keyed per car and block
+**Built:**
+- `src/engine/weekend.js`: the race as a state machine stepped block by block: tyres with wear and a cliff, wet tyres, track conditions block by block, real pit stops (cheaper under a safety car or virtual safety car), wing level, standing orders, rival strategies from the tyre model, a race-to-race chaos factor, and random rolls keyed per car and block.
+- `src/engine/live.js`: the live weekend: briefing (forecast, wing), qualifying, the grid (start tyres, lap one), the race with pit-wall calls and estimates, a Box button and standing orders on each car, team radio, hand over at any point, and the debrief valuing each call.
+- `src/engine/highlights.js`: weekend objectives, driver ratings, the rival head-to-head and the gap-to-front history.
+- The screens (`src/ui/LiveWeekend.jsx`, `src/ui/PitWall.jsx`): the dark pit-wall theme with a light option, team colours, five sections with a bottom bar on a phone, Home as the pit wall (next race, calendar strip, rival, gap chart, debrief).
+- An involvement setting (on the pit wall or quick sim), with a one-weekend override from the Race screen. New teams start on the pit wall.
+- Season-1 fixes: the player's starting car is 5 points better in Aero and Chassis (about 1.5 s off the pace instead of 1.7 s, 0.2 s behind Cadillac), and the objectives' rewards are scaled down to about 7 owner confidence a season.
+- `tests/w2-check.js`: the live weekend's checks.
 
-  The M1 calibration still holds. Average stops run from about one a car (Monza, Spa) to about two (Montreal), and a race takes about 1 ms.
-- The strategist boxes under a safety car only when the cheaper stop beats its current plan, so fresh tyres or few laps left mean staying out.
-- `src/engine/live.js`: the live weekend, with:
-  - briefing, wing level, qualifying, start tyres, then the race block by block
-  - pit-wall calls (safety car, virtual safety car, planned stop, tyre cliff, rain, drying track, compound rule, undercut, damage, team-mates)
-  - the strategist's recommendation and an estimate for each option, sharp, rough or vague with the Chief Strategist's rating
-  - "do what the strategist says", play to the next call, hand over
-  - team radio
-  - a debrief valuing each call that went against the strategist, and the whole race replayed with the strategist in charge
-- `src/engine/highlights.js`: weekend objectives (met ones add owner confidence and sponsor satisfaction), driver ratings out of 10, the rival head-to-head, and the gap-to-front history. These already run on the quick path.
-- Race-weekend cards that the live race covers are skipped when the weekend is played live.
-
-**Still to do:**
-- the screens: the W2 interface, the new look, and the Home additions
-- the +5 starting-car lift
-- tuning the objectives: in one test season they added 21 owner confidence, which is too generous
-- re-running the M5 balance harness
-- checks for the live weekend
+**Not built yet from this plan:**
+- W3: knockout qualifying with run plans; W4: the setup mini-game and long runs; W5: weekend incidents replacing the rest of the race-weekend cards.
+- Calls in the table below that are not modelled yet: red flag, pit-exit traffic, floor damage and retiring a car, rear gunner, penalty, late gamble, driver's request, double-stacking.
+- Resources across races: power units per season, saved tyre sets, crash damage from pushing.
+- The radar warning before the weather changes, rain arriving more than once, and a wet race drying out fully.
+- Section 8 extras: championship progress as a line, the cash forecast as an area chart, tables as lists on a phone, and moments for the first point, podium, win and title.
 
 ## 1. Why
 

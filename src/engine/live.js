@@ -3,12 +3,12 @@
 // race. The weekend is kept in game.weekend, so a save made part-way through
 // carries on where it left off.
 
-import { PLAYER, clamp, ordinal } from './core.js'
+import { PLAYER, clamp, ordinal, currentTrack } from './core.js'
 import { preRace, postRace, createWeekendRace, completeRace, recommendedWing } from './game.js'
 import {
   stepRace, runToEnd, advice, neutralGain, bestStop, planRest, TYRES, ORDERS, DEFAULT_ORDERS, tyreLife, wearRate, lapAt, tyreDelta,
 } from './weekend.js'
-import { weekendObjectives } from './highlights.js'
+import { weekendObjectives, objectiveStatus } from './highlights.js'
 import { hashString } from './rng.js'
 
 const ROLLOUTS = 4
@@ -30,9 +30,27 @@ export function beginWeekend(game) {
   game.weekend = {
     live: true, season: game.season, round: game.round, phase: 'briefing',
     wing: wingAdvice.map((a) => a.level), wingAdvice, orders: [{ ...DEFAULT_ORDERS }, { ...DEFAULT_ORDERS }],
-    objectives: weekendObjectives(game), calls: [], answered: {}, log: [], radio: [], snapshots: [], state: null,
+    objectives: weekendObjectives(game), calls: [], answered: {}, boxes: {}, log: [], radio: [], snapshots: [], state: null,
+    forecast: forecast(game),
   }
   return game.weekend
+}
+
+// The weather forecast at the strategist's precision: a strong Chief
+// Strategist's numbers lean towards what will really happen, a weak one's
+// stay close to the track's usual odds.
+function forecast(game) {
+  const track = game.weatherOverride == null ? currentTrack(game) : { ...currentTrack(game), rain: game.weatherOverride }
+  const peek = createWeekendRace(game)
+  const r = game.org.keyStaff.chiefStrategist.rating
+  const k = clamp((r - 30) / 70, 0.1, 0.9)
+  const lean = (base, truth) => Math.round(100 * clamp(base + ((truth ? 1 : 0) - base) * k, 0.02, 0.98))
+  const race = lean(track.rain, peek.raceWeather !== 'dry')
+  const out = { quali: lean(track.rain * 0.8, peek.qualiWet), race, hint: null, sure: r >= 75 }
+  // A good strategist can say roughly when the rain comes or goes.
+  if (r >= 70 && peek.raceWeather === 'mixed') out.hint = peek.cond[0] === 'dry' ? 'Rain is more likely late in the race' : 'A wet start that should dry out'
+  else if (r >= 70 && peek.raceWeather === 'wet') out.hint = 'Rain for most of the race'
+  return out
 }
 
 export function setWing(game, slot, level) {
@@ -69,6 +87,18 @@ export function setOrders(game, carId, orders) {
   const c = carById(w.state, carId)
   if (!c?.e.isPlayer) throw new Error('Not one of your cars')
   for (const k of ['pace', 'stance', 'engine', 'lap1']) if (orders[k] && ORDERS[k][orders[k]]) c.orders[k] = orders[k]
+}
+
+// A stop called from the car's controls, made in the next block. `comp` null cancels it.
+export function boxCar(game, carId, comp) {
+  const w = game.weekend
+  if (!w || w.phase !== 'race') throw new Error('The race is not running')
+  const c = carById(w.state, carId)
+  if (!c?.e.isPlayer || c.status !== 'running') throw new Error('Not one of your running cars')
+  if (comp && !TYRES[comp]) throw new Error('Unknown tyre')
+  w.boxes ??= {}
+  if (comp) w.boxes[carId] = comp
+  else delete w.boxes[carId]
 }
 
 export function startRace(game) {
@@ -140,6 +170,8 @@ export function computeCalls(game) {
       const what = st.neutral === 'sc' ? 'safety car' : 'virtual safety car'
       const why = c.lastStop >= st.seg - 2 ? 'The tyres are almost new.' : lapsLeft < 10 ? `Only ${lapsLeft} laps left.` : g.seconds > 1 ? `A stop costs about ${Math.round(st.track.pitLoss * (st.neutral === 'sc' ? 0.5 : 0.6))} s instead of ${st.track.pitLoss} s.` : 'The saving does not beat the current plan.'
       call = { kind: st.neutral, title: `Box under the ${what}?`, text: `${c.e.name}: ${tyreText}. ${why}`, options: callOptions(st, c, g.comp), recommend: adv ? `box:${adv.comp}` : 'stay' }
+    } else if (adv?.reason === 'puncture') {
+      // Nothing to decide: the car limps in for the best tyre, and the radio says so.
     } else if (adv) {
       const titles = { plan: 'The planned stop is due', cliff: 'The tyres are falling off', rain: 'Rain: switch tyres?', drying: 'The track is drying', damage: 'Front-wing damage', 'compound rule': 'A second compound is needed', puncture: 'Puncture' }
       call = { kind: adv.reason, title: titles[adv.reason] ?? 'Box?', text: `${c.e.name}: ${tyreText}, ${lapsLeft} laps left.`, options: callOptions(st, c, adv.comp), recommend: `box:${adv.comp}` }
@@ -180,9 +212,11 @@ export function computeCalls(game) {
       call.estimates[o.key] = pos
     }
     const keys = Object.keys(call.estimates)
-    if (!call.recommend) call.recommend = keys.reduce((b, k) => (call.estimates[k] < call.estimates[b] ? k : b), keys[0])
+    const best = keys.reduce((b, k) => (call.estimates[k] < call.estimates[b] ? k : b), keys[0])
+    // A capable strategist goes with the numbers when they clearly beat the textbook call.
+    if (!call.recommend || (strategist >= 60 && call.estimates[call.recommend] - call.estimates[best] > 0.7)) call.recommend = best
     call.precision = strategist >= 80 ? 'sharp' : strategist >= 60 ? 'rough' : 'vague'
-    call.estimateText = Object.fromEntries(keys.map((k) => [k, estimateText(call.estimates[k], call.estimates[call.recommend], strategist)]))
+    call.estimateText = Object.fromEntries(keys.map((k) => [k, k === call.recommend && strategist < 60 ? 'the textbook call' : estimateText(call.estimates[k], call.estimates[call.recommend], strategist)]))
   }
   w.calls = calls
   return calls
@@ -193,8 +227,9 @@ function estimateText(pos, recPos, strategist) {
   const p = Math.round(pos)
   if (strategist >= 80) return `about P${p}`
   if (strategist >= 60) return `P${Math.max(1, p - 1)}–P${p + 1}`
+  // A weaker strategist only has a feel for it, and sticks with the textbook call.
   const d = pos - recPos
-  return Math.abs(d) < 0.7 ? 'about the same' : d < 0 ? 'probably better' : 'probably worse'
+  return Math.abs(d) < 0.7 ? 'about the same' : d < 0 ? 'might be better' : 'probably worse'
 }
 
 // Turns an answered option into orders for the next block (or an immediate change).
@@ -257,7 +292,10 @@ export function nextBlock(game) {
     const o = call.options.find((x) => x.key === key)
     if (o?.box) orders[call.carId].box = o.box
   }
-  const before = Object.fromEntries(myCars(st).map((c) => [c.id, { pos: st.order.indexOf(c.idx), passes: c.passes, status: c.status, damage: c.wingDamage, stops: c.stops }]))
+  for (const [id, comp] of Object.entries(w.boxes ?? {})) if (orders[id] && !orders[id].box) orders[id].box = comp
+  w.boxes = {}
+  w.lastOrder = st.order.slice()
+  const before = Object.fromEntries(myCars(st).map((c) => [c.id, { pos: st.order.indexOf(c.idx), passes: c.passes, status: c.status, damage: c.wingDamage, stops: c.stops, forced: c.forced }]))
   const neutralBefore = st.neutral
   stepRace(st, orders)
   w.calls = []
@@ -288,6 +326,16 @@ export function handOver(game) {
   w.handedOver = true
 }
 
+// The strategist runs whatever is left of the weekend, from any phase, and the result is filed.
+export function quickFinish(game) {
+  const w = game.weekend
+  if (!w?.live) throw new Error('No race weekend under way')
+  if (w.phase === 'briefing') runQualifying(game)
+  if (w.phase === 'grid') startRace(game)
+  if (w.phase === 'race') handOver(game)
+  return finishWeekend(game)
+}
+
 // Short lines from the drivers about what just happened.
 function radio(w, st, before, neutralBefore) {
   const lap = lapAt(st, st.seg)
@@ -300,12 +348,24 @@ function radio(w, st, before, neutralBefore) {
     if (c.stops > b.stops) say(c, `${TYRES[c.tyre].name}s on. Let's go.`)
     else if (pos <= b.pos - 2) say(c, `Got them! P${pos + 1}.`)
     else if (pos >= b.pos + 2 && !c.pitNow) say(c, 'I\'m losing places here.')
+    if (c.forced === 'puncture' && !b.forced) say(c, 'Puncture! Boxing this lap.')
     if (c.wingDamage > 0 && !b.damage) say(c, "I've damaged the front wing. Understeer everywhere.")
     else if (tyreLife(c) > 0.9 && tyreLife(c) < 1.15) say(c, 'These tyres are about done.')
     if (st.neutral && !neutralBefore) say(c, st.neutral === 'sc' ? 'Safety car? What do we do?' : 'VSC, VSC.')
     if (st.cond[st.seg] && st.cond[st.seg] !== st.cond[st.seg - 1] && st.cond[st.seg] !== 'dry' && !TYRES[c.tyre].wet) say(c, "It's raining. Slicks won't last.")
   }
   if (w.radio.length > 60) w.radio.splice(0, w.radio.length - 60)
+}
+
+// How each weekend objective stands right now, from the running order.
+export function objectivesNow(game) {
+  const w = game.weekend
+  if (!w?.state || w.phase === 'briefing') return w?.objectives.map((o) => ({ ...o, now: null })) ?? []
+  const st = w.state
+  const running = st.order.map((i) => st.cars[i])
+  const race = st.cars.map((c) => ({ id: c.id, teamId: c.e.teamId, status: c.status === 'running' ? 'finished' : 'dnf', pos: c.status === 'running' ? running.indexOf(c) + 1 : 99 }))
+  const result = { race, quali: st.quali }
+  return w.objectives.map((o) => ({ ...o, now: o.kind === 'qualiAhead' || w.phase !== 'grid' ? objectiveStatus(o, result) : null }))
 }
 
 // ---- After the flag ----
