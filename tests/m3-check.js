@@ -199,11 +199,15 @@ function hasBadNumber(x, path = '') {
   startSeason(g, pickTargets(g, 'safe'))
   const conf0 = g.confidence
   while (g.phase === 'season') { averageManager(g); decide(g, 'best'); simulateRound(g) }
+  const confAfterSeason = g.confidence
   const progress = targetProgress(g)
   endSeason(g)
   const rep = g.seasonReport.targets
+  // Weekend objectives add a point each through the season; targets are judged at the end.
+  const fromObjectives = confAfterSeason - conf0
   const expected = progress.reduce((s, t) => s + (t.met ? LEVELS.safe.confidence : -5), 0)
-  check('owner confidence moves by +3 for each Safe target met and −5 for each missed', Math.abs(g.confidence - conf0 - expected) < 1e-9, `${progress.filter((t) => t.met).length} of 3 met, confidence ${conf0} to ${g.confidence}`)
+  check('owner confidence moves by +3 for each Safe target met and −5 for each missed', Math.abs(g.confidence - Math.min(100, confAfterSeason) - expected) < 1e-9 || (g.confidence === 100 && expected > 0),
+    `${progress.filter((t) => t.met).length} of 3 met, confidence ${conf0} to ${confAfterSeason} over the weekends (${fromObjectives >= 0 ? '+' : ''}${fromObjectives} from weekend objectives), then ${g.confidence}`)
   const tech = rep.report.find((r) => r.name.includes('rating') || r.name.includes('Facility') || r.name.includes('classified'))
   check('a technical target met adds engineering capacity next season, and only then', (g.bonus.capacity > 0) === !!tech.met)
   check('the review lists all three targets with their results', rep.report.length === 3 && rep.report.every((r) => r.mark && r.level))

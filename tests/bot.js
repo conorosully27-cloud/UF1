@@ -27,7 +27,11 @@ export function steady(g, { buffer = 4, bank = 50 } = {}) {
   const mechArea = car.chassis < chassisCap(g) - 1 && (g.round % 4 !== 3) ? 'chassis' : car.reliability < car.tyreCare + 8 ? 'reliability' : 'tyreCare'
   g.dev.repeat.mech = { area: mechArea, size: 'minor', approach: 'standard' }
   g.dev.nextYearShare = g.phase === 'season' && g.round >= 8 ? bank : 0
+  // When the season's money is running out, bank design work for next year: it costs nothing to build.
+  while (buffer >= 0 && g.phase === 'season' && g.dev.nextYearShare < 100 && forecast(g, plannedSpendPerRound(g)) < 0) g.dev.nextYearShare += 10
 
+  // An advance on prize money is cheaper than the overdraft when a crash bill lands late in the season.
+  if (buffer >= 0 && g.phase === 'season' && g.finance.cash < 0.5) tryDo(() => takeAdvance(g, Math.min(advanceLimit(g), 3 - g.finance.cash)))
   if (g.finance.austerity > 0) return
   const left = Math.max(1, roundsLeft(g))
   let spare = Math.min(forecast(g, plannedSpendPerRound(g)), g.finance.cash + 6) - buffer

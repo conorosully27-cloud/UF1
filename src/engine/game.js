@@ -6,7 +6,7 @@ import { RACE_DRIVERS, POOL_DRIVERS } from './data/drivers.js'
 import { SUPPLIERS } from './data/suppliers.js'
 import { TRACKS } from './data/tracks.js'
 import { makeRng, streamRng, hashString } from './rng.js'
-import { simulateWeekend } from './weekend.js'
+import { createRace, runToEnd, raceResult, idealWing } from './weekend.js'
 import { initialOrg } from './org.js'
 import { signingTerms, backingRoll } from './contracts.js'
 import {
@@ -23,6 +23,7 @@ import { averageManager, buildOffer, outlookFrom, chooseTargets, resolveTargets 
 import { initPeople, recordRace, peopleMidSeason, peopleWinter, closeMarket, seatsReady, releaseCost, releaseDriver } from './people.js'
 import { rivalReputationWinter, rivalFormEvents, supplierDrift, staffApproaches } from './world.js'
 import { initialHonours, honoursRound, honoursSeason } from './honours.js'
+import { weekendObjectives, settleObjectives, recordPace, driverRatings } from './highlights.js'
 
 export { SAVE_VERSION, START_YEAR, PLAYER, START_REPUTATION, year, currentTrack, effectiveCar, teamOps, getStandings, playerPosition, paceTable, overall, releaseCost, releaseDriver }
 
@@ -55,7 +56,8 @@ export function newGame({ seed = Date.now() >>> 0, teamName = 'New Team', suppli
     results: [],
     history: [],
     news: [],
-    settings: { approach: 'balanced', priority: 'equal' },
+    // involvement: 'live' runs the weekend with the player on the pit wall (screen still to come), 'quick' simulates it.
+    settings: { approach: 'balanced', priority: 'equal', involvement: 'quick' },
     weekendMods: [],
     org: { ...initialOrg(rng), arrivals: [] },
     reputation: START_REPUTATION,
@@ -161,19 +163,31 @@ export function buildEntries(game) {
         driver: { pace: d.pace, racecraft: d.racecraft, consistency: d.consistency, wet: d.wet, feedback: d.feedback },
         approach: t.isPlayer ? game.settings.approach : 'balanced',
         mods,
+        ...(t.isPlayer ? playerEntryExtras(game, slot) : {}),
       })
     })
   }
   return entries
 }
 
-// Qualifying and race only, with no HQ work or money. Used by the calibration test.
-export function raceRound(game) {
-  if (game.phase !== 'season') throw new Error('The season is not running')
+// The player's wing levels, start tyres and orders for a weekend run live.
+function playerEntryExtras(game, slot) {
+  const w = game.weekend
+  if (!w) return {}
+  return { wing: w.wing?.[slot], controlled: !!w.live, startTyre: w.startTyre?.[slot], orders: w.orders?.[slot] }
+}
+
+// Qualifying and the race grid for this round. Rolls come from the save's seed.
+export function createWeekendRace(game) {
   // A weather decision replaces the track's usual chance of rain for this race.
   const track = game.weatherOverride == null ? currentTrack(game) : { ...currentTrack(game), rain: game.weatherOverride }
   const rng = streamRng(game.seed, 'weekend', game.season, game.round)
-  const result = simulateWeekend(track, buildEntries(game), rng)
+  return createRace(track, buildEntries(game), rng)
+}
+
+// Files a finished race: the result, and the round moves on.
+export function completeRace(game, state) {
+  const result = raceResult(state)
   result.round = game.round
   game.results.push(result)
   game.weekendMods = []
@@ -184,8 +198,17 @@ export function raceRound(game) {
   return result
 }
 
-// One full round: HQ work, the weekend, then the money.
-export function simulateRound(game) {
+// Qualifying and race only, with no HQ work or money. Used by the calibration test.
+export function raceRound(game) {
+  if (game.phase !== 'season') throw new Error('The season is not running')
+  const state = createWeekendRace(game)
+  runToEnd(state)
+  return completeRace(game, state)
+}
+
+// HQ work before the weekend: delayed decision effects, staff and facilities,
+// design and the factory, rivals' upgrades.
+export function preRace(game) {
   if (game.phase !== 'season') throw new Error('The season is not running')
   if (game.decision && !game.decision.resolved) throw new Error("Make this round's decision first")
   game.news = []
@@ -193,7 +216,32 @@ export function simulateRound(game) {
   progressOrg(game)
   progressDevelopment(game)
   rivalRound(game)
+}
+
+// The engineers' wing recommendation for each car, as precise as the race engineers.
+export function recommendedWing(game, slot) {
+  const track = currentTrack(game)
+  const ideal = idealWing(track, effectiveCar(game, PLAYER))
+  const k = game.org.keyStaff[slot === 0 ? 'raceEngineer1' : 'raceEngineer2']
+  const err = streamRng(game.seed, 'wingAdvice', game.season, game.round, slot).normal(0, Math.max(0, (85 - k.rating) / 45))
+  return { level: clamp(Math.round(ideal + err), 1, 5), ideal, sure: k.rating >= 75 }
+}
+
+// One full round on the quick path: HQ work, the weekend with the strategist on the pit wall, then the money.
+export function simulateRound(game) {
+  if (game.weekend) throw new Error('A race weekend is under way')
+  preRace(game)
+  const objectives = weekendObjectives(game)
+  game.weekend = { wing: [0, 1].map((s) => recommendedWing(game, s).level), live: false }
   const result = raceRound(game)
+  game.weekend = null
+  postRace(game, result, objectives)
+  return result
+}
+
+// Everything after the flag: driver records, money, sponsors, the mid-season
+// review, objectives, the crisis check and the next decision.
+export function postRace(game, result, objectives = []) {
   recordRace(game, result)
   honoursRound(game, result)
   // A number-one driver resents being made to play second fiddle.
@@ -211,6 +259,13 @@ export function simulateRound(game) {
     resetAtr(game, getStandings(game).constructors.map((c) => c.id))
     game.news.push(`Rule change announced for next season: ${tighteningPlan(game) === 'aero' ? 'Aero' : 'Chassis'} will be hit hardest`)
   }
+  if (objectives.length) settleObjectives(game, objectives, result)
+  result.objectives = objectives
+  result.ratings = driverRatings(game, result)
+  const pace = paceTable(game)
+  const gapOf = (id) => pace.find((r) => r.id === id)?.gap ?? null
+  const above = game.lastStandings[game.lastStandings.indexOf(PLAYER) - 1]
+  recordPace(game, gapOf(PLAYER), above ? gapOf(above) : null)
   checkCrisis(game)
   drawDecision(game)
   return result

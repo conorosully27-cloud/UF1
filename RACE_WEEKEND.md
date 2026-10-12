@@ -1,6 +1,35 @@
 # Ultimate F1 Manager: the race weekend (plan)
 
-Status: proposal. Nothing here is built yet. When a part is built it moves into DESIGN.md (section 5.10) and this file keeps only what is still to come.
+Status: partly built. W1 (the simulation) is built and the live-race engine behind W2 works, but the screens for it are not built yet, so the game still plays every weekend on the quick path. When a part is finished it moves into DESIGN.md (section 5.10) and this file keeps only what is still to come.
+
+**Built so far:**
+- `src/engine/weekend.js`: a race that can be stepped block by block, with:
+  - tyres that wear and fall off a cliff, wet tyres, track conditions block by block
+  - real pit stops, cheaper under a safety car (50%) or virtual safety car (60%)
+  - wing level, with the engineers' recommendation
+  - pace, racing and engine orders, and lap-one orders
+  - rival strategies planned from the tyre model
+  - a race-to-race chaos factor, higher in the rain
+  - random rolls keyed per car and block
+
+  The M1 calibration still holds. Average stops run from about one a car (Monza, Spa) to about two (Montreal), and a race takes about 1 ms.
+- The strategist boxes under a safety car only when the cheaper stop beats its current plan, so fresh tyres or few laps left mean staying out.
+- `src/engine/live.js`: the live weekend, with:
+  - briefing, wing level, qualifying, start tyres, then the race block by block
+  - pit-wall calls (safety car, virtual safety car, planned stop, tyre cliff, rain, drying track, compound rule, undercut, damage, team-mates)
+  - the strategist's recommendation and an estimate for each option, sharp, rough or vague with the Chief Strategist's rating
+  - "do what the strategist says", play to the next call, hand over
+  - team radio
+  - a debrief valuing each call that went against the strategist, and the whole race replayed with the strategist in charge
+- `src/engine/highlights.js`: weekend objectives (met ones add owner confidence and sponsor satisfaction), driver ratings out of 10, the rival head-to-head, and the gap-to-front history. These already run on the quick path.
+- Race-weekend cards that the live race covers are skipped when the weekend is played live.
+
+**Still to do:**
+- the screens: the W2 interface, the new look, and the Home additions
+- the +5 starting-car lift
+- tuning the objectives: in one test season they added 21 owner confidence, which is too generous
+- re-running the M5 balance harness
+- checks for the live weekend
 
 ## 1. Why
 

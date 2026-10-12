@@ -13,6 +13,8 @@ import { DECK } from './data/deck.js'
 import { makeDriver } from './people.js'
 
 export const NO_REPEAT = 32 // rounds before the same decision can come round again
+// Race-weekend cards that a live race covers with its own calls, wing level and orders.
+export const LIVE_CALLS = new Set(['one-stop-split', 'safety-car-plan', 'start-tyres', 'team-orders', 'lap-one', 'showers', 'driver-strategy', 'low-drag', 'max-downforce'])
 const BY_ID = Object.fromEntries(DECK.map((d) => [d.id, d]))
 const WEEKEND_TYPES = new Set(['Race weekend', 'Reliability'])
 const SIZE_GAIN = { minor: 1.0, major: 2.5, package: 6.0 }
@@ -42,9 +44,11 @@ export function drawDecision(game) {
   const c = decisionContext(game)
   const now = clock(game)
   const rng = streamRng(game.seed, 'decision', game.season, game.round)
+  // With the race run live, the calls the pit wall now makes during the race are not drawn as cards.
+  const live = game.settings.involvement === 'live'
   const eligible = DECK.filter((d) => {
     const seen = game.decisionSeen[d.id]
-    return (seen === undefined || now - seen >= NO_REPEAT) && (!d.when || d.when(game, c))
+    return (seen === undefined || now - seen >= NO_REPEAT) && (!d.when || d.when(game, c)) && !(live && LIVE_CALLS.has(d.id))
   })
   if (!eligible.length) { game.decision = null; return null }
   // About half the decisions are race-weekend calls.
