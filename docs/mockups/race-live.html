@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Live race mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* Mockup only: static data, no game logic. */
+  :root {
+    --bg: #0d0f14; --panel: #161a22; --panel-2: #1d222c; --line: #2a303c; --text: #e9ecf2; --muted: #8b93a3;
+    --accent: #ff5a36; --good: #3ddc84; --bad: #ff4d5e; --warn: #ffcc33; --sc: #ffb020;
+    --soft: #ff3b3b; --medium: #ffd200; --hard: #f2f2f2; --inter: #39d353; --wet: #2f8cff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 'Titillium Web', system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px 96px; }
+  header { position: sticky; top: 0; z-index: 5; background: linear-gradient(var(--bg) 70%, transparent); padding: 12px 0 10px; }
+  .top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .gp { font-size: 20px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+  .lap { font-size: 20px; font-weight: 700; color: var(--accent); margin-left: auto; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .chip b { color: var(--text); font-weight: 600; }
+  .chip.ok { border-color: #1f6b43; color: var(--good); }
+  .chip.no { border-color: #6b2a32; color: var(--bad); }
+  .sc-banner { margin-top: 10px; background: var(--sc); color: #111; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-align: center; border-radius: 6px; padding: 4px; font-size: 13px; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  /* On a phone the call and your cars come first; on a wide screen the timing tower sits on the left. */
+  .side { order: -1; display: grid; gap: 14px; }
+  @media (min-width: 900px) { .grid { grid-template-columns: 380px 1fr; align-items: start; } .side { order: 0; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  h3 { margin: 0; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 10px 12px 6px; }
+  /* Timing tower */
+  .tower { list-style: none; margin: 0; padding: 0 0 6px; }
+  .row { display: grid; grid-template-columns: 26px 4px 62px 1fr 56px 46px 18px; align-items: center; gap: 8px; padding: 4px 12px; font-size: 13.5px; }
+  .row:nth-child(even) { background: rgba(255,255,255,.02); }
+  .row .p { font-weight: 700; text-align: right; color: var(--muted); }
+  .row .bar { height: 16px; border-radius: 2px; }
+  .row .code { font-weight: 700; letter-spacing: .04em; }
+  .row .team { color: var(--muted); font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .row .gap { text-align: right; }
+  .row .stops { color: var(--muted); font-size: 12px; text-align: right; }
+  .row.me { background: linear-gradient(90deg, rgba(255,90,54,.22), rgba(255,90,54,.04)); }
+  .row.me .p, .row.me .code { color: var(--text); }
+  .row.out { opacity: .45; }
+  .row .gain { color: var(--good); font-size: 11px; margin-left: 4px; }
+  .row .loss { color: var(--bad); font-size: 11px; margin-left: 4px; }
+  .tyre { display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end; }
+  .tyre i { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 3px solid; font-style: normal; font-size: 9px; font-weight: 700; }
+  .S { border-color: var(--soft); } .M { border-color: var(--medium); } .H { border-color: var(--hard); } .I { border-color: var(--inter); } .W { border-color: var(--wet); }
+  .tyre small { color: var(--muted); font-size: 11px; }
+  .sep { border-top: 1px dashed var(--line); margin: 2px 12px; }
+  /* Call card */
+  .call { border: 1px solid var(--sc); background: linear-gradient(180deg, rgba(255,176,32,.14), rgba(255,176,32,.03)); border-radius: 10px; padding: 12px; }
+  .call .kicker { color: var(--sc); font-weight: 700; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .call h2 { margin: 2px 0 6px; font-size: 20px; }
+  .call p { margin: 4px 0; color: #cfd5df; }
+  .est { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+  .est div { background: var(--panel-2); border-radius: 8px; padding: 8px 10px; }
+  .est b { display: block; font-size: 18px; }
+  .est span { font-size: 12px; color: var(--muted); }
+  .buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+  button { font: inherit; font-weight: 600; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); padding: 8px 12px; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.ghost { background: transparent; }
+  /* Car cards */
+  .cars { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 0 12px 12px; }
+  @media (min-width: 560px) { .cars { grid-template-columns: 1fr 1fr; } }
+  .car { background: var(--panel-2); border-radius: 10px; padding: 10px; border-left: 4px solid var(--accent); }
+  .car .head { display: flex; align-items: baseline; gap: 8px; }
+  .car .pos { font-size: 22px; font-weight: 700; }
+  .car .name { font-weight: 700; }
+  .car .meta { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .wear { height: 6px; background: #2b313d; border-radius: 3px; overflow: hidden; margin: 8px 0 2px; }
+  .wear div { height: 100%; background: linear-gradient(90deg, var(--good), var(--warn) 60%, var(--bad)); }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); background: #11151c; border-radius: 8px; padding: 3px; margin: 8px 0; }
+  .seg span { text-align: center; padding: 4px 0; border-radius: 6px; font-size: 12.5px; color: var(--muted); }
+  .seg span.on { background: var(--accent); color: #fff; font-weight: 600; }
+  .radio { font-size: 12.5px; color: #cfd5df; border-left: 2px solid var(--line); padding-left: 8px; margin-top: 6px; }
+  .radio b { color: var(--text); }
+  /* Feed */
+  .feed { list-style: none; margin: 0; padding: 0 12px 10px; font-size: 13px; }
+  .feed li { padding: 4px 0; border-bottom: 1px solid var(--line); color: #cfd5df; }
+  .feed li:last-child { border: 0; }
+  .feed .l { color: var(--muted); display: inline-block; width: 44px; }
+  .feed .tag { font-size: 10px; font-weight: 700; border-radius: 4px; padding: 0 5px; margin-right: 6px; }
+  .tag.sc { background: var(--sc); color: #111; } .tag.pit { background: #2f3a4d; color: #cfe0ff; } .tag.out { background: #5a1f27; color: #ffb3bb; } .tag.wx { background: #17375e; color: #9cc8ff; }
+  /* Track map */
+  .map { padding: 0 12px 12px; }
+  .map svg { width: 100%; height: auto; display: block; }
+  /* Bottom controls */
+  .controls { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(13,15,20,.94); border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: flex; gap: 8px; justify-content: center; backdrop-filter: blur(6px); }
+  .controls button { flex: 1; max-width: 220px; }
+  .note { color: var(--muted); font-size: 12px; text-align: center; margin: 18px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="top">
+      <span class="gp">Belgian GP · Spa</span>
+      <span class="chip">Round 9 of 16</span>
+      <span class="lap">LAP 31/44</span>
+    </div>
+    <div class="chips">
+      <span class="chip">☁ Track dry · <b>rain 60%</b> in 6–9 laps</span>
+      <span class="chip ok">✓ Ahead of both Cadillacs</span>
+      <span class="chip ok">✓ Both cars running</span>
+      <span class="chip no">✗ Points (P13 best)</span>
+    </div>
+    <div class="sc-banner">⚠ Safety car · lap 31</div>
+  </header>
+
+  <div class="grid">
+    <section class="panel">
+      <h3>Timing</h3>
+      <ol class="tower">
+        <li class="row"><span class="p">1</span><span class="bar" style="background:#27f4d2"></span><span class="code">ANT</span><span class="team">Mercedes</span><span class="gap">Leader</span><span class="tyre"><i class="H">H</i><small>18</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">2</span><span class="bar" style="background:#ff8000"></span><span class="code">NOR</span><span class="team">McLaren</span><span class="gap">+1.4</span><span class="tyre"><i class="H">H</i><small>17</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">3</span><span class="bar" style="background:#3671c6"></span><span class="code">VER</span><span class="team">Red Bull</span><span class="gap">+2.0</span><span class="tyre"><i class="M">M</i><small>9</small></span><span class="stops">2</span></li>
+        <li class="row"><span class="p">4</span><span class="bar" style="background:#27f4d2"></span><span class="code">RUS</span><span class="team">Mercedes</span><span class="gap">+2.9</span><span class="tyre"><i class="H">H</i><small>18</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">5</span><span class="bar" style="background:#e8002d"></span><span class="code">LEC</span><span class="team">Ferrari</span><span class="gap">+3.6</span><span class="tyre"><i class="H">H</i><small>16</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">6</span><span class="bar" style="background:#ff8000"></span><span class="code">PIA</span><span class="team">McLaren</span><span class="gap">+4.1</span><span class="tyre"><i class="M">M</i><small>9</small></span><span class="stops">2</span></li>
+        <li class="row"><span class="p">7</span><span class="bar" style="background:#6692ff"></span><span class="code">LAW</span><span class="team">Racing Bulls</span><span class="gap">+4.9</span><span class="tyre"><i class="H">H</i><small>19</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">8</span><span class="bar" style="background:#e8002d"></span><span class="code">HAM</span><span class="team">Ferrari</span><span class="gap">+5.5</span><span class="tyre"><i class="H">H</i><small>20</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">9</span><span class="bar" style="background:#ff87bc"></span><span class="code">GAS</span><span class="team">Alpine</span><span class="gap">+6.2</span><span class="tyre"><i class="H">H</i><small>19</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">10</span><span class="bar" style="background:#1868db"></span><span class="code">SAI</span><span class="team">Williams</span><span class="gap">+6.8</span><span class="tyre"><i class="H">H</i><small>20</small></span><span class="stops">1</span></li>
+        <li class="sep"></li>
+        <li class="row"><span class="p">11</span><span class="bar" style="background:#b6babd"></span><span class="code">BEA</span><span class="team">Haas</span><span class="gap">+7.5</span><span class="tyre"><i class="H">H</i><small>21</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">12</span><span class="bar" style="background:#a1a6ad"></span><span class="code">BOR</span><span class="team">Audi</span><span class="gap">+8.1</span><span class="tyre"><i class="H">H</i><small>21</small></span><span class="stops">1</span></li>
+        <li class="row me"><span class="p">13</span><span class="bar" style="background:var(--accent)"></span><span class="code">ZHO<span class="gain">▲2</span></span><span class="team">Phoenix</span><span class="gap">+8.8</span><span class="tyre"><i class="H">H</i><small>22</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">14</span><span class="bar" style="background:#6692ff"></span><span class="code">LIN</span><span class="team">Racing Bulls</span><span class="gap">+9.4</span><span class="tyre"><i class="M">M</i><small>10</small></span><span class="stops">2</span></li>
+        <li class="row"><span class="p">15</span><span class="bar" style="background:#229971"></span><span class="code">STR</span><span class="team">Aston Martin</span><span class="gap">+10.0</span><span class="tyre"><i class="H">H</i><small>22</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">16</span><span class="bar" style="background:#ff87bc"></span><span class="code">COL</span><span class="team">Alpine</span><span class="gap">+10.7</span><span class="tyre"><i class="H">H</i><small>21</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">17</span><span class="bar" style="background:#b6babd"></span><span class="code">OCO</span><span class="team">Haas</span><span class="gap">+11.3</span><span class="tyre"><i class="M">M</i><small>11</small></span><span class="stops">2</span></li>
+        <li class="row me"><span class="p">18</span><span class="bar" style="background:var(--accent)"></span><span class="code">HER<span class="loss">▼1</span></span><span class="team">Phoenix</span><span class="gap">+12.0</span><span class="tyre"><i class="M">M</i><small>24</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">19</span><span class="bar" style="background:#1868db"></span><span class="code">ALB</span><span class="team">Williams</span><span class="gap">+12.6</span><span class="tyre"><i class="H">H</i><small>22</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">20</span><span class="bar" style="background:#d4af37"></span><span class="code">PER</span><span class="team">Cadillac</span><span class="gap">+13.1</span><span class="tyre"><i class="H">H</i><small>23</small></span><span class="stops">1</span></li>
+        <li class="row"><span class="p">21</span><span class="bar" style="background:#229971"></span><span class="code">ALO</span><span class="team">Aston Martin</span><span class="gap">+13.9</span><span class="tyre"><i class="M">M</i><small>8</small></span><span class="stops">2</span></li>
+        <li class="row"><span class="p">22</span><span class="bar" style="background:#d4af37"></span><span class="code">BOT</span><span class="team">Cadillac</span><span class="gap">+14.4</span><span class="tyre"><i class="H">H</i><small>23</small></span><span class="stops">1</span></li>
+        <li class="row out"><span class="p">—</span><span class="bar" style="background:#a1a6ad"></span><span class="code">HUL</span><span class="team">Audi</span><span class="gap">DNF</span><span class="tyre">lap 29</span><span class="stops"></span></li>
+        <li class="row out"><span class="p">—</span><span class="bar" style="background:#3671c6"></span><span class="code">HAD</span><span class="team">Red Bull</span><span class="gap">DNF</span><span class="tyre">lap 30</span><span class="stops"></span></li>
+      </ol>
+    </section>
+
+    <div class="side">
+      <section class="call">
+        <div class="kicker">Pit wall call · safety car</div>
+        <h2>Box under the safety car?</h2>
+        <p>Hadjar is in the barrier at Pouhon. A stop now costs about <b>10 s</b> instead of the usual <b>21 s</b>. Most of the field ahead stopped on lap 18 and will run to the end.</p>
+        <p>Rain is likely in 6–9 laps. Your Chief Strategist (rated 68) is confident to about ±2 laps.</p>
+        <div class="est">
+          <div><b>ZHO: box for Mediums</b><span>Rejoins P16, about 1.1 s a lap quicker. Strategist's estimate: <b style="display:inline;font-size:12px;color:var(--good)">+1 to +3 places</b></span></div>
+          <div><b>HER: stay out</b><span>Mediums are 24 laps old; keeps P18 track position for a stop onto intermediates when the rain comes.</span></div>
+        </div>
+        <div class="buttons">
+          <button class="primary">Box ZHO · Medium</button>
+          <button>Box ZHO · Hard</button>
+          <button>Box both</button>
+          <button class="ghost">Stay out</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3>Your cars</h3>
+        <div class="cars">
+          <div class="car">
+            <div class="head"><span class="pos">P13</span><span class="name">Zhou Guanyu</span><span class="meta">Hard · 22 laps</span></div>
+            <div class="wear"><div style="width:64%"></div></div>
+            <div class="meta" style="margin:0">Tyre wear 64% · cliff in about 8 laps</div>
+            <div class="seg"><span>Push</span><span class="on">Normal</span><span>Save tyres</span></div>
+            <div class="buttons"><button>Box…</button><button class="ghost">Swap with HER</button></div>
+            <div class="radio"><b>ZHO:</b> "Rears are starting to go. If there's a stop, I want it."</div>
+          </div>
+          <div class="car">
+            <div class="head"><span class="pos">P18</span><span class="name">Colton Herta</span><span class="meta">Medium · 24 laps</span></div>
+            <div class="wear"><div style="width:81%"></div></div>
+            <div class="meta" style="margin:0">Tyre wear 81% · past the cliff in about 3 laps</div>
+            <div class="seg"><span>Push</span><span>Normal</span><span class="on">Save tyres</span></div>
+            <div class="buttons"><button>Box…</button><button class="ghost">Swap with ZHO</button></div>
+            <div class="radio"><b>HER:</b> "Feels like spots on the visor at Stavelot."</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel map">
+        <h3 style="padding-left:0">Track</h3>
+        <svg viewBox="0 0 400 220" role="img" aria-label="Simplified outline of Spa with car positions">
+          <path d="M70 60 L58 70 L62 84 L90 96 L130 108 L190 128 L262 150 L318 160 L346 148 L352 128 L330 112 L300 108 L286 92 L300 70 L330 58 L344 42 L326 30 L290 34 L250 46 L210 52 L160 50 L110 46 L80 50 Z" fill="none" stroke="#3a4250" stroke-width="10" stroke-linejoin="round"/>
+          <path d="M70 60 L58 70 L62 84 L90 96 L130 108 L190 128 L262 150 L318 160 L346 148 L352 128 L330 112 L300 108 L286 92 L300 70 L330 58 L344 42 L326 30 L290 34 L250 46 L210 52 L160 50 L110 46 L80 50 Z" fill="none" stroke="#5b6475" stroke-width="1" stroke-dasharray="3 5"/>
+          <g font-size="9" font-family="Titillium Web, sans-serif" fill="#e9ecf2">
+            <circle cx="110" cy="102" r="5" fill="#27f4d2"/><circle cx="122" cy="105" r="5" fill="#ff8000"/><circle cx="134" cy="109" r="5" fill="#3671c6"/>
+            <circle cx="146" cy="113" r="5" fill="#27f4d2"/><circle cx="158" cy="117" r="5" fill="#e8002d"/><circle cx="170" cy="121" r="5" fill="#ff8000"/>
+            <circle cx="182" cy="125" r="5" fill="#6692ff"/><circle cx="194" cy="129" r="5" fill="#e8002d"/><circle cx="206" cy="133" r="5" fill="#ff87bc"/>
+            <circle cx="218" cy="137" r="5" fill="#1868db"/><circle cx="230" cy="140" r="5" fill="#b6babd"/><circle cx="242" cy="143" r="5" fill="#a1a6ad"/>
+            <circle cx="254" cy="147" r="7" fill="#ff5a36" stroke="#fff" stroke-width="1.5"/><text x="248" y="168">ZHO</text>
+            <circle cx="268" cy="151" r="5" fill="#6692ff"/><circle cx="282" cy="154" r="5" fill="#229971"/><circle cx="296" cy="157" r="5" fill="#ff87bc"/>
+            <circle cx="310" cy="159" r="5" fill="#b6babd"/><circle cx="326" cy="158" r="7" fill="#ff5a36" stroke="#fff" stroke-width="1.5"/><text x="316" y="178">HER</text>
+            <circle cx="340" cy="152" r="5" fill="#1868db"/><circle cx="348" cy="140" r="5" fill="#d4af37"/><circle cx="349" cy="128" r="5" fill="#229971"/><circle cx="343" cy="118" r="5" fill="#d4af37"/>
+            <rect x="92" y="84" width="22" height="12" rx="3" fill="#ffb020"/><text x="96" y="93" fill="#111" font-weight="700">SC</text>
+            <text x="250" y="200" fill="#ffb020">✖ Pouhon: Hadjar</text>
+            <text x="16" y="18" fill="#8b93a3">La Source</text><text x="300" y="20" fill="#8b93a3">Les Combes</text><text x="140" y="40" fill="#8b93a3">Kemmel straight</text>
+          </g>
+        </svg>
+      </section>
+
+      <section class="panel">
+        <h3>Race feed</h3>
+        <ul class="feed">
+          <li><span class="l">L31</span><span class="tag sc">SC</span>Safety car: Hadjar crashes at Pouhon</li>
+          <li><span class="l">L29</span><span class="tag out">OUT</span>Hülkenberg retires: hydraulics</li>
+          <li><span class="l">L27</span><span class="tag wx">WX</span>Radar: rain band 20 km west, moving east</li>
+          <li><span class="l">L24</span>Zhou passes Lindblad into Les Combes</li>
+          <li><span class="l">L22</span><span class="tag pit">PIT</span>Verstappen, Piastri, Lindblad stop for a second time</li>
+          <li><span class="l">L18</span><span class="tag pit">PIT</span>Zhou: 2.6 s stop, Medium → Hard</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+  <p class="note">Mockup with made-up data, for the look and the decision flow only.</p>
+</div>
+
+<div class="controls">
+  <button>▶ Next 5 laps</button>
+  <button>⏩ Play to next call</button>
+  <button class="ghost">Hand to strategist</button>
+</div>
+</body>
+</html>
