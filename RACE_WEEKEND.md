@@ -64,21 +64,55 @@ The timing tower updates run by run, with the cut-off line shown. A drying track
 
 **Before the start:** starting tyre for each car, a planned strategy (the strategist proposes one-stop or two-stop windows with an estimate of each), and lap-one instructions (attack or keep out of trouble).
 
-**During the race** the race runs in blocks of about five laps, as the simulation already does. After each block the screen shows:
+**During the race** the race runs in blocks of about five laps, as the simulation already does, and the block shortens to a single lap when a call is pending. After each block the screen shows:
 
 - a timing tower: position, gap, tyre and age, and pit-stop count for every car, with your cars highlighted
 - the event ticker and team radio
-- for each of your cars: pace mode (push, normal, conserve tyres), tyre wear, and a Box button with a compound choice
-- controls: next block, play until something happens, or hand over to the strategist for the rest of the race
+- for each of your cars: the standing orders below, tyre wear, engine life, and a Box button with a compound choice
+- controls: next block, play until the next call, or hand over to the strategist for the rest of the race
 
-**Automatic pauses** (in Key calls and Full):
+#### Standing orders
 
-- **Safety car or virtual safety car:** box now? A stop costs about half the usual time.
-- **Rain starting or stopping:** intermediates or stay out? A radar estimate is shown at the strategist's precision.
-- **Tyre cliff:** the driver reports the tyres are going off.
-- **Undercut threat:** the car behind has boxed; cover it or stay out?
-- **Damage:** a front wing or puncture; box now or nurse it?
-- **Team-mates close together:** let them race, or order a swap? This replaces the "team orders" decision.
+Each of your cars has standing orders that can be changed at any time and take effect from the next block.
+
+| Order | Options | What it does |
+|---|---|---|
+| Pace | Push · Normal · Save tyres | Push is quicker but wears the tyres and the driver faster; Save tyres stretches a stint for a one-stop or to reach the end |
+| Racing | Attack · Normal · Defend · Hold position | Attack makes a pass more likely and contact more likely; Defend makes the car harder to pass but costs time and tyre; Hold position means no passing attempts and almost no risk, for protecting a result or a team-mate |
+| Engine | High · Standard · Cool | High gives more Power but uses power-unit life faster and raises the failure risk; Cool does the opposite |
+
+**What a driver brings:**
+- **Push and Attack** are worth more from a driver with high Pace and Racecraft, and riskier from one with low Consistency.
+- **Character:** a hot-headed racer may ignore Hold position. A driver who is told to hold or yield remembers it at contract time; the interest effect already exists in the market.
+
+**Resources across races.** Some choices cost something beyond this race, so pushing has a price:
+- **Engine life:** each car has four power units a season, and a fifth brings a 10-place grid penalty. Running High burns life faster.
+- **New tyre sets:** sets saved in qualifying are available for the race.
+- **Crash damage:** it comes out of the budget.
+
+#### Pit-wall calls
+
+In Key calls and Full, the race pauses for these. In Quick the strategist answers them. Every call shows the strategist's recommendation and an estimate of what each option is worth, precise with a strong Chief Strategist and vague with a weak one. There is always a "do what the strategist says" button. The game only pauses when a call is close or matters; an obvious one, such as a puncture, is handled automatically and reported.
+
+| Call | Comes up when | Options | Usually right when | Usually wrong when |
+|---|---|---|---|---|
+| Safety car | The safety car comes out | Box (choose compound) · stay out · box one car · double-stack both | Tyres are past half their life; you still owe the second compound; enough laps are left for new tyres to pay (about 8 or more); the gap behind means you rejoin without losing places | You stopped recently; few laps are left; everyone around you pits, so staying out gains track position at a track where passing is hard; double-stacking costs the second car about 4 s queuing |
+| Virtual safety car | A VSC is called | Box this lap · stay out | As for the safety car, but the saving is only about 40% and you have one lap to decide | The pit window is not open, or the VSC is about to end |
+| Red flag | The race is stopped | Compound for the restart (everyone gets a free change) | Matching the compound to the laps left and the forecast | — |
+| Rain arriving | Rain on the radar or starting | Stay on slicks · box for intermediates now · wait a lap | The radar shows heavy, lasting rain; your driver is weak in the wet | It is a short shower; your driver is strong in the wet and can survive a lap or two; you would lose track position for nothing |
+| Track drying | The intermediates are overheating | Slicks now · one more lap | A dry line has formed: the first car on slicks gains seconds a lap | Too early: slow, sliding laps and a crash risk |
+| Tyre cliff | The driver reports the tyres are going | Box now · nurse to the planned lap · push and stop next lap | Plenty of laps left, or a free gap to rejoin into | The end is close, or a stop now drops you into traffic |
+| Undercut threat | The car just behind (within about 2 s) boxes | Cover next lap · stay out (overcut) | Fresh tyres are worth a lot here and warm up fast | Your tyres are still good, the rival rejoins in traffic, or the track is cool and new tyres are slow for a lap |
+| Pit-exit traffic | A stop now rejoins behind a train of cars | Box anyway · delay a lap · extend the stint | The train is short or slow cars will pit soon | The train is long and passing is hard |
+| Front-wing damage | Contact | New nose at the next stop · box now · continue | The loss is large (about 0.4 s a lap or more) or a tyre stop is due anyway | The loss is small and few laps are left |
+| Floor damage or a failing part | Damage that cannot be fixed, or a reliability warning | Continue · turn the engine down · retire the car | Continue when points are in reach | Retiring saves power-unit life and the crash bill when the race is lost anyway |
+| Team-mates together | Your cars are within a second | Let them race · hold positions · swap | Swap when the car behind is faster or on a better strategy; let them race when nobody is close behind | Contact would cost both cars; the driver who yields remembers it at contract time |
+| Rear gunner | Your other car is being undercut by the car behind your lead car | One car holds the rival up for a lap or two | It protects the team-mate's position through the stops | It costs the gunner tyre life and time, and risks contact |
+| Penalty | A 5 s penalty, or a track-limits warning | Serve it at the stop · push to build a gap · give the place back | Serving at a planned stop is cheap | Not giving the place back after a warning risks the 5 s anyway |
+| Late gamble | About 10 laps left with a big gap behind | Free stop for softs and chase the car ahead · stay out | The gap behind covers the stop | Passing is hard here: track position beats fresh tyres |
+| Driver's request | "I can make these last" or "give me the push" | Trust the driver · stick to the plan | The driver has high Feedback, so the estimate is good | The driver's Feedback is low and the estimate is optimistic |
+
+**Before the start**, the lap-one call: attack (gain places, more risk in the first-lap incidents) or keep out of trouble.
 
 **After the flag** comes the debrief (section 4.5).
 
@@ -109,9 +143,16 @@ First-pass numbers, to be calibrated:
 
 ### 5.2 Pit stops and pace modes
 
-- **Pit stop:** pit-lane time loss per track (18–25 s, a new track figure), plus stop time and error chance from the pit crew rating (as today). About half the loss under a safety car or virtual safety car.
-- **Push:** −0.15 s a lap, 1.4× wear, 1.3× error chance.
-- **Conserve:** +0.25 s a lap, 0.6× wear.
+- **Pit stop:** pit-lane time loss per track (18–25 s, a new track figure), plus stop time and error chance from the pit crew rating (as today).
+  - The loss is about 50% under a safety car and about 60% under a virtual safety car.
+  - A new nose adds 6–8 s.
+  - Double-stacking costs the second car about 4 s.
+- **Pace:** Push is −0.15 s a lap, with 1.4× wear and 1.3× error chance. Save tyres is +0.25 s a lap, with 0.6× wear.
+- **Racing stance:**
+  - Attack: +30% chance to complete a pass, 1.5× contact chance, 1.2× wear while following.
+  - Defend: the rival's pass chance −30%, +0.1 s a lap, 1.5× contact chance.
+  - Hold position: no passing attempts and almost no contact.
+- **Engine mode:** High is +2 Power, with 2× power-unit wear and 1.5× failure chance. Cool is −2 Power, with half the failure chance. Each car has four power units a season; a fifth brings a 10-place grid penalty. This replaces the "power unit near the end of its life" decision.
 
 ### 5.3 Wing level
 
