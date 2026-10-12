@@ -9,13 +9,14 @@ export const FACILITIES = {
   simulator: { name: 'Simulator', start: 0, effect: 'Setup quality' },
   raceOps: { name: 'Race Operations', start: 1, effect: 'Strategy, pit stops; Race Team headcount cap and skill' },
   commercial: { name: 'Commercial Centre', start: 1, effect: 'Sponsor slots, merchandise; Commercial headcount cap and skill' },
-  academy: { name: 'Academy', start: 0, effect: 'Junior drivers (arrives in milestone 4)', locked: true },
+  academy: { name: 'Academy', start: 0, effect: 'Takes on junior drivers; better juniors at higher levels' },
 }
 
-export const FACILITY_COST = [3, 6, 12, 22, 38] // £m to reach level 1..5
-export const FACILITY_TIME = [3, 4, 6, 8, 10] // rounds to reach level 1..5
+export const FACILITY_COST = [3, 6, 10, 16, 24] // £m to reach level 1..5
+export const FACILITY_TIME = [3, 4, 5, 6, 8] // rounds to reach level 1..5
 export const MAX_BUILDS = 2
 export const TUNNEL_RENT = 0.15 // £m per round while the Wind Tunnel is level 0
+export const ACADEMY_COST = 0.3 // £m a season for each junior in the academy
 
 export const DEPTS = {
   aero: { name: 'Aero', facility: 'windTunnel', start: 30 },
@@ -40,7 +41,7 @@ const RACE_CAP = [30, 45, 60, 80, 100, 120]
 const COMMERCIAL_CAP = [10, 18, 30, 50, 75, 100]
 const CFD_MULT = [0.9, 1.0, 1.12, 1.25, 1.4, 1.55]
 
-export const HEAD_COST = 0.08 // £m per head per season at skill 50 on market pay
+export const HEAD_COST = 0.095 // £m per head per season at skill 50 on market pay
 export const PAY = { low: { cost: 0.9, skill: -5 }, market: { cost: 1.0, skill: 0 }, premium: { cost: 1.2, skill: 8 } }
 
 const FIRST = ['Marco', 'Elena', 'James', 'Sofia', 'Luca', 'Hannah', 'Pierre', 'Aiko', 'Tom', 'Ines', 'Rafael', 'Greta', 'Daniel', 'Priya', 'Mateo', 'Clara', 'Jonas', 'Nadia', 'Ben', 'Yara']

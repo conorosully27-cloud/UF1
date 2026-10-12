@@ -1,6 +1,7 @@
 // Driver salary, interest and backing formulas (design section 5.6).
-// The full three-stage market arrives in milestone 4; until then a driver whose
-// interest falls short of 60 can still be signed by paying over their demand.
+// `signingTerms` is the simple list used for the starting line-up, where a
+// driver whose interest falls short of 60 can be signed by paying over their
+// demand. Later signings go through the market in people.js.
 
 import { overall } from './data/drivers.js'
 import { streamRng } from './rng.js'

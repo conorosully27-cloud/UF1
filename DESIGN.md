@@ -1,8 +1,8 @@
 # Ultimate F1 Manager — game mechanics plan (v4)
 
-Status: milestones 1 to 3 are built and checked (section 10). Milestones 4 and 5 are not. Every number is a first-pass value; balance tuning is milestone 5, and section 6 says where the build currently falls short of the target.
+Status: milestones 1 to 5 are built and checked (section 10). Numbers changed by the milestone 5 balance pass are marked "tuned"; section 9 gives the measured results against the targets.
 
-To play: `npm run dev` in this folder. To check: `npm test`.
+To play: `npm run dev` in this folder. To check: `npm test`. To measure balance: `npm run test:m5` (section 9).
 
 ## 1. The game
 
@@ -73,7 +73,8 @@ Staff and facilities produce **engineering capacity** each round. It has two sin
 
 Gain = base gain × diminishing-returns factor × a random roll.
 
-- **Diminishing returns.** The closer a rating is to 100, the less each unit of work adds. A car rated 50 gains about five times as much per unit as a car rated 90.
+- **Diminishing returns.** The closer a rating is to 100, the less each unit of work adds: (100 − rating) ÷ 50, raised to the power 1.3 above 50 (tuned). A car rated 50 gains about eight times as much per unit as a car rated 90, so the last few points cost the most.
+- **Leadership.** The Technical Director and Head of Aero multiply their departments' output by 0.5 + rating ÷ 100: ×1.0 at 50, ×1.4 at 90 (tuned; it was ×1.0 to ×1.16). A star hire is worth chasing.
 - **Roll width** depends on Wind Tunnel and CFD level, the Head of Aero and driver Feedback. Poor facilities mean a +3 project could deliver anything from +1 to +4.
 - **Understanding a part.** A new part runs at 70% of its value in its first race. Better facilities shorten this.
 - **Manufacturing.** Finished designs need building. A design finished this round is fitted next round at the earliest, and the factory's own capacity can become the bottleneck.
@@ -129,11 +130,15 @@ Eight facilities, levels 0–5. Two builds can run at once.
 |---|---|---|
 | 1 | £3m | 3 rounds |
 | 2 | £6m | 4 rounds |
-| 3 | £12m | 6 rounds |
-| 4 | £22m | 8 rounds |
-| 5 | £38m | 10 rounds |
+| 3 | £10m | 5 rounds |
+| 4 | £16m | 6 rounds |
+| 5 | £24m | 8 rounds |
 
-Upkeep is 6% of cumulative build cost per season. A build is paid for in equal instalments over its rounds. The Academy cannot be built until milestone 4.
+Levels 3 to 5 were tuned down from £12m, £22m and £38m (6, 8 and 10 rounds): at the old prices no sensible manager could build a front-running organisation within ten seasons.
+
+Upkeep is 6% of cumulative build cost per season. A build is paid for in equal instalments over its rounds.
+
+**Academy.** From level 1 the academy may take on a junior each winter (chance 40% plus 10% a level), up to one more junior than its level. Juniors arrive at 16–18 with a potential around 81 + 2.5 × level. Each costs £0.3m a season, races in the junior series, asks 60% of the usual salary and is 20 points more interested in stepping up. Juniors leave the academy at 24. The karting-prospect decision also adds a junior.
 
 ### 5.5 Staff
 
@@ -160,7 +165,7 @@ Overall = 40% Pace, 25% Racecraft, 20% Consistency, 15% Wet.
 - **Contracts:** salary, length, bonuses, number-one status, release clause.
 - **Loans:** a rival's junior can be taken on a one-season loan for a low salary. The parent team can recall them at season end.
 - **New drivers:** real juniors fill the market first. Generated drivers join each winter so the grid never runs dry.
-- **Until milestone 4** the market is a simple list: a driver whose interest is under 60 signs for 5% over their demand per point short, rivals' line-ups do not change, ratings do not age, and expiring contracts roll over at the driver's current demand.
+- **The starting line-up** is picked on the new-game screen from a simple list: a driver whose interest is under 60 signs for 5% over their demand per point short. Every later signing goes through the market below.
 
 #### Signing a driver
 
@@ -189,6 +194,14 @@ Each driver accepts three approaches per winter, so offers cannot be nudged up a
 - It is rolled again each winter and moves with results: a backed driver who beats expectations attracts more, one who trails loses backers.
 
 **Market timing.** The off-season market runs in three stages. Unsigned drivers cut their salary demand by about 15% at each stage, and rivals sign drivers between stages. Waiting is cheaper and risks losing the driver.
+
+As built:
+
+- **Out of contract.** When one of the player's contracts runs out the driver stays in the seat, marked out of contract, until the market closes. They can be re-signed (+5 loyalty, no seat hunger), and from stage 2 rivals may sign them. Setting the season targets closes the market: rivals fill every seat and out-of-contract drivers leave.
+- **Rival offers.** A rival with an empty seat that has a driver among its top choices counts as an offer on the table (−10 each, at most two).
+- **Rivals sign** in order of reputation, choosing the free driver they rate highest who would join (interest 55, falling to 35 at the final call; a rookie is promoted if nobody will come). A team with reputation 60 or more can buy out a driver from a team 20 or more below it.
+- **Bids for the player's drivers.** A rival with an empty seat and more reputation can bid for a player's driver under contract. Accepting brings in about 1.2 × the salary still owed plus £1.5m; refusing leaves the driver 5 points less interested at the next talks. With a release clause the rival simply pays it (1.5 × salary, at least £2m).
+- **Number-one status** costs the other driver's goodwill: each race the player favours the driver without it, the number-one driver loses a point of interest.
 
 The decisions this creates: move early or wait; pay more or offer status and a release clause instead; trust a wide backing estimate or pay for a better Commercial Director; take the backed driver for the money or the quicker one for the results that raise prize money and next year's backing.
 
@@ -222,6 +235,8 @@ Ratings change at mid-season and at season end. Each change is the age trend, pl
 
 Released drivers join the market, usually cheaper and with extra seat hunger. This is where the player finds bargains: a driver dropped after an unlucky season, or a fading veteran whose Feedback is still excellent.
 
+As built, the results adjustment compares each qualifying lap with the team-mate's after allowing for the gap in Pace (and Wet in the rain); a driver who averages more than 0.05 s a lap better than that over a half-season gains a point. A team's perceived level is Overall plus up to ±3 for that season's form, a random misjudgement (±1.5 typical), some of a young driver's upside, −0.6 a year over 32, and, for a team with reputation under 45, a little for backing. A rival renews an expiring driver if that level, plus 2.5 × its patience, is at least the best replacement it could sign and the driver wants to stay. Juniors without a seat develop at 80% in the junior series; a driver of 23 or more with no seat anywhere does not develop. Drivers who sit out two seasons drift away from the market.
+
 The same applies to the player. A driver who has regressed can be released by paying 60% of the remaining salary, so long contracts for drivers over 33 carry real risk.
 
 ### 5.7 Finance
@@ -239,7 +254,7 @@ Cash moves every round. A forecast screen projects the balance to season end und
 
 | Cost | Season 1 scale |
 |---|---|
-| Workforce | £13m (160 staff) |
+| Workforce | £15m (160 staff; tuned from £13m) |
 | Key staff | £3m |
 | Drivers | £0.5m–£5m each |
 | Power unit and parts package | £13m–£17m |
@@ -253,13 +268,13 @@ Season 1 roughly breaks even on a modest development budget.
 
 **Borrowing:** a bank loan (limit set by reputation, 8–14% interest) or an advance of up to half the remaining season's prize payments at a 10% discount.
 
-**Reputation** moves 30% of the way each winter towards a level set by championship position (about 9 for 12th, 95 for 1st), plus a little for points, podiums and wins.
+**Reputation** moves 40% of the way each winter (tuned from 30%) towards a level set by championship position (about 9 for 12th, 95 for 1st), plus a little for points, podiums and wins.
 
 **Cost cap:** £150m on performance spending (development, technical staff, race operations). Drivers, power units, commercial staff and facility construction are outside it. The player starts at about a third of the cap.
 
 ### 5.8 Sponsors
 
-Slots: one title, two principal, four partner. Commercial Centre level opens them.
+Slots: one title, two principal, four partner. Commercial Centre level opens them. An offer's headline value is a base plus an amount per reputation point (title £3m + £0.45m, principal £1m + £0.16m, partner £0.5m + £0.07m; tuned up by about 30%), scaled by the Commercial Director, the commercial staff and the drivers' Marketability. A front-runner with every slot filled is offered about £100m a season.
 
 Each offer comes in three shapes:
 
@@ -361,9 +376,15 @@ The simulation sits behind a single interface, so a lap-by-lap model with live r
 The 11 real teams run a simplified version of the same development model, with the same diminishing returns, annual tightening, aero testing allowance and cost cap. Each has a resource level that follows its results and prize money.
 
 - **Development rate.** Each rival's rate is set so that it holds its starting ratings against the annual tightening. Half a year's work lands over the winter and half as three in-season upgrades. The rate then drifts a little each winter.
-- **Form events:** a rival can gain an investor, lose its technical chief, or change engine supplier (milestone 4).
-- **Drivers** age, regress, move teams, get dropped and retire (section 5.6, milestone 4).
-- **Poaching:** rivals bid for the player's best staff and drivers (milestone 4).
+- **Resources follow results.** Each rival's development rate is scaled by a resource level that moves 30% of the way each winter towards a level set by championship position (±7% between first and last), relative to where it started.
+- **Reputation** moves the same way, on the player's scale, and decides who drivers will join and who signs first.
+- **Form events** each winter: an investor (+15% development for three seasons; 7% a year for a team in the lower half, 3% otherwise), losing the technical chief (−15% for two seasons, 6% a year) or, for a customer team, a switch of engine supplier (6% a year; at most four teams per supplier).
+- **Reading the new rules.** Each winter each rival's Aero and Chassis move by a random ±0.9 points (typical) on top of its development. Without this the front of the field never changed: diminishing returns hold a top car so close to its starting rating that the fastest team won about 80% of titles.
+- **Drivers** age, regress, move teams, get dropped and retire (section 5.6).
+- **Poaching:** from reputation 25, rivals approach key staff rated 65 or more (about 10–35% a year each, more for better staff and a better team). Matching costs 30% more salary; otherwise a deputy 8–15 points weaker steps up. Rivals bid for drivers as in section 5.6.
+- **Pressure (tuned).** A rival with reputation 65 or more that is slower than the fastest car develops faster: +6% for each 0.1 s a lap it is behind, up to +25%. It is there mainly so the rival world does not settle into one team winning everything; it applies whoever leads, but it is not meant to make defending a title hard.
+- **Race operations drift.** Each winter a rival's pit crew, strategy and setup ratings move by a random ±1.5, pulled back towards where the team started.
+- **Supplier drift:** each winter Power moves by a random ±0.7 plus 20% of the gap to the best supplier, with a slow pull back towards 88; Reliability likewise. Prices follow Power.
 
 ### 5.12 Season targets
 
@@ -385,7 +406,7 @@ Each pre-season the game offers six objectives built from the team's current sta
 **How the marks are set.** Before the season the game runs 150 quick simulations of the year from the team's current car, drivers, cash and facilities, under average management: designers kept busy, a little banked from mid-season, empty sponsor slots filled, nothing built and nobody hired.
 
 - **Results targets** (position, points, best finish, races ahead of a rival, podiums, wins, both cars classified) are placed where that average team reaches them in about 80%, 50% and 20% of runs. Measured over 120 seasons of average management the rates were 79%, 45% and 22%.
-- **Management targets** (cash, sponsor fees, rating gained, facility levels) depend mostly on the player's own choices, so they are set against what the average manager achieves: for example Standard for rating gained is 15% more than the average manager manages.
+- **Management targets** (cash, sponsor fees, rating gained, facility levels) depend mostly on the player's own choices, so they are set against what the average manager achieves. Rating gained: 70%, 100% and 135% of what the average manager manages. Cash: 30%, 65% and 105% of the cash the average manager, who neither builds nor hires, would be left with. Sponsor fees are mostly fixed by the deals already signed, so Safe is 95% of the projection, Standard adds one more partner deal and Stretch a principal deal on top (tuned: a percentage over the projection could not be reached without new slots).
 - **Cash** is counted net of bank debt, so borrowing cannot meet the target.
 
 Setting targets is the last step of pre-season. Drivers and power unit are fixed from then on, so the marks cannot be lowered by setting them with a weak line-up and then changing it.
@@ -429,7 +450,15 @@ Target curve for good play on Normal:
 | 8–10 | 3rd–1st | Title contention |
 | After | — | Staying there |
 
-**Where the build stands.** With the first-pass numbers, a simple scripted manager that takes sponsors, keeps the designers busy and invests whatever the forecast can spare scores its first point in season 8 and reaches 8th in seasons 9 to 12. That is well behind this curve, and it never changes its drivers. A manager that does nothing stays 12th. Closing the gap to the curve is the job of milestone 5.
+**Where the build stands** (200 saves, competent manager, section 9):
+
+| Season | 1 | 2 | 3 | 4 | 5 | 6–9 | 10 | 11 | 12 | 13–15 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Median position | 12th | 11th | 10th | 8th | 6th | 5th | 4th | 3rd | 2nd | 1st |
+
+First points in season 3, first podium in season 7 and first win in season 9 (medians). The first title comes in seasons 8–12 in 45% of saves and by season 15 in 89%. The curve is met to season 5; seasons 6 to 9 sit at 5th, a season or two behind the curve, because the top four teams are a clear step above the rest and breaking into them takes a front-running organisation; the title then follows quickly. Once champion, a well-run team usually stays there (77% of these saves are champions in season 15). That is intended: a player good enough to reach the top has earned it, and staying there gets no extra difficulty beyond the rules that already bear on every leader (annual loss, aero allowance, cost cap).
+
+A manager that does nothing at all now climbs slowly to about 10th, because designers with nothing queued bank their work for free and the starting staff produce more than before tuning. It has no sponsors left after two seasons and wins nothing.
 
 **Why progress is always available:** diminishing returns favour slow cars, the aero allowance favours low finishers, the annual tightening costs fast cars more, each place gained is worth £5m–£12m in prize money, and the cost cap limits the leaders.
 
@@ -575,9 +604,29 @@ Further checks:
 - **A/B value.** The competent bot with random A/B choices should progress about 10% slower than with the better choices.
 - **Season targets.** The competent bot should meet Safe targets about 80% of the time, Standard about 50% and Stretch about 20%.
 - **World health.** With no player, 30 seasons of the 11 real teams should keep the front-to-back gap between about 1.0 s and 2.0 s, change the champion team several times, and let teams rise and fall by a few places a year without the order reshuffling completely.
-- **Driver market.** Over the same 30 seasons, three to six of the 22 rival seats should change each winter, mid-season swaps should be rare, career lengths and retirement ages should look plausible, and the average rating of the grid should stay level, not creep up or down.
+- **Driver market.** Over the same 30 seasons, three to six of the 22 rival seats should change each winter, mid-season swaps should be rare, career lengths and retirement ages should look plausible, and the average rating of the grid should stay level, not creep up or down. Built, over four 30-season saves: 3.6 seats change a winter (0–13 in a single winter), 2 mid-season swaps in 120 seasons, drivers retire at 35 on average after about 9 seasons, and the grid's average Overall goes from 86.4 to 86.3.
 
 Each tuning change is checked against 200 saves per bot.
+
+**As built.** `tests/m5-balance.js` plays saves of 15 seasons with every system on (decisions, targets, market), four at a time on worker threads; `npm run test:m5` runs 200 saves per bot (about 12 minutes). The scripted managers are in `tests/bot.js`:
+
+- **Competent** plans a season ahead (next season's income and running costs, not just this season's cash forecast) and takes a prize advance or a bank loan rather than fall into the overdraft. It signs the drivers worth most for their cost (an Overall point is worth more as reputation rises), switches power unit when a better one is affordable without its Chassis cap falling, builds the Design Office, CFD and Factory first, goes in-house once Chassis presses against the parts package's cap, saves for the next facility by banking design work (which costs nothing to build), puts most new engineers into Aero, invests in race operations and race staff once the car is near the midfield, and picks low-risk season targets.
+- **Naive** keeps the designers busy on small safe upgrades, banks a quarter, accepts every sponsor, keeps two drivers at a fair price, and spreads the rest evenly: one facility after another in a fixed rotation and the same few heads for every department. It watches this season's forecast but plans no further, and picks A/B at random.
+- **Reckless** spends everything and borrows to the limit.
+
+Results over 200 saves per bot (all targets met):
+
+| Check | Target | Built |
+|---|---|---|
+| Competent: first title in seasons 8–12 | About half | 45% (89% by season 15) |
+| Competent: crisis | Under 10% | 0% |
+| Naive: plateau | 7th–9th | 9th from season 7, edging to 7th by season 15 |
+| Naive: title by season 15 | Under 5% | 0% |
+| Reckless: crisis | Over half | 100% |
+| A/B value | About 10% | Random choices score 92% of the points over ten seasons (first title median season 13 instead of 12) |
+| Season targets, competent | 80 / 50 / 20% | 77 / 36 / 12% over every offered objective; results objectives 71–83 / 38–54 / 11–24%. Sponsor-fee targets above Safe need an extra deal (4% and 0%), and Aero rating gained is rarely met by a manager that banks heavily for facilities (27 / 9 / 0%) |
+
+World health with no player (30 seasons, six saves): the front-to-back gap stays between 1.1 and 1.5 s, three or four teams win titles and the title changes hands several times, and teams move about half a place a year. Mercedes still wins about two-thirds of titles: its starting car settles about 0.09 s clear and it signs the best drivers; small development swings near the top barely move this because of the diminishing returns.
 
 ## 10. Build order
 
@@ -586,8 +635,8 @@ Each tuning change is checked against 200 saves per bot.
 | M1 Race weekend (built) | Real team, driver and track data; seeded RNG; qualifying and race simulation; standings; bare UI; saves; calibration test | A full season of simulated weekends with fixed cars |
 | M2 Money and development (built) | Finance loop, sponsors, upgrades, next-year car, annual tightening, facilities, workforce, key staff, season rollover. Moved here from M4: rival car development, the aero allowance, the cost cap and the crisis | Multi-season play with real trade-offs |
 | M3 Decisions and targets (built) | The A/B deck (80 decisions), staff-dependent information, decision log; season targets with the pre-season projection | A decision every round and three targets a season |
-| M4 People and world | Driver market in three stages, the hidden personal factor, loans and recalls, academy, ageing and regression, rival driver reviews, new drivers, rival form events, poaching, supplier drift, honours board | An endless save |
-| M5 Balance | Bot managers and harness, tuning to sections 6 and 9 | A save that hits the target curve |
+| M4 People and world (built) | Driver market in three stages, the hidden personal factor, loans and recalls, academy, ageing and regression, rival driver reviews, new drivers, rival form events, poaching, supplier drift, honours board | An endless save |
+| M5 Balance (built) | Bot managers and harness, tuning to sections 6 and 9 | A save that hits the target curve |
 
 ## 11. Flaws checked
 
@@ -599,6 +648,15 @@ Each tuning change is checked against 200 saves per bot.
 | Found in the build: a team could set easy targets with weak drivers and then sign better ones | Targets are set last; drivers and power unit are then fixed for the season |
 | Found in the build: borrowing on the last day met a cash target | Cash targets are net of bank debt |
 | Found in the build: 38 of the 80 decisions always favoured the same option | Numbers reworked; every decision now has each option come out best in some situation, by the scripted manager's own valuation |
+| Found in the build: the fastest starting team (Mercedes) won about 80% of titles over 30 seasons, because diminishing returns pin top cars to their starting ratings | Each rival's reading of the winter rules adds a random ±0.9 to Aero and Chassis. The title now changes hands several times in 30 seasons (Mercedes still wins about 70%; milestone 5) |
+| Found in the build: a driver whose contract expired had to vanish at once, before the player could react | Out-of-contract drivers stay until the market closes and can be re-signed; rivals can take them from stage 2 |
+| Found in the build: real drivers' careers before 2027 are unknown, so "retires after 32 starts" misled | Career numbers count from 2027 and are labelled as such |
+| Found in balancing: a department told to repeat a Chassis upgrade crashed the round when Chassis reached the parts package's cap | The repeat stops quietly and the designers bank the work |
+| Found in balancing: a sensible manager with the first-pass numbers reached only 5th–6th in 15 seasons, and every scripted manager kept falling into crises | Development output +60% (factory output with it), cheaper top facility levels, faster reputation, larger sponsor values; the competent manager plans a season ahead |
+| Found in balancing: with cheaper development, a manager who spread money evenly reached the top six | Staff cost £0.095m a head; key staff multiply output more strongly; steeper diminishing returns above 50 |
+| Found in balancing: the A/B valuation counted cash as tight only when the bank balance was low, so the scripted manager paid big sums early with a negative forecast | A cost that would take the season's forecast past the overdraft limit is valued at three times its size |
+| Found in balancing: sponsor-fee targets above Safe were a percentage over a figure fixed by signed deals, so almost impossible | Standard and Stretch now ask for one or two more deals |
+| Found in balancing: a crisis did not say what caused it | The finance record logs each crisis with its cause (cash or owner confidence) |
 | Fixed backing and availability per driver left nothing to decide | Interest, salary and backing are formulas with a random part, shown as estimates, in a three-stage market |
 | If targets only had rewards, Stretch would always be the right pick | A reward is paid only at the chosen level, and every miss costs owner confidence |
 | Rivals judging drivers perfectly would leave no bargains | Rivals judge on noisy results; the player sees true current ratings |
@@ -609,7 +667,7 @@ Each tuning change is checked against 200 saves per bot.
 | Without a rules reset nothing would reshuffle the order | Percentage-based annual loss, diminishing returns, supplier drift and rival form events |
 | An endless save needs a world that renews | Driver ageing, retirement and new drivers; rivals whose resources follow results; an honours board and objectives that continue after a title |
 | "No definite end" conflicts with game over on bankruptcy or sacking | Replaced by the crisis in section 4 |
-| A runaway leader would make a long save dull, whether it is the player or a rival | The annual loss, aero allowance and cost cap all bear hardest on the leader; rivals poach from the top; checked by the world-health test |
+| A runaway leader would make a long save dull, whether it is the player or a rival | For the rival world: the annual loss, aero allowance, cost cap and rival pressure bear hardest on the leader, checked by the world-health test. For the player: decided against adding difficulty to staying on top; a player who gets there has earned it |
 | A/B decisions could become coin flips or have one obvious answer | The right answer depends on context, information quality depends on staff, and the harness measures what good choices are worth |
 | Reloading a save to re-roll a decision or race | Outcomes are fixed from the save's seed when the round starts |
 | Real juniors are contracted to rival academies | Loan mechanic |

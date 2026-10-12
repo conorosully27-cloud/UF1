@@ -2,13 +2,15 @@
 // that it holds its starting rating against the annual tightening. Half the
 // year's work lands over the winter and half as in-season upgrades.
 
-import { PLAYER, ROUNDS, clamp } from './core.js'
+import { PLAYER, ROUNDS, clamp, paceTable } from './core.js'
 import { diminishing, tightenCar, TIGHTENING } from './development.js'
 import { DIFFICULTY } from './economy.js'
 import { streamRng } from './rng.js'
+import { repForPosition, resourceForPosition } from './world.js'
 
 const AREAS = ['aero', 'chassis', 'tyreCare', 'reliability']
 const PACKAGES = 3
+export const CONCEPT_SD = 0.9 // rating points: how far a rival's reading of new rules can be off
 const AVERAGE_LOSS = { aero: (TIGHTENING.hard + TIGHTENING.soft) / 2, chassis: (TIGHTENING.hard + TIGHTENING.soft) / 2, tyreCare: TIGHTENING.tyreCare, reliability: TIGHTENING.reliability }
 
 // One year at development rate `d`: in-season packages, the winter loss, then
@@ -40,9 +42,27 @@ export function initRivals(game) {
     const atr = game.atr[t.id]
     const dev = {}
     for (const a of AREAS) dev[a] = holdingRate(t.car[a], a === 'aero' ? atr : 1, AVERAGE_LOSS[a]) * ai
-    game.rivals[t.id] = { dev, base: { ...dev }, upgrades: [] }
+    // Reputation and resources start from last year's order and then follow results.
+    const pos = game.lastStandings.indexOf(t.id) + 1
+    const resource = resourceForPosition(pos)
+    game.rivals[t.id] = { dev, base: { ...dev }, upgrades: [], reputation: repForPosition(pos), resource, resource0: resource, event: null }
   }
   scheduleRivalUpgrades(game)
+}
+
+// Development speed relative to the team's start: prize money and form events.
+export function rivalMult(r) {
+  return (r.resource / r.resource0) * (r.event?.mult ?? 1)
+}
+
+// A big team that falls behind the fastest car pushes harder: up to +25% when
+// 0.4 s a lap or more behind. This is what bears on a runaway leader.
+export const PRESSURE = { minReputation: 65, perSecond: 0.625, maxGap: 0.4 }
+export function pressureMult(game, id) {
+  if (game.rivals[id].reputation < PRESSURE.minReputation) return 1
+  const rows = paceTable(game)
+  const me = rows.find((x) => x.id === id)
+  return 1 + PRESSURE.perSecond * Math.min(PRESSURE.maxGap, me ? me.gap : 0)
 }
 
 export function scheduleRivalUpgrades(game) {
@@ -56,9 +76,10 @@ function develop(game, id, share, rng, lo, hi) {
   const t = game.teams[id]
   const r = game.rivals[id]
   const gains = {}
+  const mult = rivalMult(r) * pressureMult(game, id)
   for (const a of AREAS) {
     const atr = a === 'aero' ? game.atr[id] : 1
-    const gain = share * r.dev[a] * diminishing(t.car[a]) * atr * rng.range(lo, hi)
+    const gain = share * r.dev[a] * mult * diminishing(t.car[a]) * atr * rng.range(lo, hi)
     t.car[a] = Math.min(99, t.car[a] + gain)
     gains[a] = gain
   }
@@ -81,7 +102,14 @@ export function rivalWinter(game, hard) {
     tightenCar(game.teams[id].car, hard)
     const rng = streamRng(game.seed, 'rivalWinter', game.season, id)
     develop(game, id, 0.5, rng, 0.75, 1.25)
+    // Each team reads the new rules a little better or worse than the others.
+    const t = game.teams[id]
     const r = game.rivals[id]
+    for (const a of ['aero', 'chassis']) t.car[a] = clamp(t.car[a] + rng.normal(0, CONCEPT_SD), 20, 99)
+    // Pit crews, strategists and setup engineers come and go: a slow random
+    // walk, pulled back towards where the team started.
+    r.ops0 ??= { ...t.ops }
+    for (const k of Object.keys(t.ops)) t.ops[k] = clamp(t.ops[k] + rng.normal(0, 1.5) + 0.1 * (r.ops0[k] - t.ops[k]), 55, 98)
     for (const a of AREAS) {
       // A random walk that is pulled back towards the team's starting level.
       const drifted = Math.pow(r.dev[a] * Math.exp(rng.normal(0, 0.05)), 0.9) * Math.pow(r.base[a], 0.1)

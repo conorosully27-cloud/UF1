@@ -3,9 +3,10 @@
 // pre-season projection of the team's year under average management.
 
 import { PLAYER, ROUNDS, clamp, seasonMetrics, ordinal } from './core.js'
-import { acceptOffer, freeSlots } from './sponsors.js'
+import { acceptOffer, freeSlots, TIERS, SHAPES } from './sponsors.js'
 import { chassisCap } from './development.js'
 import { earn } from './economy.js'
+import { autoDrivers } from './people.js'
 
 export const LEVELS = {
   safe: { label: 'Safe', mult: 1, confidence: 3, reputation: 1, odds: 'about four times in five' },
@@ -20,10 +21,11 @@ export const CATEGORIES = {
   technical: { label: 'Technical', reward: (m) => `+${(2 * m).toFixed(0)}% engineering capacity next season` },
 }
 
-// The stand-in for "average management": keeps the designers busy, banks a
-// little for next year from mid-season, fills empty sponsor slots, and
-// neither builds nor hires.
+// The stand-in for "average management": keeps two drivers under contract,
+// keeps the designers busy, banks a little for next year from mid-season,
+// fills empty sponsor slots, and neither builds nor hires.
 export function averageManager(g) {
+  autoDrivers(g)
   for (const o of g.sponsors.offers.slice().sort((a, b) => b.value - a.value)) {
     if (freeSlots(g, o.tier) > 0) { try { acceptOffer(g, o.id, 'balanced') } catch { /* demand not met */ } }
   }
@@ -78,6 +80,16 @@ function scaled(base, factors, step, min) {
   return { safe: a, standard: Math.max(b, a + step), stretch: Math.max(c, Math.max(b, a + step) + step) }
 }
 
+// Sponsor fees are mostly fixed by the deals already signed, so the higher
+// marks ask for one more partner deal (Standard) and a principal deal on top
+// (Stretch): that is what a bigger Commercial Centre and a good pitch earn.
+function sponsorMarks(game, median) {
+  const fee = (tier) => (TIERS[tier].base + TIERS[tier].perRep * game.reputation) * SHAPES.balanced.fee
+  const safe = Math.max(0.5, round(median * 0.95, 0.1))
+  const standard = Math.max(safe + 0.1, round(median + fee('partner') * 0.8, 0.1))
+  return { safe, standard, stretch: Math.max(standard + 0.1, round(median + (fee('partner') + fee('principal')) * 0.8, 0.1)) }
+}
+
 // Six objectives suited to where the team stands: two per category.
 export function buildOffer(game, runs, yearIncome) {
   const o = outlookFrom(game, runs)
@@ -100,17 +112,17 @@ export function buildOffer(game, runs, yearIncome) {
   // Cash is judged against what an average manager, who neither builds nor hires, would be left with.
   const idleCash = at(sorted(runs, (m) => m.cash), 0.5)
   const commercial = [
-    { id: 'cash', marks: idleCash >= 4 ? scaled(idleCash, [0.35, 0.7, 1.05], 0.5, 1) : scaled(yearIncome, [0.03, 0.08, 0.2], 0.5, 1) },
-    { id: 'sponsor', marks: scaled(Math.max(1, at(sorted(runs, (m) => m.sponsor), 0.5)), [0.9, 1.15, 1.5], 0.1, 0.5) },
+    { id: 'cash', marks: idleCash >= 4 ? scaled(idleCash, [0.3, 0.65, 1.05], 0.5, 1) : scaled(yearIncome, [0.03, 0.07, 0.15], 0.5, 1) },
+    { id: 'sponsor', marks: sponsorMarks(game, Math.max(1, at(sorted(runs, (m) => m.sponsor), 0.5))) },
   ]
 
-  const technical = [{ id: 'rating', area: 'aero', marks: scaled(Math.max(0.5, at(sorted(runs, (m) => m.rating.aero), 0.5)), [0.8, 1.15, 1.6], 0.1, 0.5) }]
+  const technical = [{ id: 'rating', area: 'aero', marks: scaled(Math.max(0.5, at(sorted(runs, (m) => m.rating.aero), 0.5)), [0.7, 1.0, 1.35], 0.1, 0.5) }]
   const room = Object.values(game.org.facilities).reduce((s, f) => s + (5 - f.level), 0)
   const classified = quantileMarks(runs, (m) => m.classified)
   if (classified) for (const k of Object.keys(classified)) classified[k] = Math.min(ROUNDS, classified[k])
   const facilities = room >= 4 && game.finance.austerity <= 0 ? { id: 'facilities', marks: { safe: 1, standard: 2, stretch: 3 } } : null
   const second = game.season % 2 === 1 ? [facilities, classified && { id: 'classified', marks: classified }] : [classified && { id: 'classified', marks: classified }, facilities]
-  technical.push(second.find(Boolean) ?? { id: 'rating', area: 'chassis', marks: scaled(Math.max(0.5, at(sorted(runs, (m) => m.rating.chassis), 0.5)), [0.8, 1.15, 1.6], 0.1, 0.5) })
+  technical.push(second.find(Boolean) ?? { id: 'rating', area: 'chassis', marks: scaled(Math.max(0.5, at(sorted(runs, (m) => m.rating.chassis), 0.5)), [0.7, 1.0, 1.35], 0.1, 0.5) })
 
   const label = (x) => {
     const v = (lvl) => x.marks[lvl]

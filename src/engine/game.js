@@ -20,8 +20,11 @@ import { initRivals, rivalRound, rivalWinter, scheduleRivalUpgrades } from './ri
 import { initialSponsors, sponsorsRound, sponsorsSeasonEnd, sponsorsNewSeason, refreshSponsorTargets } from './sponsors.js'
 import { drawDecision, progressDelayed } from './decisions.js'
 import { averageManager, buildOffer, outlookFrom, chooseTargets, resolveTargets } from './targets.js'
+import { initPeople, recordRace, peopleMidSeason, peopleWinter, closeMarket, seatsReady, releaseCost, releaseDriver } from './people.js'
+import { rivalReputationWinter, rivalFormEvents, supplierDrift, staffApproaches } from './world.js'
+import { initialHonours, honoursRound, honoursSeason } from './honours.js'
 
-export { SAVE_VERSION, START_YEAR, PLAYER, START_REPUTATION, year, currentTrack, effectiveCar, teamOps, getStandings, playerPosition, paceTable, overall }
+export { SAVE_VERSION, START_YEAR, PLAYER, START_REPUTATION, year, currentTrack, effectiveCar, teamOps, getStandings, playerPosition, paceTable, overall, releaseCost, releaseDriver }
 
 // Last year's real-world order, used for prize money and the aero allowance in season 1.
 const START_ORDER = ['mercedes', 'ferrari', 'mclaren', 'redbull', 'racingbulls', 'alpine', 'haas', 'audi', 'williams', 'aston', 'cadillac', PLAYER]
@@ -70,6 +73,7 @@ export function newGame({ seed = Date.now() >>> 0, teamName = 'New Team', suppli
     substitute: null, weatherOverride: null, insured: false,
     targets: { offer: null, chosen: null, history: [] },
     outlook: null,
+    honours: initialHonours(),
   }
   game.finance = initialFinance(difficulty)
   game.dev = initialDev()
@@ -78,6 +82,7 @@ export function newGame({ seed = Date.now() >>> 0, teamName = 'New Team', suppli
   for (const id of driverIds) signDriver(game, id, 'race')
   if (reserveId) signDriver(game, reserveId, 'reserve')
   initRivals(game)
+  initPeople(game)
   initialSponsors(game)
   refreshStaffMarket(game)
   return game
@@ -87,7 +92,9 @@ function resetAtr(game, order) {
   order.forEach((id, i) => { game.atr[id] = atrFor(i + 1) })
 }
 
-// ---- Drivers (the full market arrives in milestone 4) ----
+// ---- Drivers ----
+// Signs a driver at asking terms. Used for the starting line-up on the new-game
+// screen; after that, drivers are signed through the market (people.js).
 export function signDriver(game, driverId, role) {
   const dr = game.drivers[driverId]
   if (!dr) throw new Error(`Unknown driver ${driverId}`)
@@ -102,28 +109,11 @@ export function signDriver(game, driverId, role) {
   dr.teamId = PLAYER
   dr.contract = {
     salary: terms.salary * (reserve ? 0.2 : 1), backing: reserve ? 0 : terms.backing, years: terms.loan ? 1 : 2,
-    loan: terms.loan, role,
+    loan: terms.loan, role, numberOne: false, releaseClause: false,
   }
   if (reserve) game.reserve = driverId
   else game.teams[PLAYER].drivers.push(driverId)
   return dr.contract
-}
-
-export function releaseCost(driver) {
-  return 0.6 * driver.contract.salary * driver.contract.years
-}
-
-export function releaseDriver(game, driverId) {
-  const dr = game.drivers[driverId]
-  if (!dr || dr.teamId !== PLAYER) throw new Error('Not one of your drivers')
-  if (game.phase !== 'preseason') throw new Error('Drivers can only be changed in pre-season, before targets are set')
-  const cost = releaseCost(dr)
-  if (!canSpend(game, cost)) throw new Error('Not enough cash to pay off the contract')
-  spend(game, 'drivers', cost)
-  dr.teamId = null
-  dr.contract = null
-  if (game.reserve === driverId) game.reserve = null
-  else game.teams[PLAYER].drivers = game.teams[PLAYER].drivers.filter((id) => id !== driverId)
 }
 
 export function changeSupplier(game, supplierId) {
@@ -204,10 +194,19 @@ export function simulateRound(game) {
   progressDevelopment(game)
   rivalRound(game)
   const result = raceRound(game)
+  recordRace(game, result)
+  honoursRound(game, result)
+  // A number-one driver resents being made to play second fiddle.
+  const fav = { driver1: 0, driver2: 1 }[game.settings.priority]
+  if (fav !== undefined) {
+    const other = game.drivers[game.teams[PLAYER].drivers[1 - fav]]
+    if (other?.contract?.numberOne) other.interestMod -= 1
+  }
   applyRoundFinance(game, result)
   sponsorsRound(game)
   if (game.round === ROUNDS / 2) {
-    // Mid-season: the winter's rule change is announced and the aero allowance is reset.
+    // Mid-season: ratings move, the winter's rule change is announced and the aero allowance is reset.
+    game.news.push(...peopleMidSeason(game))
     game.tighteningKnown = true
     resetAtr(game, getStandings(game).constructors.map((c) => c.id))
     game.news.push(`Rule change announced for next season: ${tighteningPlan(game) === 'aero' ? 'Aero' : 'Chassis'} will be hit hardest`)
@@ -235,7 +234,8 @@ export function projectSeason(game, runs = 150) {
 // Pre-season, step two: project the year and offer six targets to choose from.
 export function prepareTargets(game, runs = 150) {
   if (game.phase !== 'preseason') throw new Error('Not in pre-season')
-  if (game.teams[PLAYER].drivers.length !== 2) throw new Error('Sign two race drivers first')
+  if (!seatsReady(game)) throw new Error('Sign two race drivers first. A driver who is out of contract leaves when the market closes')
+  closeMarket(game)
   const projection = projectSeason(game, runs)
   const yearIncome = Object.values(perRound(game).income).reduce((s, v) => s + v, 0) * ROUNDS
   game.targets.offer = buildOffer(game, projection, yearIncome)
@@ -256,7 +256,8 @@ export function startSeason(game, picks) {
     if (game.phase !== 'targets') throw new Error('Set the season targets first')
     chooseTargets(game, picks)
   } else if (game.phase !== 'preseason') throw new Error('Not in pre-season')
-  if (game.teams[PLAYER].drivers.length !== 2) throw new Error('Sign two race drivers first')
+  if (!seatsReady(game)) throw new Error('Sign two race drivers first. A driver who is out of contract leaves when the market closes')
+  closeMarket(game)
   game.seasonStart = {
     car: { ...game.teams[PLAYER].car },
     facilityLevels: Object.values(game.org.facilities).reduce((s, f) => s + f.level, 0),
@@ -271,22 +272,8 @@ function updateReputation(game, standings) {
   const target = clamp(100 - (pos - 1) * 8.3, 5, 95)
   const milestones = (me.points > 0 ? 1 : 0) + Math.min(3, me.podiums) + Math.min(6, me.wins * 2)
   const before = game.reputation
-  game.reputation = clamp(before + 0.3 * (target - before) + milestones, 0, 100)
+  game.reputation = clamp(before + 0.4 * (target - before) + milestones, 0, 100)
   return game.reputation - before
-}
-
-function renewContracts(game) {
-  const ids = [...game.teams[PLAYER].drivers, ...(game.reserve ? [game.reserve] : [])]
-  for (const id of ids) {
-    const d = game.drivers[id]
-    const c = d.contract
-    const terms = signingTerms(d, game.reputation, game.seed, game.season)
-    if (c.role === 'race') c.backing = backingRoll(d, game.seed, game.season)
-    if (--c.years > 0) continue
-    // Until the driver market exists, an expiring deal rolls over at the driver's current demand.
-    c.salary = terms.salary * (c.role === 'reserve' ? 0.2 : 1)
-    c.years = c.loan ? 1 : 2
-  }
 }
 
 export function endSeason(game) {
@@ -301,6 +288,9 @@ export function endSeason(game) {
   }
   game.history.push(summary)
   game.news = []
+  honoursSeason(game, summary)
+  const champ = game.drivers[st.drivers[0]?.id]
+  if (champ) champ.career.titles++
 
   // Season targets are judged first, so "cash at season end" is the figure on screen after the last race.
   const reputationBefore = game.reputation
@@ -314,15 +304,21 @@ export function endSeason(game) {
 
   // Winter: the rules tighten for everyone, then each team adds its winter work.
   const hard = tighteningPlan(game)
+  rivalReputationWinter(game, st.constructors.map((c) => c.id))
   rivalWinter(game, hard)
   game.winterReport = playerWinter(game, hard)
   game.seasonReport = { ...summary, sponsors: sponsorReport.map(({ deal, ...line }) => line), reputationChange, cashEnd, targets: targetReport, confidence: game.confidence }
 
   game.lastStandings = st.constructors.map((c) => c.id)
+  game.news.push(...rivalFormEvents(game), ...supplierDrift(game))
   game.season++
   game.round = 0
   game.results = []
   game.phase = 'preseason'
+  // The driver market opens: ratings change, contracts expire, rivals review their drivers.
+  game.approaches = []
+  game.news.push(...peopleWinter(game))
+  staffApproaches(game)
   game.tighteningKnown = false
   game.bonus = { capacity: targetReport?.next.capacity || 0, sponsor: targetReport?.next.sponsor || 0, facilityDiscount: 0 }
   if (targetReport) game.targets.history.push({ season: summary.season, report: targetReport.report, sweep: targetReport.sweep })
@@ -331,9 +327,8 @@ export function endSeason(game) {
   game.decision = null
   game.insured = false
   game.teams[PLAYER].powerBonus = 0
-  if (game.confidence <= 0) triggerCrisis(game)
+  if (game.confidence <= 0) triggerCrisis(game, 'confidence')
   resetAtr(game, game.lastStandings)
-  renewContracts(game)
   scheduleRivalUpgrades(game)
   sponsorsNewSeason(game, sponsorReport)
   refreshStaffMarket(game)

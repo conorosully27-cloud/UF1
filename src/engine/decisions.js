@@ -4,19 +4,18 @@
 // estimate what an option is worth for the scripted managers.
 
 import { PLAYER, ROUNDS, clamp, clock, currentTrack, effectiveCar, playerPosition, playerDrivers } from './core.js'
-import { earn, spend, forecast, perRound } from './economy.js'
+import { earn, spend, forecast, perRound, OVERDRAFT } from './economy.js'
 import { capacity, diminishing, chassisCap, rushFirstBuild, plannedSpendPerRound } from './development.js'
 import { headcountCap, engineerCount } from './org.js'
 import { mechFailureChance, crashChance } from './weekend.js'
 import { streamRng } from './rng.js'
 import { DECK } from './data/deck.js'
+import { makeDriver } from './people.js'
 
 export const NO_REPEAT = 32 // rounds before the same decision can come round again
 const BY_ID = Object.fromEntries(DECK.map((d) => [d.id, d]))
 const WEEKEND_TYPES = new Set(['Race weekend', 'Reliability'])
 const SIZE_GAIN = { minor: 1.0, major: 2.5, package: 6.0 }
-const JUNIOR_FIRST = ['Mika', 'Theo', 'Luca', 'Arjun', 'Kai', 'Noah', 'Enzo', 'Ryo', 'Felix', 'Oscar']
-const JUNIOR_LAST = ['Halvorsen', 'Marchetti', 'Okonkwo', 'Reyes', 'Lindgren', 'Tanaka', 'Duval', 'Petrov', 'Castell', 'Whitmore']
 
 export function decisionContext(game) {
   const drivers = playerDrivers(game)
@@ -82,15 +81,11 @@ export function describeDecision(game) {
 
 const driverBySlot = (game, slot) => (slot === 'reserve' ? game.drivers[game.reserve] : game.drivers[game.teams[PLAYER].drivers[slot]])
 
+// The funded karting prospect joins the player's academy as a junior.
 function addProspect(game, st) {
   const rng = streamRng(game.seed, 'prospect', clock(game))
-  const id = `prospect-${clock(game)}`
-  const r = () => rng.int(70, 76)
-  game.drivers[id] = {
-    id, name: `${rng.pick(JUNIOR_FIRST)} ${rng.pick(JUNIOR_LAST)}`, age: 18, pace: r() + 2, racecraft: r(), consistency: r() - 3, wet: r(),
-    feedback: r() - 4, marketability: rng.int(58, 72), potential: rng.int(86, 94), pull: 0, seat: 'none', loanFrom: null, teamId: null, contract: null,
-  }
-  st.out.push(`${game.drivers[id].name}, the junior the team has been funding, is ready and can be signed`)
+  const d = makeDriver(game, rng, { age: 18, potential: rng.int(86, 94), level: rng.int(71, 75), academy: true })
+  st.out.push(`${d.name}, the junior the team has been funding, has joined your academy and can be signed`)
 }
 
 function applyEffect(game, e, st) {
@@ -241,8 +236,10 @@ function effectValue(game, c, e, rain) {
   const dealWorth = (d, x) => 0.003 * d.fee * x * (d.seasonsLeft <= 1 ? 3 : 1)
   if ('cash' in e) {
     // Money matters more when there is none: a cost the team cannot cover, or income when the forecast is negative.
-    const tight = (e.cash < 0 && c.cash + e.cash < 1) || (e.cash > 0 && c.forecast < 0)
-    v += e.cash * (tight ? 1.5 : 1)
+    // A cost that would take the season's forecast past the overdraft limit risks a crisis.
+    const tight = (e.cash < 0 && (c.cash + e.cash < 1 || c.forecast + e.cash < 0)) || (e.cash > 0 && c.forecast < 0)
+    const danger = e.cash < 0 && c.forecast + e.cash < OVERDRAFT
+    v += e.cash * (danger ? 3 : tight ? 1.5 : 1)
   }
   if ('rating' in e) {
     const [area, x] = e.rating

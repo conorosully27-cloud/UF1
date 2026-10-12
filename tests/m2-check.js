@@ -49,7 +49,7 @@ function hasBadNumber(x, path = '') {
   check('starting sponsors fill three slots', g.sponsors.deals.length === 3 && slotTiers(g).length === 3)
 
   const cap = capacity(g)
-  check('capacity starts near 3.8 aero and 5.9 mechanical units a round, and the factory can keep up', cap.aero > 3.2 && cap.aero < 4.4 && cap.mech > 5.2 && cap.mech < 6.6 && cap.build > cap.aero + cap.mech, `aero ${cap.aero.toFixed(2)}, mech ${cap.mech.toFixed(2)}, build ${cap.build.toFixed(2)}`)
+  check('capacity starts near 6.2 aero and 9.5 mechanical units a round, and the factory can keep up', cap.aero > 5.6 && cap.aero < 6.8 && cap.mech > 8.7 && cap.mech < 10.4 && cap.build > cap.aero + cap.mech, `aero ${cap.aero.toFixed(2)}, mech ${cap.mech.toFixed(2)}, build ${cap.build.toFixed(2)}`)
 
   const cash0 = g.finance.cash
   const aero0 = g.teams[PLAYER].car.aero
@@ -75,7 +75,6 @@ function hasBadNumber(x, path = '') {
   check('a facility cannot be built twice at once', expectThrow(() => buildFacility(g, 'designOffice')))
   buildFacility(g, 'cfd')
   check('only two builds run at once', expectThrow(() => buildFacility(g, 'factory')))
-  check('the Academy is locked until milestone 4', expectThrow(() => buildFacility(g, 'academy')))
   for (let r = 0; r < 4; r++) simulateRound(g)
   check('the Design Office finishes after 4 rounds', g.org.facilities.designOffice.level === lvl + 1 && !g.org.facilities.designOffice.building)
 

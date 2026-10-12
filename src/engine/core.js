@@ -5,7 +5,7 @@ import { overall } from './data/drivers.js'
 import { carScore } from './weekend.js'
 import { playerOps } from './org.js'
 
-export const SAVE_VERSION = 4
+export const SAVE_VERSION = 5
 export const START_YEAR = 2027
 export const PLAYER = 'player'
 export const START_REPUTATION = 10

@@ -6,6 +6,7 @@ import { DECK, NO_REPEAT, describeDecision, resolveDecision, forceDecision, best
 import { LEVELS, averageManager, chooseTargets, targetProgress } from '../src/engine/targets.js'
 import { ROLES } from '../src/engine/org.js'
 import { startProject } from '../src/engine/development.js'
+import { autoDrivers } from '../src/engine/people.js'
 import { steady, decide, pickTargets, playFullSeason } from './bot.js'
 
 const TARGET_SEASONS = Number(process.argv[2] || 120)
@@ -95,6 +96,7 @@ function hasBadNumber(x, path = '') {
   let blocked = true
   let outcomeFixed = true
   for (let s = 0; s < 3; s++) {
+    autoDrivers(g)
     prepareTargets(g, 10); startSeason(g, pickTargets(g))
     while (g.phase === 'season') {
       if (!g.decision || g.decision.resolved) { blocked = false; break }

@@ -1,13 +1,12 @@
 import React, { useState } from 'react'
-import { PLAYER, clock, overall } from '../engine/core.js'
+import { PLAYER, clock } from '../engine/core.js'
 import { TIERS, SHAPES, slotTiers, freeSlots, acceptOffer, endDeal } from '../engine/sponsors.js'
 import {
   perRound, forecast, takeLoan, repayLoan, takeAdvance, advanceLimit, bankLimit, bankRate, merchandise, projectedCapSpend,
   COST_CAP, OVERDRAFT, prizeThisSeason, ownerFunding,
 } from '../engine/economy.js'
 import { plannedSpendPerRound } from '../engine/development.js'
-import { signDriver, releaseDriver, releaseCost, changeSupplier, setPartsPackage } from '../engine/game.js'
-import { signingTerms } from '../engine/contracts.js'
+import { changeSupplier, setPartsPackage } from '../engine/game.js'
 import { PARTS_PACKAGE_PRICE } from '../engine/data/suppliers.js'
 import { money, pct } from './format.js'
 
@@ -132,11 +131,6 @@ export function FinanceTab({ game, act }) {
 
 export function TeamTab({ game, act }) {
   const team = game.teams[PLAYER]
-  const pre = game.phase === 'preseason'
-  const mine = [...team.drivers, ...(game.reserve ? [game.reserve] : [])].map((id) => game.drivers[id])
-  const pool = Object.values(game.drivers).filter((d) => !d.teamId)
-    .map((d) => ({ d, ovr: overall(d), terms: signingTerms(d, game.reputation, game.seed, game.season) }))
-    .sort((a, b) => b.ovr - a.ovr)
   const f = game.org.facilities
   const canInHouse = f.designOffice.level >= 3 && f.factory.level >= 3
   return (
@@ -144,44 +138,7 @@ export function TeamTab({ game, act }) {
       <h2>Team</h2>
       <p>Reputation <b>{game.reputation.toFixed(0)}</b> of 100 · owner confidence <b>{game.confidence.toFixed(0)}</b> of 100</p>
 
-      <h3>Drivers</h3>
-      <table>
-        <thead><tr><th>Driver</th><th>Role</th><th className="n">Overall</th><th className="n">Salary</th><th className="n">Backing</th><th className="n">Seasons left</th><th /></tr></thead>
-        <tbody>
-          {mine.map((d) => (
-            <tr key={d.id}>
-              <td>{d.name}</td><td>{d.contract.role === 'reserve' ? 'Reserve' : 'Race'}{d.contract.loan ? `, loan from ${game.teams[d.loanFrom]?.name ?? d.loanFrom}` : ''}</td><td className="n">{overall(d)}</td>
-              <td className="n">{money(d.contract.salary, 2)}</td><td className="n">{d.contract.backing ? money(d.contract.backing, 2) : '—'}</td><td className="n">{d.contract.years}</td>
-              <td>{pre && <button onClick={() => { if (window.confirm(`Release ${d.name}? It costs ${money(releaseCost(d), 2)}.`)) act((g) => releaseDriver(g, d.id)) }}>Release ({money(releaseCost(d), 2)})</button>}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {!pre && <p className="muted">Drivers can be changed in pre-season, before the season's targets are set. The full driver market arrives in milestone 4.</p>}
-      {pre && (
-        <div className="scroll">
-          <h3>Available drivers</h3>
-          <table>
-            <thead><tr><th>Driver</th><th className="n">Age</th><th className="n">Overall</th><th className="n">Pace</th><th className="n">Racecraft</th><th className="n">Consist.</th><th className="n">Wet</th><th className="n">Feedback</th><th className="n">Market.</th><th className="n">Interest</th><th className="n">Salary</th><th>Backing</th><th /></tr></thead>
-            <tbody>
-              {pool.map(({ d, ovr, terms }) => (
-                <tr key={d.id}>
-                  <td>{d.name}{terms.loan ? ' (loan)' : ''}</td><td className="n">{d.age}</td><td className="n">{ovr}</td><td className="n">{d.pace}</td><td className="n">{d.racecraft}</td><td className="n">{d.consistency}</td>
-                  <td className="n">{d.wet}</td><td className="n">{d.feedback}</td><td className="n">{d.marketability}</td><td className="n">{terms.interest}</td>
-                  <td className="n">{terms.possible ? money(terms.salary, 2) : '—'}</td>
-                  <td>{terms.backingHigh < 0.05 ? 'None' : `${money(terms.backingLow)}–${money(terms.backingHigh)}`}</td>
-                  <td>{terms.possible ? (
-                    <>
-                      <button disabled={team.drivers.length >= 2} onClick={() => act((g) => { signDriver(g, d.id, 'race') })}>Race seat</button>{' '}
-                      <button disabled={!!game.reserve} onClick={() => act((g) => { signDriver(g, d.id, 'reserve') })}>Reserve</button>
-                    </>
-                  ) : 'Will not sign yet'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <p className="muted">Drivers are signed and released on the Drivers tab.</p>
 
       <h3>Power unit</h3>
       <p>Current supplier: <b>{game.suppliers[team.supplier].name}</b>.</p>
@@ -190,7 +147,7 @@ export function TeamTab({ game, act }) {
         <tbody>
           {Object.values(game.suppliers).map((s) => (
             <tr key={s.id} className={s.id === team.supplier ? 'me' : ''}>
-              <td>{s.name}</td><td className="n">{s.power - 1}</td><td className="n">{s.reliability}</td><td className="n">{money(s.price, 0)}</td><td className="n">{s.minReputation || '—'}</td>
+              <td>{s.name}</td><td className="n">{(s.power - 1).toFixed(1)}</td><td className="n">{s.reliability.toFixed(1)}</td><td className="n">{money(s.price, 0)}</td><td className="n">{s.minReputation || '—'}</td>
               <td>{s.id !== team.supplier && <button disabled={game.phase !== 'preseason' || game.reputation < s.minReputation} onClick={() => act((g) => changeSupplier(g, s.id))}>Switch</button>}</td>
             </tr>
           ))}
@@ -202,6 +159,7 @@ export function TeamTab({ game, act }) {
           ? <button disabled={game.phase !== 'preseason' || !canInHouse} onClick={() => act((g) => setPartsPackage(g, false))}>Go in-house</button>
           : <button disabled={game.phase !== 'preseason'} onClick={() => act((g) => setPartsPackage(g, true))}>Buy the package again</button>}
       </p>
+      <p className="muted">Supplier ratings and prices drift each winter; weaker suppliers tend to catch up. Prices are per season.</p>
       <p className="muted">The package adds 15% to mechanical design capacity and keeps Chassis from falling below 45, but limits Chassis to 8 below the supplier's own car. Going in-house needs the Design Office and Factory at level 3. Supplier and package changes are made in pre-season.</p>
     </div>
   )
