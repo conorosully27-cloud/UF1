@@ -13,6 +13,7 @@ import {
   SAVE_VERSION, START_YEAR, PLAYER, START_REPUTATION, ROUNDS, clone, clamp, year, currentTrack, effectiveCar, teamOps,
   getStandings, playerPosition, paceTable, atrFor, overall, seasonMetrics,
 } from './core.js'
+import { setupLossFor, SETUP } from './practice.js'
 import { initialFinance, applyRoundFinance, checkCrisis, triggerCrisis, closeSeasonBooks, canSpend, spend, perRound, settleOldBorrowing } from './economy.js'
 import { initialDev, progressDevelopment, tighteningPlan, playerWinter } from './development.js'
 import { progressOrg, refreshStaffMarket } from './hq.js'
@@ -175,7 +176,12 @@ export function buildEntries(game) {
 function playerEntryExtras(game, slot) {
   const w = game.weekend
   if (!w) return {}
-  return { wing: w.wing?.[slot], controlled: !!w.live, startTyre: w.startTyre?.[slot], orders: w.orders?.[slot] }
+  const extras = { wing: w.wing?.[slot], controlled: !!w.live, startTyre: w.startTyre?.[slot], orders: w.orders?.[slot] }
+  // Run live, the car's balance from practice (or the engineers' setup) sets
+  // the setup loss, and a long run in practice means a little less tyre wear.
+  if (w.live && w.balance) extras.setupLoss = setupLossFor(game, slot, w.balance[slot])
+  if (w.practice?.cars[slot]?.longRun) extras.wearMult = SETUP.longRunWear
+  return extras
 }
 
 // Brings a save from an earlier build up to date. Safe to run on any save.

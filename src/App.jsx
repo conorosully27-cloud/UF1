@@ -186,7 +186,12 @@ function SettingsTab({ game, act, theme, setTheme }) {
       <div className="panel">
         <div className="kicker">Race weekends</div>
         <div style={{ margin: '8px 0' }}><Seg value={game.settings.involvement} options={[['live', 'On the pit wall'], ['quick', 'Quick sim']]} onPick={(v) => act((g) => { g.settings.involvement = v })} /></div>
-        <p className="muted">On the pit wall you set the wing, pick start tyres and make the calls during the race; the strategist can take over at any moment. Quick sim plays the weekend in one click. Either can be overridden for a single weekend from the Race screen.</p>
+        <p className="muted">On the pit wall you run the weekend: practice, qualifying and the race, making the calls as it plays out. Quick sim plays the weekend in one click. Either can be overridden for a single weekend from the Race screen.</p>
+        {game.settings.involvement === 'live' && <>
+          <div className="setrow"><span>Practice</span><Seg value={game.settings.practice !== false} options={[[true, 'I run it'], [false, 'The engineers do']]} onPick={(v) => act((g) => { g.settings.practice = v })} /></div>
+          <div className="setrow"><span>Qualifying</span><Seg value={game.settings.quali !== 'strategist'} options={[[true, 'I run it'], [false, 'The strategist does']]} onPick={(v) => act((g) => { g.settings.quali = v ? 'live' : 'strategist' })} /></div>
+          <p className="muted">Either can also be skipped for a single weekend. The race is always yours to run, though the strategist can take the calls.</p>
+        </>}
       </div>
       <div className="panel">
         <div className="kicker">Look</div>
