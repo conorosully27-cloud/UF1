@@ -276,7 +276,12 @@ export function computeCalls(game) {
     const age = Math.round(c.wear / wearRate(st, c))
     const tyreText = `${TYRES[c.tyre].name}s, ${Math.round(tyreLife(c) * 100)}% worn (${age} laps)`
     let call = null
-    if (st.neutral && left >= 2) {
+    if (st.neutral === 'red') {
+      // The race is stopped: a free change of tyres for the restart.
+      const comp = bestStop(st, c, st.seg).comp
+      const opts = callOptions(st, c, comp).map((o) => (o.box ? { ...o, label: `Fit ${TYRES[o.box].name}s` } : { ...o, label: 'Keep these tyres' }))
+      call = { kind: 'red', title: 'Red flag: tyres for the restart?', text: `${c.e.name}: ${tyreText}, ${lapsLeft} laps left. Every car can change tyres for nothing while the race is stopped.`, options: opts, recommend: adv ? `box:${adv.comp}` : 'stay' }
+    } else if (st.neutral && left >= 2) {
       const g = neutralGain(st, c, st.seg, st.neutral)
       const what = st.neutral === 'sc' ? 'safety car' : 'virtual safety car'
       const why = c.lastStop >= st.seg - 2 ? 'The tyres are almost new.' : lapsLeft < 10 ? `Only ${lapsLeft} laps left.` : g.seconds > 1 ? `A stop costs about ${Math.round(st.track.pitLoss * (st.neutral === 'sc' ? 0.5 : 0.6))} s instead of ${st.track.pitLoss} s.` : 'The saving does not beat the current plan.'
@@ -495,7 +500,7 @@ function radio(w, st, before, neutralBefore) {
     if (c.forced === 'puncture' && !b.forced) say(c, 'Puncture! Boxing this lap.')
     if (c.wingDamage > 0 && !b.damage) say(c, "I've damaged the front wing. Understeer everywhere.")
     else if (tyreLife(c) > 0.9 && tyreLife(c) < 1.15) say(c, 'These tyres are about done.')
-    if (st.neutral && !neutralBefore) say(c, st.neutral === 'sc' ? 'Safety car? What do we do?' : 'VSC, VSC.')
+    if (st.neutral && !neutralBefore) say(c, { sc: 'Safety car? What do we do?', vsc: 'VSC, VSC.', red: 'Red flag. Coming in to the pit lane.' }[st.neutral])
     if (st.cond[st.seg] && st.cond[st.seg] !== st.cond[st.seg - 1] && st.cond[st.seg] !== 'dry' && !TYRES[c.tyre].wet) say(c, "It's raining. Slicks won't last.")
   }
   if (w.radio.length > 60) w.radio.splice(0, w.radio.length - 60)

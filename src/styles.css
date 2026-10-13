@@ -115,6 +115,7 @@ ul.plain { margin: 4px 0; padding-left: 18px; }
 .banner { margin-top: 8px; background: var(--sc); color: #111; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-align: center; border-radius: 6px; padding: 4px; font-size: 13px; }
 .banner.wet { background: var(--wet); color: #fff; }
 .banner.flag { background: repeating-conic-gradient(#fff 0 25%, #111 0 50%) 0 0 / 16px 16px; color: #111; text-shadow: 0 0 4px #fff, 0 0 2px #fff; }
+.banner.red { background: #d91e2a; color: #fff; }
 .race-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
 .race-side { order: -1; display: grid; gap: 12px; align-content: start; }
 @media (min-width: 900px) { .race-grid { grid-template-columns: 390px 1fr; align-items: start; } .race-side { order: 0; } }
@@ -164,7 +165,7 @@ ul.plain { margin: 4px 0; padding-left: 18px; }
 .feed li:last-child { border: 0; }
 .feed .l { color: var(--muted); display: inline-block; width: 40px; }
 .tag { font-size: 10px; font-weight: 700; border-radius: 4px; padding: 0 5px; margin-right: 6px; }
-.tag.sc { background: var(--sc); color: #111; } .tag.pit { background: #2f3a4d; color: #cfe0ff; } .tag.out { background: #5a1f27; color: #ffb3bb; } .tag.wx { background: #17375e; color: #9cc8ff; } .tag.r { background: var(--panel-2); color: var(--accent); border: 1px solid var(--line); }
+.tag.sc { background: var(--sc); color: #111; } .tag.red { background: #d91e2a; color: #fff; } .tag.pit { background: #2f3a4d; color: #cfe0ff; } .tag.out { background: #5a1f27; color: #ffb3bb; } .tag.wx { background: #17375e; color: #9cc8ff; } .tag.r { background: var(--panel-2); color: var(--accent); border: 1px solid var(--line); }
 .controls { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--bg) 94%, transparent); border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: flex; gap: 8px; justify-content: center; backdrop-filter: blur(6px); }
 .controls button { flex: 1; max-width: 230px; }
 @media (max-width: 719px) { body.racing .nav { display: none; } }
@@ -322,3 +323,18 @@ details.fold > div { padding: 8px 2px; }
 .moment-big.m-crisis .m-title { background: linear-gradient(180deg, #ffb3bb, #ff4d5e); -webkit-background-clip: text; background-clip: text; }
 .moment-big.m-champions .m-title { background: linear-gradient(180deg, #fff3b0, #f5c518); -webkit-background-clip: text; background-clip: text; }
 .m-place:not(.gold):not(.silver):not(.bronze) { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 45%, #fff), var(--accent) 50%, color-mix(in srgb, var(--accent) 60%, #000)); color: var(--on-accent); box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* Red flag: the race stopped */
+.m-redflag .m-strip { background: linear-gradient(100deg, #6e0a12, #d91e2a 50%, #6e0a12); border-color: #fff; }
+.m-redflag .m-title::before { content: ''; display: inline-block; width: 22px; height: 30px; margin-right: 16px; vertical-align: middle; background: #ff2a36; border: 2px solid #fff; border-left-width: 4px; box-shadow: 0 0 18px rgba(255, 60, 70, .7); animation: m-wave 1s ease-in-out infinite alternate; transform-origin: left center; }
+@keyframes m-wave { to { transform: skewY(-8deg) scaleX(.9); } }
+
+/* The season review: the year in numbers */
+.m-stats { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 8px; margin: 16px 0 6px; }
+.m-stat { padding: 8px 6px; border-radius: 10px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); }
+.m-stat b { display: block; font-size: 24px; font-style: italic; line-height: 1.1; }
+.m-stat span { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
+.m-lines { list-style: none; padding: 0; margin: 10px 0 0; font-size: 14px; opacity: .85; display: grid; gap: 4px; }
+.moment-big.m-review .m-card { max-width: 600px; }
+.moment-big.m-review .m-title { font-size: clamp(36px, 9vw, 56px); }
+@media (max-width: 520px) { .m-stats { grid-template-columns: repeat(3, 1fr); } .moment-big.m-review .m-card { padding: 22px 16px 18px; } }

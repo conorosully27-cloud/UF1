@@ -32,6 +32,7 @@ export const SIM = {
   scAfterCrash: 0.5, scAfterFailure: 0.18, scAfterContact: 0.5, scAfterLap1: 0.55,
   scAverage: 0.39, // average of the tracks' safety-car figures
   vscShare: 0.35, // share of neutralisations that are a virtual safety car
+  redShare: 0.06, // share that are a red flag, more after a multi-car crash or in heavy rain (one a race at most)
   wetCrashMult: 3.2, // crash risk multiplier on a wet track
   pileUp: 0.15, // share of first-lap incidents that involve five cars
   chaosSd: 0.75, // race-to-race spread in crashes and contact: most races calm, the odd one carnage
@@ -60,7 +61,7 @@ const CONDITION = {
 }
 const SLICKS = ['S', 'M', 'H']
 // Fraction of the usual pit loss under a safety car and a virtual safety car.
-export const NEUTRAL_PIT = { sc: 0.5, vsc: 0.6 }
+export const NEUTRAL_PIT = { sc: 0.5, vsc: 0.6, red: 0 }
 
 // Standing orders for a car. Defaults are 'normal' / 'standard'.
 export const ORDERS = {
@@ -98,7 +99,7 @@ const MECH_REASONS = ['power unit', 'gearbox', 'hydraulics', 'brakes', 'suspensi
 
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x))
 // Labels for the race's random streams.
-const RNG = { pit: 1, call: 2, car: 3, resolve: 4, neutral: 5, sc: 6, sclap: 7, start: 8, plan: 9 }
+const RNG = { pit: 1, call: 2, car: 3, resolve: 4, neutral: 5, sc: 6, sclap: 7, start: 8, plan: 9, red: 10 }
 const carIndex = (state, c) => c.idx
 
 export function carScore(car, w) {
@@ -371,7 +372,7 @@ export function createRace(track, entries, rng, opts = {}) {
     // Most races are calm; the odd one is carnage.
     // Rain makes it more likely still.
     chaos: clamp(Math.exp(rng.normal(0, P.chaosSd) - (P.chaosSd * P.chaosSd) / 2), 0.25, 4) * (raceWeather === 'dry' ? 1 : P.wetChaos),
-    neutral: null, neutralNow: null, safetyCars: 0, vscs: 0, teamHold: {},
+    neutral: null, neutralNow: null, safetyCars: 0, vscs: 0, reds: 0, teamHold: {},
     cars, order: [], events, quali: null,
     qs: { key: Math.floor(rng.next() * 4294967296), session: 0, done: false, weather: qc.weather, slots: qc.slots, change: qc.change ?? null, left: cars.map((c) => c.idx), sessions: [] },
   }
@@ -571,6 +572,8 @@ export function strategistCall(state, c, seg, rng = null, neutral = state.neutra
   const strategy = c.e.ops.strategy
   const timely = (p) => (rng ? rng.chance(p) : true)
   if (c.forced) return { comp: bestStop(state, c, seg).comp, reason: c.forced }
+  // Under a red flag every car may change tyres for nothing.
+  if (neutral === 'red') { const comp = bestStop(state, c, seg).comp; return comp === c.tyre && c.wear < 3 ? null : { comp, reason: 'red' } }
   if (cnd !== 'dry' && !T.wet) {
     if (timely(0.45 + strategy / 180)) return { comp: cnd === 'wet' ? 'W' : 'I', reason: 'rain' }
     return null
@@ -603,6 +606,17 @@ export function strategistCall(state, c, seg, rng = null, neutral = state.neutra
 
 function pit(state, c, comp, seg, rng, reason) {
   const neutral = state.neutralNow
+  if (neutral === 'red') {
+    // A change of tyres while the race is stopped: no time lost, and not a pit stop.
+    c.tyre = comp
+    c.wear = 0
+    c.used.push(comp)
+    c.stints.push({ comp, lap: lapAt(state, seg) })
+    c.forced = null
+    c.two = usedTwo(c)
+    c.plan = TYRES[comp].wet || state.cond[seg] !== 'dry' ? [] : planRest(state, c, seg, comp, 0, c.two).stops.filter((p) => p.seg > seg)
+    return
+  }
   const loss = state.track.pitLoss * (neutral ? NEUTRAL_PIT[neutral] : 1)
   let extra = Math.abs(rng.normal()) * (0.25 + (100 - c.e.ops.pit) * 0.012) + (c.m.pitTime || 0)
   if (rng.chance(0.01 + (100 - c.e.ops.pit) * 0.0012)) {
@@ -781,7 +795,12 @@ export function stepRace(state, orders = {}) {
   }
   order = resolve(state, order.filter((c) => c.status === 'running'), wetSeg, s)
   if (sc && order.length > 1 && s < S - 1 && state.safetyCars + state.vscs < 3) {
-    if (R('neutral').chance(P.vscShare)) {
+    const crashes = state.cars.filter((c) => c.dnfSeg === s && (c.reason === 'crash' || c.reason === 'collision')).length
+    const pRed = P.redShare + (crashes >= 2 ? 0.3 : 0) + (cnd === 'wet' ? 0.15 : 0)
+    if (!state.reds && R('red').chance(pRed)) {
+      order = redFlag(state, order, s, R('sclap'))
+      state.neutral = 'red'
+    } else if (R('neutral').chance(P.vscShare)) {
       state.vscs++
       state.neutral = 'vsc'
       state.events.push({ lap: lapOf(state, s, R('sclap')), type: 'vsc', ids: [], text: 'Virtual safety car' })
@@ -902,6 +921,16 @@ function resolve(state, list, wetSeg, curSeg) {
   return res.sort((a, b) => a.t - b.t)
 }
 
+// The race is stopped: the cars line up in order for a standing restart,
+// and every car gets a change of tyres for nothing.
+function redFlag(state, list, seg, rng) {
+  state.reds = 1
+  state.events.push({ lap: lapOf(state, seg, rng), type: 'red', ids: [], text: 'Red flag: the race is stopped' })
+  const lead = list[0].t
+  list.forEach((c, k) => { c.t = lead + k * 0.6 })
+  return list
+}
+
 function safetyCar(state, list, seg, rng) {
   state.safetyCars++
   state.events.push({ lap: lapOf(state, seg, rng), type: 'sc', ids: [], text: 'Safety car: the field bunches up' })
@@ -984,7 +1013,7 @@ export function raceResult(state) {
     trackId: state.trackId,
     weather: { quali: state.qualiWet ? 'wet' : 'dry', qualiType: state.qs?.weather ?? (state.qualiWet ? 'wet' : 'dry'), race: state.raceWeather },
     quali: state.quali, race, events, detail,
-    stats: { safetyCars: state.safetyCars + state.vscs, vsc: state.vscs, retirements: retired.length, starters: cars.length, chaos: state.chaos },
+    stats: { safetyCars: state.safetyCars + state.vscs, vsc: state.vscs, redFlags: state.reds ?? 0, retirements: retired.length, starters: cars.length, chaos: state.chaos },
   }
 }
 
