@@ -233,3 +233,72 @@ details.fold > div { padding: 8px 2px; }
   .controls button { padding: 8px 6px; font-size: 13px; }
   .trackmap { max-height: 220px; }
 }
+
+/* ---- Moments ---- */
+.moment-banner { position: fixed; z-index: 60; left: 0; right: 0; top: 32%; pointer-events: none; animation: m-sweep var(--dur) cubic-bezier(.2, .8, .2, 1) both; }
+.m-strip { margin: 0 auto; max-width: 980px; padding: 18px 24px 20px; text-align: center; color: #fff; background: linear-gradient(100deg, #0b0d12 0%, #1a1f2a 50%, #0b0d12 100%); clip-path: polygon(2.5% 0, 100% 0, 97.5% 100%, 0 100%); box-shadow: 0 20px 60px rgba(0, 0, 0, .55); border-top: 4px solid var(--accent); border-bottom: 4px solid var(--accent); }
+.m-kicker { font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; opacity: .75; }
+.m-title { font-size: clamp(30px, 7vw, 54px); font-weight: 700; font-style: italic; letter-spacing: .03em; text-transform: uppercase; line-height: 1.05; margin: 2px 0; }
+.m-sub { font-size: 15px; opacity: .85; }
+.m-drivers { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+.m-driver { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 8px; border-radius: 999px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); font-weight: 700; font-size: 16px; }
+.m-driver i { width: 12px; height: 12px; border-radius: 50%; background: var(--dc); box-shadow: 0 0 10px var(--dc); }
+.m-driver b { padding-left: 6px; border-left: 1px solid rgba(255, 255, 255, .25); }
+@keyframes m-sweep { 0% { transform: translateX(-110%); opacity: 0 } 10% { transform: translateX(0); opacity: 1 } 86% { transform: translateX(0); opacity: 1 } 100% { transform: translateX(110%); opacity: 0 } }
+
+/* Safety car: amber, with flashing lights */
+.m-sc .m-strip { background: repeating-linear-gradient(135deg, #ffb020 0 26px, #f5a300 26px 52px); color: #111; border-color: #111; }
+.m-sc .m-title::before, .m-sc .m-title::after { content: ''; display: inline-block; width: 16px; height: 16px; border-radius: 50%; background: #fff6d5; margin: 0 18px; vertical-align: middle; animation: m-flash .5s steps(2) infinite; }
+.m-sc .m-title::after { animation-delay: .25s; }
+@keyframes m-flash { 50% { background: #b06a00; box-shadow: none } 0% { box-shadow: 0 0 16px #fff6d5 } }
+
+/* A car out: in the driver's colour */
+.m-out .m-strip { border-color: var(--dc); background: linear-gradient(100deg, #1a0b0e 0%, #2a1116 50%, #1a0b0e 100%); }
+.m-out .m-title { color: #fff; text-shadow: 0 0 22px color-mix(in srgb, var(--dc) 70%, transparent); }
+.m-out .m-kicker { color: var(--dc); opacity: 1; }
+
+/* Chequered flag */
+.m-flag .m-strip { background: repeating-conic-gradient(#f2f2f2 0 25%, #111 0 50%) 0 0 / 28px 28px; color: #111; border-color: #111; }
+.m-flag .m-inner { display: inline-block; background: rgba(10, 12, 16, .92); color: #fff; padding: 10px 28px 14px; border-radius: 10px; box-shadow: 0 0 0 3px rgba(10, 12, 16, .5); }
+
+/* Points, Q3 and the front row */
+.m-points .m-strip, .m-q3 .m-strip, .m-frontrow .m-strip { background: linear-gradient(100deg, #0b0d12, color-mix(in srgb, var(--accent) 35%, #0b0d12) 50%, #0b0d12); }
+
+/* The start lights */
+.m-lights .m-strip { background: #07080b; border-color: #222; padding: 22px 24px; }
+.lights { display: flex; gap: 14px; justify-content: center; }
+.lights span { display: grid; gap: 8px; padding: 10px 9px; background: #15171c; border-radius: 10px; border: 2px solid #23262d; }
+.lights i { width: 30px; height: 30px; border-radius: 50%; background: #2a0b0b; animation: 3.3s linear both; }
+/* One by one the lights come on, then all five go out at once. */
+.lights span:nth-child(1) i { animation-name: m-light1; }
+.lights span:nth-child(2) i { animation-name: m-light2; }
+.lights span:nth-child(3) i { animation-name: m-light3; }
+.lights span:nth-child(4) i { animation-name: m-light4; }
+.lights span:nth-child(5) i { animation-name: m-light5; }
+@keyframes m-light1 { 0%, 8% { background: #2a0b0b } 9%, 78% { background: #ff1e1e; box-shadow: 0 0 18px #ff1e1e, 0 0 4px #fff inset } 79%, 100% { background: #2a0b0b; box-shadow: none } }
+@keyframes m-light2 { 0%, 22% { background: #2a0b0b } 23%, 78% { background: #ff1e1e; box-shadow: 0 0 18px #ff1e1e, 0 0 4px #fff inset } 79%, 100% { background: #2a0b0b; box-shadow: none } }
+@keyframes m-light3 { 0%, 36% { background: #2a0b0b } 37%, 78% { background: #ff1e1e; box-shadow: 0 0 18px #ff1e1e, 0 0 4px #fff inset } 79%, 100% { background: #2a0b0b; box-shadow: none } }
+@keyframes m-light4 { 0%, 50% { background: #2a0b0b } 51%, 78% { background: #ff1e1e; box-shadow: 0 0 18px #ff1e1e, 0 0 4px #fff inset } 79%, 100% { background: #2a0b0b; box-shadow: none } }
+@keyframes m-light5 { 0%, 64% { background: #2a0b0b } 65%, 78% { background: #ff1e1e; box-shadow: 0 0 18px #ff1e1e, 0 0 4px #fff inset } 79%, 100% { background: #2a0b0b; box-shadow: none } }
+.m-go { opacity: 0; animation: m-go 3.3s both; margin-top: 10px; }
+@keyframes m-go { 0%, 78% { opacity: 0; transform: scale(.9) } 83%, 100% { opacity: 1; transform: none } }
+
+/* Big moments: full screen, confetti, a tap to carry on */
+.moment-big { position: fixed; z-index: 70; inset: 0; display: grid; place-items: center; padding: 16px; background: radial-gradient(circle at 50% 40%, rgba(20, 24, 34, .82), rgba(4, 5, 8, .94)); backdrop-filter: blur(4px); animation: m-fade .35s ease both; overflow: hidden; }
+.m-card { position: relative; text-align: center; color: #fff; padding: 28px 32px 24px; max-width: 520px; width: 100%; border-radius: 18px; background: linear-gradient(160deg, #1b202b, #0f1218); border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); animation: m-pop .5s cubic-bezier(.2, 1.4, .4, 1) both .1s; }
+.m-card .m-title { font-size: clamp(40px, 11vw, 68px); margin: 6px 0; background: linear-gradient(180deg, #fff, #c9cfda); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.m-card .m-sub { margin-bottom: 4px; }
+.m-card button { margin-top: 18px; min-width: 160px; }
+.m-place { width: 92px; height: 92px; margin: 10px auto 2px; border-radius: 50%; display: grid; place-items: center; font-size: 34px; font-weight: 700; font-style: italic; color: #1b1405; box-shadow: 0 0 40px rgba(255, 210, 63, .35), inset 0 -6px 12px rgba(0, 0, 0, .25); }
+.m-place.gold { background: radial-gradient(circle at 35% 30%, #fff3b0, #f5c518 45%, #b8860b); }
+.m-place.silver { background: radial-gradient(circle at 35% 30%, #ffffff, #c9ced6 45%, #8a919c); box-shadow: 0 0 40px rgba(220, 225, 235, .3); }
+.m-place.bronze { background: radial-gradient(circle at 35% 30%, #ffd9b0, #cd7f32 45%, #8a4b17); box-shadow: 0 0 40px rgba(205, 127, 50, .3); color: #fff; }
+.confetti { position: absolute; inset: 0; pointer-events: none; }
+.confetti i { position: absolute; top: -20px; height: 12px; border-radius: 2px; opacity: .9; animation-name: m-fall; animation-timing-function: linear; animation-iteration-count: infinite; }
+@keyframes m-fall { to { transform: translateY(110vh) rotate(720deg); } }
+@keyframes m-fade { from { opacity: 0 } }
+@keyframes m-pop { from { transform: scale(.7); opacity: 0 } }
+@media (prefers-reduced-motion: reduce) {
+  .moment-banner, .moment-big, .m-card, .m-go { animation-duration: .01s !important; }
+  .confetti { display: none; }
+}

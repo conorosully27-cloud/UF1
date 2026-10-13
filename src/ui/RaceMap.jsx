@@ -232,7 +232,7 @@ export function TrackMap({ game, st, snap }) {
 // far through it; once it catches up with the race the screen shows the race
 // as it stands. While playing, the next block is simulated as soon as the
 // playback catches up, unless the pit wall has a call waiting.
-export function usePlayback(game, act, step) {
+export function usePlayback(game, act, step, hold = false) {
   const w = game.weekend
   const st = w.state
   const [view, setView] = useState({ seg: st.seg, p: 0 })
@@ -245,6 +245,9 @@ export function usePlayback(game, act, step) {
   speedRef.current = speed
   framesRef.current = w.frames
   const requested = useRef(-1)
+  // While a moment such as the start lights is on screen, the clock waits.
+  const holdRef = useRef(hold)
+  holdRef.current = hold
   const open = w.calls.some((c) => !(c.id in w.answered))
   const seg = Math.min(view.seg, st.seg)
   const caughtUp = seg >= st.seg
@@ -261,6 +264,7 @@ export function usePlayback(game, act, step) {
     const tick = (now) => {
       const dt = Math.min(0.1, (now - last) / 1000)
       last = now
+      if (holdRef.current) { raf = requestAnimationFrame(tick); return }
       setView((v) => {
         if (v.seg >= segRef.current) return v
         const f = framesRef.current?.find((x) => x.seg === v.seg)

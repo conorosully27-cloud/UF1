@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { newGame, startSeason, simulateRound, endSeason, prepareTargets, backToPreseason, currentTrack, year, playerPosition, PLAYER, SAVE_VERSION, migrateSave } from './engine/game.js'
 import { forecast } from './engine/economy.js'
 import { plannedSpendPerRound, tighteningPlan, AREAS } from './engine/development.js'
@@ -15,6 +15,7 @@ import LiveWeekend, { Debrief } from './ui/LiveWeekend.jsx'
 import { CalendarStrip, RivalCard, GapChart } from './ui/PitWall.jsx'
 import { beginWeekend, weekendActive } from './engine/live.js'
 import { PLAYER_COLORS } from './engine/data/teams.js'
+import { MomentContext, MomentLayer } from './ui/Moments.jsx'
 import { seatsReady } from './engine/people.js'
 import { ordinal, money, onColor } from './ui/format.js'
 
@@ -245,6 +246,11 @@ export default function App() {
   const setTheme = (t) => { setThemeState(t); try { localStorage.setItem(THEME_KEY, t) } catch { /* not saved: fine */ } }
   const accent = game?.teams[PLAYER].color ?? '#ff5a36'
   const racing = !!game && weekendActive(game) && tab === 'home'
+  // Moments queue up and play one at a time over whatever screen is showing.
+  const [moments, setMoments] = useState([])
+  const show = useCallback((m) => setMoments((q) => (q.some((x) => x.key === m.key) ? q : [...q, m])), [])
+  const momentDone = useCallback(() => setMoments((q) => q.slice(1)), [])
+  const momentApi = useMemo(() => ({ show, active: moments[0] ?? null }), [show, moments])
   useEffect(() => {
     const root = document.documentElement
     root.dataset.theme = theme
@@ -289,6 +295,8 @@ export default function App() {
   const alert = weekendActive(game) || (!!game.decision && !game.decision.resolved)
 
   return (
+    <MomentContext.Provider value={momentApi}>
+    <MomentLayer queue={moments} onDone={momentDone} />
     <div className="app">
       <div className="top">
         <h1>{team.name}</h1>
@@ -328,5 +336,6 @@ export default function App() {
       {tab === 'save' && <SaveTab game={game} setGame={setGame} />}
       {tab === 'settings' && <SettingsTab game={game} act={act} theme={theme} setTheme={setTheme} />}
     </div>
+    </MomentContext.Provider>
   )
 }
