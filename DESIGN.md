@@ -470,7 +470,7 @@ Target curve for good play on Normal:
 |---|---|---|---|---|---|---|---|---|---|---|
 | Median position | 12th | 11th | 10th | 8th | 6th | 5th | 4th | 3rd | 2nd | 1st |
 
-First points in season 3, first podium in season 7 and first win in season 9 (medians). The first title comes in seasons 8–12 in 37% of saves and by season 15 in 85% (45% and 89% before the race-weekend rebuild: the fastest car on the day now wins a little less often, so the step to champion takes a little longer). The curve is met to season 5; seasons 6 to 9 sit at 5th, a season or two behind the curve, because the top four teams are a clear step above the rest and breaking into them takes a front-running organisation; the title then follows quickly. Once champion, a well-run team usually stays there (72% of these saves are champions in season 15). That is intended: a player good enough to reach the top has earned it, and staying there gets no extra difficulty beyond the rules that already bear on every leader (annual loss, aero allowance, cost cap).
+First points in season 3, first podium in season 7 and first win in season 9 (medians). The first title comes in seasons 8–12 in 38% of saves and by season 15 in 82% (45% and 89% before the race-weekend rebuild: the fastest car on the day now wins less often, by design, so the step to champion takes a little longer). The curve is met to season 5; seasons 6 to 9 sit at 5th, a season or two behind the curve, because the top four teams are a clear step above the rest and breaking into them takes a front-running organisation; the title then follows quickly. Once champion, a well-run team usually stays there (70% of these saves are champions in season 15). That is intended: a player good enough to reach the top has earned it, and staying there gets no extra difficulty beyond the rules that already bear on every leader (annual loss, aero allowance, cost cap).
 
 A manager that does nothing at all now climbs slowly to about 10th, because designers with nothing queued bank their work for free and the starting staff produce more than before tuning. It has no sponsors left after two seasons and wins nothing.
 
@@ -628,17 +628,17 @@ Each tuning change is checked against 200 saves per bot.
 - **Naive** keeps the designers busy on small safe upgrades, banks a quarter, accepts every sponsor, keeps two drivers at a fair price, and spreads the rest evenly: one facility after another in a fixed rotation and the same few heads for every department. It watches this season's forecast but plans no further, and picks A/B at random.
 - **Reckless** spends everything and borrows to the limit.
 
-Results over 60 saves per bot after the race-weekend rebuild (all targets met; the 200-save figures from before it are in brackets where they differ):
+Results over 60 saves per bot after the race-weekend rebuild and the extra race chaos (one target missed, the naive plateau; the 200-save figures from before the rebuild are in brackets where they differ):
 
 | Check | Target | Built |
 |---|---|---|
-| Competent: first title in seasons 8–12 | About half | 37%, 85% by season 15 (45%, 89%) |
+| Competent: first title in seasons 8–12 | About half | 38%, 82% by season 15 (45%, 89%) |
 | Competent: crisis | Under 10% | 0% |
-| Naive: plateau | 7th–9th | 9th from season 6, edging to 7th by season 12 |
+| Naive: plateau | 7th–9th | Missed: 9th from season 7, 7th by season 12 and 6th in season 15; the extra chaos helps a middling team score |
 | Naive: title by season 15 | Under 5% | 0% |
 | Reckless: crisis | Over half | 100% |
-| A/B value | About 10% | Random choices score 94% of the points over ten seasons (92%); first title by season 15 in 77% of saves instead of 85% |
-| Season targets, competent | 80 / 50 / 20% | 77 / 36 / 11% over every offered objective; results objectives 71–84 / 37–55 / 11–24%. Sponsor-fee targets above Safe need an extra deal (4% and 0%), and Aero rating gained is rarely met by a manager that banks heavily for facilities (28 / 10 / 0%) |
+| A/B value | About 10% | Random choices score 92% of the points over ten seasons; first title by season 15 in 70% of saves instead of 82% |
+| Season targets, competent | 80 / 50 / 20% | 76 / 37 / 13% over every offered objective; results objectives 71–84 / 37–55 / 11–24%. Sponsor-fee targets above Safe need an extra deal (4% and 0%), and Aero rating gained is rarely met by a manager that banks heavily for facilities (28 / 10 / 0%) |
 
 World health with no player (30 seasons, six saves): the front-to-back gap stays between 1.1 and 1.5 s, three or four teams win titles and the title changes hands several times, and teams move about half a place a year. Mercedes still wins about two-thirds of titles: its starting car settles about 0.09 s clear and it signs the best drivers; small development swings near the top barely move this because of the diminishing returns.
 
