@@ -373,15 +373,15 @@ Race-weekend cards in the decision deck that the live race covers (one-stop spli
 | Measure | Target | Built |
 |---|---|---|
 | Retirements per start | 10–12% | 11.8% |
-| Races with a safety car | 55–60% overall, set per track | 56.8% |
+| Races with a safety car | 55–60% overall, set per track | 56.5% |
 | Wet or mixed races | 10–15% | 13.0% |
-| Pole converts to a win | 45–50% | 49.4% |
-| The fastest car on the day wins | 55–65% | 50.5% |
-| A car from the three slowest rival teams scores points | 5–10% of starts | 4.6% |
+| Pole converts to a win | 35–45% (a design choice, below real F1's 45–50%) | 40.6% |
+| The fastest car on the day wins | 40–55% (a design choice, below real F1's 55–65%) | 45.9% |
+| A car from the three slowest rival teams scores points | 5–10% of starts | 4.9% |
 
 The player's own season-1 cars score in almost no starts, and the better of them beats at least one Cadillac in about 40% of races.
 
-The two misses are linked: four cars start within 0.15 s of each other, so the quickest on the day is rarely clear of the next, and anything that helps slow cars score also costs the quickest car wins. With one car made 0.3 s clear, it wins about 70% of races. Average stops run from about one a car (Monza, Spa) to about two (Montreal), and a race takes about 1 ms in the quick sim.
+The game is deliberately a little more chaotic than real F1, so that one team or driver does not win too predictably and the front never goes stale: qualifying varies more from lap to lap, the start shuffles the order more, and strategy and safety-car timing swing more. Pole therefore converts about 40% of the time and the fastest car on the day wins about 46%, both below real-world rates by design. A clearly faster car still dominates: with one car made 0.3 s clear, it wins about 65% of races. The slowest three rival teams score in just under 5% of starts, a hair under the target. Average stops run from about one a car (Monza, Spa) to about two (Montreal), and a race takes about 1 ms in the quick sim.
 
 **Points:** 25-18-15-12-10-8-6-4-2-1 across 24 cars. Ties in the constructors' table are broken by best finishes, so 11th against 12th matters on zero points.
 

@@ -20,11 +20,11 @@ export const SIM = {
   teamFormSd: 0.13, // weekend-to-weekend car variation, shared by both cars
   dayFormSd: 0.03, // race-day driver variation
   lapNoise: 0.16, // lap-to-lap variation
-  qualiSdBase: 0.05, qualiSdCons: 0.003, // qualifying lap variation, and how much Consistency narrows it
+  qualiSdBase: 0.08, qualiSdCons: 0.003, // qualifying lap variation, and how much Consistency narrows it
   gridGap: 0.4, // seconds between grid slots after lap one
-  startSd: 0.3,
-  strategySd: 0.6, // the strategy luck the tyre model does not cover
-  scLotterySd: 0.5,
+  startSd: 0.9,
+  strategySd: 1.2, // the strategy luck the tyre model does not cover
+  scLotterySd: 1.0,
   scCaughtOut: 0.05, // share of cars that lose out badly to safety-car timing
   incidentChance: 0.045, // per car per race: puncture, debris or damage
   rivalGridPenalty: 0.03, // per rival car per race: new power unit parts
@@ -36,7 +36,7 @@ export const SIM = {
   pileUp: 0.15, // share of first-lap incidents that involve five cars
   chaosSd: 0.75, // race-to-race spread in crashes and contact: most races calm, the odd one carnage
   wetChaos: 1.4, // extra chaos in a wet or mixed race
-  crashScale: 0.86, // keeps the average retirement rate where it was once the spread is wider
+  crashScale: 0.80, // keeps the average retirement rate where it was once the spread is wider
   wingCost: 0.04, // seconds a lap per level², away from the ideal wing
   cliff: 0.5, // extra seconds a lap, each lap, past a tyre's life
   missedCompound: 20, // seconds added if a dry race ends on one compound
