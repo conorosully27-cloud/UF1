@@ -212,9 +212,14 @@ details.fold > div { padding: 8px 2px; }
 /* The track map */
 .mappanel { padding: 8px; }
 .trackmap { width: 100%; max-height: 300px; display: block; margin: 0 auto; }
-.tm-track { fill: none; stroke: var(--line); stroke-width: 12; stroke-linejoin: round; stroke-linecap: round; }
+.tm-track { fill: none; stroke: var(--line); stroke-width: 9; stroke-linejoin: round; stroke-linecap: round; }
+.tm-lane { fill: none; stroke: color-mix(in srgb, var(--line) 70%, var(--muted)); stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
+.tm-lanetext { font: 700 7px 'Titillium Web', system-ui, sans-serif; fill: var(--muted); letter-spacing: .1em; paint-order: stroke; stroke: var(--panel); stroke-width: 2px; }
+.tm-deck-gap { fill: none; stroke: var(--panel); stroke-width: 17; stroke-linecap: butt; }
+.tm-deck-edge { fill: none; stroke: color-mix(in srgb, var(--muted) 60%, var(--panel)); stroke-width: 12; stroke-linecap: butt; }
+.tm-deck { fill: none; stroke: var(--line); stroke-width: 9; stroke-linecap: butt; }
 .tm-line { fill: none; stroke: color-mix(in srgb, var(--muted) 45%, transparent); stroke-width: 1; stroke-dasharray: 3 5; }
-.tm-start { stroke: var(--text); stroke-width: 3; }
+.tm-start { stroke: var(--text); stroke-width: 3.5; }
 .tm-car { stroke: var(--panel); stroke-width: 1.5; }
 .tm-mine { stroke: var(--text); stroke-width: 2; }
 .tm-label { font: 700 11px 'Titillium Web', system-ui, sans-serif; paint-order: stroke; stroke: var(--panel); stroke-width: 3px; }
