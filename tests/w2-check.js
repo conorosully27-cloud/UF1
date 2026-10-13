@@ -7,7 +7,7 @@
 import { newGame, startSeason, simulateRound, endSeason, PLAYER } from '../src/engine/game.js'
 import {
   beginWeekend, setWing, runQualifying, setStartTyre, setOrders, startRace, answerCall, nextBlock, handOver, finishWeekend, boxCar,
-  objectivesNow, quickFinish, weekendActive,
+  objectivesNow, quickFinish, weekendActive, playToMoment,
 } from '../src/engine/live.js'
 import { LIVE_CALLS } from '../src/engine/decisions.js'
 import { OBJECTIVE_REWARD } from '../src/engine/highlights.js'
@@ -95,6 +95,35 @@ function seasonGame(seed, extra) {
   const res = finishWeekend(g)
   check('the finished weekend files a result and moves the round on', g.round === round + 1 && g.results.length === 1 && !g.weekend && res.race.length === 24)
   check('the debrief is kept and the objectives are settled', g.lastDebrief?.round === round && res.objectives.every((o) => typeof o.met === 'boolean') && !!res.ratings)
+}
+
+// ---- Playback frames and the key-moment skip ----
+{
+  const g = seasonGame(31)
+  beginWeekend(g)
+  runQualifying(g)
+  startRace(g)
+  const st = g.weekend.state
+  let stops = 0
+  let bad = null
+  while (g.weekend.phase === 'race') {
+    for (const call of g.weekend.calls) if (!(call.id in g.weekend.answered)) answerCall(g, call.id, call.recommend)
+    const before = g.weekend.frames?.length ?? 0
+    playToMoment(g)
+    stops++
+    const f = g.weekend.frames
+    const last = f[f.length - 1]
+    const w = g.weekend
+    const why = w.phase !== 'race' || w.calls.length > 0 || !!w.state.neutral || w.state.events.slice(last.events0).some((e) => ['weather', 'sc', 'vsc', 'dnf', 'incident', 'error'].includes(e.type))
+    if (!why || f.length <= before) { bad = `stop ${stops}`; break }
+  }
+  check('the key-moment skip stops only at a call, a safety car, the weather, trouble or the flag', !bad, bad ?? '')
+  const frames = g.weekend.frames
+  check('every block is recorded for playback, in order', frames.length === st.S && frames.every((f, i) => f.seg === i))
+  check('each record has every car\'s race time at both ends of the block', frames.every((f) => f.t0.length === 24 && f.t1.length === 24 && f.t1.every(Number.isFinite)))
+  const outs = frames.reduce((n, f) => n + f.out.length, 0)
+  check('retirements are recorded in the block they happen', outs === g.weekend.state.cars.filter((c) => c.status !== 'running').length, `${outs} recorded`)
+  check('the key-moment skip pauses a few times a race, not every block', stops >= 2 && stops < st.S, `${stops} stops in ${st.S} blocks`)
 }
 
 // ---- Same choices, same race; a mid-race save carries on ----

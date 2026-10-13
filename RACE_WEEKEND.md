@@ -10,6 +10,7 @@ Status: W1 (the simulation), W2 (the live race) and W3 (knockout qualifying) are
 - An involvement setting (on the pit wall or quick sim), with a one-weekend override from the Race screen. New teams start on the pit wall.
 - Season-1 fixes: the player's starting car is 5 points better in Aero and Chassis (about 1.5 s off the pace instead of 1.7 s, 0.2 s behind Cadillac), and the objectives' rewards are scaled down to about 7 owner confidence a season.
 - `tests/w2-check.js`: the live weekend's checks.
+- The live track map (`src/ui/RaceMap.jsx`, outlines in `src/ui/data/trackMaps.js` from the MIT-licensed bacinger/f1-circuits): cars move round the real circuit between the ends of each block, with play and pause, 1×, 2× and 4× speed, and a skip to the next key moment. Your two drivers each have their own colour throughout, and explanations, the per-car breakdown and the key events are folded away until opened.
 - W3, knockout qualifying (`runQualiSession` in `weekend.js`, the session flow in `live.js`, the Qualifying screen): Q1, Q2 and Q3 with one late run or two, a normal or big-risk lap, a tow between your cars, four new sets of Softs for the whole of qualifying (a run without one is on a used set), track evolution, late yellow and red flags (with a restart for some cars left with no time), and qualifying that can be wet, drying or caught by rain part-way. The strategist suggests a plan for each car and says how close it is to the cut, as precisely as its rating allows. "A car into Q2" and "into Q3" objectives. The A/B cards for drying qualifying, the qualifying run plan and the tow are not drawn when weekends are played live. Checks: `tests/w3-check.js`.
 
 **Not built yet from this plan:**
@@ -18,7 +19,7 @@ Status: W1 (the simulation), W2 (the live race) and W3 (knockout qualifying) are
 - Calls in the table below that are not modelled yet: red flag, pit-exit traffic, floor damage and retiring a car, rear gunner, penalty, late gamble, driver's request, double-stacking.
 - Resources across races: power units per season, saved tyre sets, crash damage from pushing.
 - The radar warning before the weather changes, rain arriving more than once, and a wet race drying out fully.
-- Section 8 extras: championship progress as a line, the cash forecast as an area chart, tables as lists on a phone, and moments for the first point, podium, win and title.
+- Section 8 extras: championship progress as a line, the cash forecast as an area chart, tables as lists on a phone, and moments for the first point, podium, win and title (full-screen moments for lights out, safety cars, crashes and the flag would suit the playback too).
 
 ## 1. Why
 

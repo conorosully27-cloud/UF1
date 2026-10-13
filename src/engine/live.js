@@ -408,12 +408,45 @@ export function nextBlock(game) {
   w.lastOrder = st.order.slice()
   const before = Object.fromEntries(myCars(st).map((c) => [c.id, { pos: st.order.indexOf(c.idx), passes: c.passes, status: c.status, damage: c.wingDamage, stops: c.stops, forced: c.forced }]))
   const neutralBefore = st.neutral
+  const running0 = st.cars.map((c) => c.status === 'running')
+  const frame = { seg: st.seg, t0: st.cars.map((c) => round3(c.t)), stops0: st.cars.map((c) => c.stops), tyre0: st.cars.map((c) => c.tyre), events0: st.events.length }
   stepRace(st, orders)
+  // What the block looked like, for the track map to play back: every car's
+  // race time at both ends of the block, who stopped, who retired, and any
+  // safety car running during it.
+  Object.assign(frame, {
+    t1: st.cars.map((c) => round3(c.t)), stops1: st.cars.map((c) => c.stops), out: st.cars.filter((c) => running0[c.idx] && c.status !== 'running').map((c) => c.idx),
+    under: st.neutralNow, events1: st.events.length,
+  })
+  ;(w.frames ??= []).push(frame)
+  if (w.frames.length > 40) w.frames.splice(0, w.frames.length - 40)
   w.calls = []
   w.answered = {}
   radio(w, st, before, neutralBefore)
   if (st.done) { w.phase = 'flag'; return }
   computeCalls(game)
+}
+
+const round3 = (x) => Math.round(x * 1000) / 1000
+
+// Whether the block just run had something worth stopping for: a safety car,
+// a change in the weather, or one of your cars crashing, retiring, damaged or punctured.
+function keyMoment(w) {
+  const f = w.frames?.[w.frames.length - 1]
+  if (!f) return false
+  const st = w.state
+  const mine = new Set(myCars(st).map((c) => c.id))
+  return !!st.neutral || st.events.slice(f.events0).some((e) => e.type === 'weather' || e.type === 'sc' || e.type === 'vsc' ||
+    (e.ids.some((id) => mine.has(id)) && ['dnf', 'incident', 'error'].includes(e.type)))
+}
+
+// Runs blocks to the next key moment: a pit-wall call, a safety car, a change
+// in the weather or trouble for one of your cars; or to the flag.
+export function playToMoment(game) {
+  const w = game.weekend
+  if (openCalls(w).length) throw new Error('Answer the pit wall first')
+  do nextBlock(game)
+  while (w.phase === 'race' && !openCalls(w).length && !keyMoment(w))
 }
 
 // Runs blocks until the pit wall has something to decide, or the flag.

@@ -1,7 +1,7 @@
 import React from 'react'
 import { TRACK_BY_ID } from '../engine/data/tracks.js'
 import { PLAYER } from '../engine/game.js'
-import { lapTime, gap, raceGap, ordinal } from './format.js'
+import { lapTime, gap, raceGap, ordinal, driverColor } from './format.js'
 
 export function TrackLine({ track }) {
   const w = track.w
@@ -18,12 +18,11 @@ function PlayerBreakdown({ game, result }) {
   const mine = result.race.filter((r) => r.teamId === PLAYER)
   return (
     <div className="panel">
-      <h3>Your cars</h3>
       {mine.map((r) => {
         const d = result.detail[r.id]
         const name = game.drivers[r.id].name
         return (
-          <div key={r.id} style={{ marginBottom: 8 }}>
+          <div key={r.id} style={{ marginBottom: 8, borderLeft: `4px solid ${driverColor(game, r.id)}`, paddingLeft: 10 }}>
             <b>{name}</b>: qualified {ordinal(d.qualiPos)}, started {ordinal(d.grid)},{' '}
             {r.status === 'dnf' ? <span className="bad">retired ({r.reason})</span> : <>finished <b>{ordinal(r.pos)}</b></>}
             {r.points > 0 && <span className="good"> · {r.points} points</span>}
@@ -51,8 +50,12 @@ export default function WeekendReport({ game, result }) {
     <div>
       <h2>Round {result.round + 1}: {track.name}</h2>
       <p><TrackLine track={track} /></p>
-      <p>Qualifying: <b>{{ drying: 'drying track', rain: 'rain arrived' }[result.weather.qualiType] ?? result.weather.quali}</b> · Race: <b>{result.weather.race}</b> · Safety cars: <b>{result.stats.safetyCars}</b> · Retirements: <b>{result.stats.retirements}</b></p>
-      <PlayerBreakdown game={game} result={result} />
+      <div className="chips">
+        <span className="chip">Qualifying <b>{{ drying: 'drying', rain: 'rain arrived' }[result.weather.qualiType] ?? result.weather.quali}</b></span>
+        <span className="chip">Race <b>{result.weather.race}</b></span>
+        <span className="chip">Safety cars <b>{result.stats.safetyCars}</b></span>
+        <span className="chip">Retirements <b>{result.stats.retirements}</b></span>
+      </div>
       <div className="row">
         <div className="scroll">
           <h3>Race</h3>
@@ -60,7 +63,7 @@ export default function WeekendReport({ game, result }) {
             <thead><tr><th className="n">Pos</th><th>Driver</th><th>Team</th><th className="n">Grid</th><th>Result</th><th className="n">Pts</th></tr></thead>
             <tbody>
               {result.race.map((r) => (
-                <tr key={r.id} className={r.teamId === PLAYER ? 'me' : ''}>
+                <tr key={r.id} className={r.teamId === PLAYER ? 'me' : ''} style={r.teamId === PLAYER ? { '--dc': driverColor(game, r.id) } : undefined}>
                   <td className="n">{r.pos}</td><td>{nameOf(r.id)}</td><td>{teamOf(r.teamId)}</td><td className="n">{r.grid}</td>
                   <td>{raceGap(r)}{r.penalty > 0 ? ` (incl. ${r.penalty} s penalty)` : ''}</td><td className="n">{r.points || ''}</td>
                 </tr>
@@ -74,22 +77,30 @@ export default function WeekendReport({ game, result }) {
             <thead><tr><th className="n">Pos</th><th>Driver</th><th>Team</th><th>Out in</th><th className="n">Time</th><th className="n">Gap</th><th className="n">Grid</th></tr></thead>
             <tbody>
               {result.quali.map((q) => (
-                <tr key={q.id} className={q.teamId === PLAYER ? 'me' : ''}>
+                <tr key={q.id} className={q.teamId === PLAYER ? 'me' : ''} style={q.teamId === PLAYER ? { '--dc': driverColor(game, q.id) } : undefined}>
                   <td className="n">{q.pos}</td><td>{nameOf(q.id)}{q.error ? ' *' : ''}</td><td>{teamOf(q.teamId)}</td><td>{q.session && q.session < 3 ? `Q${q.session}` : ''}</td>
                   <td className="n">{lapTime(q.time)}</td><td className="n">{q.session && q.session < 3 ? '' : gap(q.gap)}</td><td className="n">{q.grid}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="muted">* a mistake on a lap. Gaps are to pole in Q3; cars out in Q1 and Q2 show their best time there.</p>
+          <p className="muted small">* a mistake on a lap. Cars out in Q1 and Q2 show their best time there.</p>
         </div>
       </div>
-      <h3>Key events</h3>
-      {events.length === 0 ? <p className="muted">A quiet race.</p> : (
-        <ul className="plain">
-          {events.map((e, i) => <li key={i}><span className="muted">{e.lap === 0 ? 'Pre-race' : `Lap ${e.lap}`}:</span> {e.text}</li>)}
-        </ul>
-      )}
+      <details className="fold">
+        <summary>Your cars in detail</summary>
+        <div><PlayerBreakdown game={game} result={result} /></div>
+      </details>
+      <details className="fold">
+        <summary>Key events ({events.length})</summary>
+        <div>
+          {events.length === 0 ? <p className="muted">A quiet race.</p> : (
+            <ul className="plain">
+              {events.map((e, i) => <li key={i}><span className="muted">{e.lap === 0 ? 'Pre-race' : `Lap ${e.lap}`}:</span> {e.text}</li>)}
+            </ul>
+          )}
+        </div>
+      </details>
     </div>
   )
 }
