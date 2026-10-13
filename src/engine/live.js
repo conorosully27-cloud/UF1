@@ -1,5 +1,5 @@
-// The race weekend run live (RACE_WEEKEND.md): the player sets the wing,
-// runs the three qualifying sessions, picks start tyres and runs the pit wall
+// The race weekend run live (RACE_WEEKEND.md): the player sets the car up in
+// practice, runs the three qualifying sessions, picks start tyres and runs the pit wall
 // during the race. The weekend is kept in game.weekend, so a save made part-way through
 // carries on where it left off.
 
@@ -11,6 +11,7 @@ import {
 } from './weekend.js'
 import { weekendObjectives, objectiveStatus } from './highlights.js'
 import { hashString } from './rng.js'
+import { startPractice, engineersBalance } from './practice.js'
 
 const ROLLOUTS = 4
 const SLICKS = ['S', 'M', 'H']
@@ -30,7 +31,7 @@ export function beginWeekend(game) {
   const wingAdvice = [0, 1].map((s) => recommendedWing(game, s))
   game.weekend = {
     live: true, season: game.season, round: game.round, phase: 'briefing',
-    wing: wingAdvice.map((a) => a.level), wingAdvice, orders: [{ ...DEFAULT_ORDERS }, { ...DEFAULT_ORDERS }],
+    wing: wingAdvice.map((a) => a.level), wingAdvice, balance: [0, 1].map((s) => engineersBalance(game, s)), orders: [{ ...DEFAULT_ORDERS }, { ...DEFAULT_ORDERS }],
     objectives: weekendObjectives(game), calls: [], answered: {}, boxes: {}, log: [], radio: [], snapshots: [], state: null,
     forecast: forecast(game),
   }
@@ -57,8 +58,31 @@ function forecast(game) {
 
 export function setWing(game, slot, level) {
   const w = game.weekend
-  if (!w || w.phase !== 'briefing') throw new Error('The wing is set before qualifying')
+  if (!w || (w.phase !== 'briefing' && w.phase !== 'practice')) throw new Error('The wing is set before qualifying')
   w.wing[slot] = clamp(Math.round(level), 1, 5)
+}
+
+// ---- Friday: practice ----
+
+// Practice and qualifying can each be played or left to the team, in the
+// settings or for one weekend. The race is always played.
+export const playsPractice = (game) => game.settings.practice !== false
+export const playsQualifying = (game) => game.settings.quali !== 'strategist'
+
+export function beginPractice(game) {
+  const w = game.weekend
+  if (!w || w.phase !== 'briefing') throw new Error('Practice is before qualifying')
+  w.balance ??= [0, 1].map((s) => engineersBalance(game, s)) // a save from before practice
+  w.phase = 'practice'
+  startPractice(w, game)
+}
+
+// On from the briefing or practice: qualifying, or straight to the grid when
+// the strategist runs it (in the settings, or `skipQuali` for this weekend).
+// Practice not run keeps the engineers' setup.
+export function toQualifying(game, { skipQuali = !playsQualifying(game) } = {}) {
+  startQualifying(game)
+  if (skipQuali) runQualifying(game)
 }
 
 // ---- Saturday: qualifying ----
@@ -68,7 +92,7 @@ const strategistRating = (game) => game.org.keyStaff.chiefStrategist.rating
 // Into qualifying: the wing is locked and Q1 is next.
 export function startQualifying(game) {
   const w = game.weekend
-  if (!w || w.phase !== 'briefing') throw new Error('Qualifying has already started')
+  if (!w || (w.phase !== 'briefing' && w.phase !== 'practice')) throw new Error('Qualifying has already started')
   w.state = createWeekendRace(game, { liveQuali: true })
   w.phase = 'quali'
   w.qRadio = []
@@ -172,8 +196,8 @@ export function runSession(game) {
 // Qualifying with the strategist's plans, from the briefing or part-way through.
 export function runQualifying(game) {
   const w = game.weekend
-  if (!w || (w.phase !== 'briefing' && w.phase !== 'quali')) throw new Error('Qualifying has already run')
-  if (w.phase === 'briefing') startQualifying(game)
+  if (!w || !['briefing', 'practice', 'quali'].includes(w.phase)) throw new Error('Qualifying has already run')
+  if (w.phase !== 'quali') startQualifying(game)
   while (w.phase === 'quali') runSession(game)
 }
 
@@ -430,6 +454,15 @@ export function nextBlock(game) {
   radio(w, st, before, neutralBefore)
   if (st.done) { w.phase = 'flag'; return }
   computeCalls(game)
+  if (w.autoCalls) followStrategist(game)
+}
+
+// The strategist makes the pit-wall calls (or stops making them) while the race plays on.
+export function setAutoCalls(game, on) {
+  const w = game.weekend
+  if (!w || w.phase !== 'race') throw new Error('The race is not running')
+  w.autoCalls = !!on
+  if (on) followStrategist(game)
 }
 
 const round3 = (x) => Math.round(x * 1000) / 1000
@@ -479,7 +512,7 @@ export function handOver(game) {
 export function quickFinish(game) {
   const w = game.weekend
   if (!w?.live) throw new Error('No race weekend under way')
-  if (w.phase === 'briefing' || w.phase === 'quali') runQualifying(game)
+  if (['briefing', 'practice', 'quali'].includes(w.phase)) runQualifying(game)
   if (w.phase === 'grid') startRace(game)
   if (w.phase === 'race') handOver(game)
   return finishWeekend(game)

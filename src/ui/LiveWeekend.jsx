@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { PLAYER } from '../engine/game.js'
 import { TYRES, ORDERS, planRest, lapAt, tyreLife, wearRate, qualiDrop } from '../engine/weekend.js'
 import {
-  setWing, runQualifying, setStartTyre, setOrders, startRace, answerCall, followStrategist, nextBlock, playToMoment, handOver,
-  finishWeekend, boxCar, objectivesNow, quickFinish, startQualifying, setQualiPlan, setTow, runSession, qualiOutlook,
+  setWing, runQualifying, setStartTyre, setOrders, startRace, answerCall, followStrategist, nextBlock, playToMoment, setAutoCalls,
+  finishWeekend, boxCar, objectivesNow, setQualiPlan, setTow, runSession, qualiOutlook,
+  beginPractice, toQualifying, playsPractice, playsQualifying,
 } from '../engine/live.js'
+import { practiceRun, setBalance, setRunKind, BALANCE_LABELS, SETUP } from '../engine/practice.js'
 import { TRACK_BY_ID } from '../engine/data/tracks.js'
 import { TrackLine } from './Weekend.jsx'
 import { TrackMap, usePlayback, frameSnapshot, gridSnapshot, stateSnapshot } from './RaceMap.jsx'
@@ -78,7 +80,8 @@ function Briefing({ game, act }) {
   const track = TRACK_BY_ID[game.calendar[game.round]]
   const f = w.forecast
   const strat = game.org.keyStaff.chiefStrategist.rating
-  const ids = game.teams[PLAYER].drivers
+  const practice = playsPractice(game)
+  const quali = playsQualifying(game)
   const wear = track.wear >= 1.15 ? 'High' : track.wear <= 0.8 ? 'Low' : 'Average'
   return (
     <div>
@@ -96,25 +99,65 @@ function Briefing({ game, act }) {
         <div className="kicker">Objectives</div>
         <ul className="plain">{w.objectives.map((o, i) => <li key={i}>{o.text}</li>)}</ul>
       </div>
-      <div className="panel">
-        <div className="kicker">Wing level · 1 low drag to 5 high downforce</div>
-        <div className="cols" style={{ marginTop: 6 }}>
-          {ids.map((id, slot) => {
-            const a = w.wingAdvice[slot]
-            return (
-              <div key={id} className="wingpick" style={{ '--dc': driverColor(game, id, slot) }}>
-                <DriverTag game={game} id={id} slot={slot} />
-                <Seg options={WING_LABELS.map((l, i) => [i + 1, `${i + 1}`])} value={w.wing[slot]} onPick={(v) => act((g) => setWing(g, slot, v))} />
-                <span className="muted small">Engineer: {a.level}{a.sure ? '' : ' (a guess)'}</span>
-              </div>
-            )
-          })}
-        </div>
-        <Help>Low drag is quicker on the straights and helps to pass and defend; high downforce suits twisty tracks, and rain wants more wing. The wing is locked once qualifying starts.</Help>
-      </div>
+      {!practice && <p className="muted small">The engineers set the cars up: practice is off in the settings.</p>}
       <div className="controls">
-        <button className="primary" onClick={() => act((g) => startQualifying(g))}>To qualifying</button>
-        <button className="ghost" onClick={() => act((g) => quickFinish(g))}>Hand to the strategist</button>
+        {practice ? <>
+          <button className="primary" onClick={() => act((g) => beginPractice(g))}>To practice</button>
+          <button className="ghost" onClick={() => act((g) => toQualifying(g))}>Engineers run practice</button>
+        </> : <button className="primary" onClick={() => act((g) => toQualifying(g))}>{quali ? 'To qualifying' : 'To the grid'}</button>}
+        {quali && <button className="ghost" onClick={() => act((g) => toQualifying(g, { skipQuali: true }))}>Straight to the grid</button>}
+      </div>
+    </div>
+  )
+}
+
+// ---- Friday: practice ----
+
+const BALANCE_OPTS = BALANCE_LABELS.map((l, i) => [i - 2, l])
+
+function Practice({ game, act }) {
+  const w = game.weekend
+  const track = TRACK_BY_ID[game.calendar[game.round]]
+  const p = w.practice
+  const ids = game.teams[PLAYER].drivers
+  const left = Math.max(...p.cars.map((c) => c.left))
+  const quali = playsQualifying(game)
+  return (
+    <div>
+      <Head title={track.name} chip={`Round ${game.round + 1} of ${game.calendar.length}`} right="Practice" />
+      <div className="cols">
+        {ids.map((id, slot) => {
+          const c = p.cars[slot]
+          const a = w.wingAdvice[slot]
+          const best = c.runs.filter((r) => r.kind === 'setup').reduce((m, r) => Math.min(m, r.time), Infinity)
+          return (
+            <section key={id} className="panel practice-car" style={{ '--dc': driverColor(game, id, slot) }}>
+              <div className="line"><DriverTag game={game} id={id} slot={slot} /><span className="muted small">{c.left} of {SETUP.runs} runs left</span></div>
+              <div className="ctl">
+                <span>Wing</span><Seg options={WING_LABELS.map((l, i) => [i + 1, `${i + 1}`])} value={w.wing[slot]} onPick={(v) => act((g) => setWing(g, slot, v))} />
+                <span>Balance</span><Seg options={BALANCE_OPTS} value={c.balance} onPick={(v) => act((g) => setBalance(g, slot, v))} />
+                <span>Next run</span><Seg options={[['setup', 'Setup run'], ['long', 'Long run']]} value={c.kind} disabled={!c.left} onPick={(v) => act((g) => setRunKind(g, slot, v))} />
+              </div>
+              <div className="meta">Engineers' wing: {a.level}{a.sure ? '' : ' (a guess)'}{c.longRun ? ' · long run done: less tyre wear on Sunday' : ''}</div>
+              {c.runs.length > 0 && (
+                <ol className="runs">
+                  {c.runs.slice().reverse().map((r) => (
+                    <li key={r.n}>
+                      <div className="rhead"><b>Run {r.n}</b><span className="muted">{r.kind === 'long' ? 'Long run' : `Wing ${r.wing} · ${BALANCE_LABELS[r.balance + 2]}`}</span><span className={`t${r.kind === 'setup' && r.time === best ? ' best' : ''}`}>{r.kind === 'long' ? `avg ${lapTime(r.time)}` : lapTime(r.time)}</span></div>
+                      {r.notes.map((n, i) => <div key={i} className="quote">"{n}"</div>)}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          )
+        })}
+      </div>
+      <Help>Set the wing and balance, send the cars out and listen to the drivers: their feedback (and the lap time) says which way to go. Low drag is quicker on the straights; high downforce suits twisty tracks, and rain wants more wing. A driver with good Feedback, strong race engineers and a better simulator read the car more clearly. A long run teaches the driver how the tyres go off: a little less wear in the race. The setup is locked once qualifying starts.</Help>
+      <div className="controls">
+        {left > 0 && <button className="primary" onClick={() => act((g) => practiceRun(g))}>Send the cars out</button>}
+        <button className={left > 0 ? '' : 'primary'} onClick={() => act((g) => toQualifying(g))}>{quali ? 'To qualifying' : 'To the grid'}</button>
+        {quali && <button className="ghost" onClick={() => act((g) => toQualifying(g, { skipQuali: true }))}>Skip qualifying</button>}
       </div>
     </div>
   )
@@ -292,7 +335,6 @@ function GridScreen({ game, act }) {
       </div>
       <div className="controls">
         <button className="primary" onClick={() => act((g) => startRace(g))}>Lights out</button>
-        <button className="ghost" onClick={() => act((g) => quickFinish(g))}>Hand to the strategist</button>
       </div>
     </div>
   )
@@ -516,7 +558,7 @@ function RaceScreen({ game, act }) {
           <button className={`primary playbtn`} disabled={waiting} onClick={play}>{pb.playing ? '❚❚ Pause' : '▶ Play'}</button>
           <button className="speed" onClick={() => pb.setSpeed(SPEEDS[(SPEEDS.indexOf(pb.speed) + 1) % SPEEDS.length])} title="Playback speed">{pb.speed}×</button>
           <button disabled={waiting || w.phase !== 'race'} onClick={skip} title="Jump to the next call, safety car, change in the weather or trouble for your cars">⏭ Key moment</button>
-          <button className="ghost" onClick={() => { act((g) => handOver(g)); pb.jump() }}>Strategist</button>
+          <button className={w.autoCalls ? 'on' : 'ghost'} aria-pressed={!!w.autoCalls} onClick={() => act((g) => setAutoCalls(g, !w.autoCalls))} title="The strategist makes the pit-wall calls while the race plays on">{w.autoCalls ? '✓ Strategist on the calls' : 'Strategist'}</button>
         </>}
       </div>
       {waiting && <p className="waiting">The pit wall needs a decision.</p>}
@@ -537,6 +579,7 @@ export default function LiveWeekend({ game, act }) {
     seenSessions.current = sessions
   }, [sessions, game, w.state, moments])
   if (w.phase === 'briefing') return <Briefing game={game} act={act} />
+  if (w.phase === 'practice') return <Practice game={game} act={act} />
   if (w.phase === 'quali') return <QualiScreen game={game} act={act} />
   if (w.phase === 'grid') return <GridScreen game={game} act={act} />
   return <RaceScreen game={game} act={act} />

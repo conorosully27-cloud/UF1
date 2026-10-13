@@ -137,7 +137,7 @@ function wetSetupEffect(mods, wet) {
 export function wearRate(state, c) {
   const care = clamp(1 + (75 - c.e.car.tyreCare) * 0.012, 0.6, 1.6)
   const craft = 1 + (80 - c.e.driver.racecraft) * 0.004
-  return care * craft * state.track.wear * ORDERS.pace[c.orders.pace].wear
+  return care * craft * state.track.wear * ORDERS.pace[c.orders.pace].wear * (c.m.wearMult ?? 1)
 }
 
 // Seconds over a stint of `laps` laps on `comp`, starting at `age` laps of wear, in the dry.
@@ -321,7 +321,10 @@ export function createRace(track, entries, rng, opts = {}) {
     const wing = e.wing ?? clamp(Math.round(ideal + rng.normal(0, (100 - e.ops.setup) / 40)), 1, 5)
     const carDelta = (100 - carScore(e.car, track.w)) * P.secPerPoint + teamForm[e.teamId] + wingLoss(wing, ideal)
     const setupSkill = clamp(0.6 * e.ops.setup + 0.4 * e.driver.feedback + (m.setupSkill || 0), 0, 100)
-    const setupLoss = Math.abs(rng.normal()) * 0.1 * (1.6 - setupSkill / 100)
+    // The roll is always made, so a live weekend's own setup leaves everyone else's luck alone.
+    const rolledLoss = Math.abs(rng.normal()) * 0.1 * (1.6 - setupSkill / 100)
+    const setupLoss = e.setupLoss ?? rolledLoss
+    if (e.wearMult) m.wearMult = (m.wearMult ?? 1) * e.wearMult
     const ap = APPROACH[e.approach] || APPROACH.balanced
     if (!e.isPlayer && rng.chance(P.rivalGridPenalty)) {
       m.gridDrop = (m.gridDrop || 0) + 10
