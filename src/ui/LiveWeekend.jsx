@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { PLAYER } from '../engine/game.js'
 import { TYRES, ORDERS, planRest, lapAt, tyreLife, wearRate, qualiDrop } from '../engine/weekend.js'
 import {
@@ -9,12 +9,15 @@ import { TRACK_BY_ID } from '../engine/data/tracks.js'
 import { TrackLine } from './Weekend.jsx'
 import { TrackMap, usePlayback, frameSnapshot, gridSnapshot, stateSnapshot } from './RaceMap.jsx'
 import { carCode, teamColor, driverColor, ordinal, gap, lapTime } from './format.js'
+import { useMoments } from './Moments.jsx'
+import { lightsMoment, scMoment, outMoment, flagMoment, resultMoments, qualiMoments, podiumRunMoment, rainMoment, clashMoment, doubleOutMoment } from './raceMoments.js'
 
 const SLICKS = ['S', 'M', 'H']
 const WING_LABELS = ['Low drag', 'Low', 'Medium', 'High', 'High downforce']
 const CALL_KINDS = { sc: 'safety car', vsc: 'virtual safety car', plan: 'pit window', cliff: 'tyres', rain: 'weather', drying: 'weather', damage: 'damage', 'compound rule': 'tyre rules', undercut: 'undercut', teammates: 'team orders' }
 const COND = { dry: '☀ Dry', damp: '🌦 Damp', wet: '🌧 Wet' }
 const SPEEDS = [1, 2, 4]
+const LIGHTS_OUT_MS = 2600 // when the start lights go out (see .lights in styles.css)
 
 export function Tyre({ comp, age, lg }) {
   return <span className={`tyre${lg ? ' lg' : ''}`} title={TYRES[comp].name}><i className={`ty-${comp}`}>{comp}</i>{age !== undefined && <small>{age}</small>}</span>
@@ -425,7 +428,10 @@ function RaceScreen({ game, act }) {
   const w = game.weekend
   const st = w.state
   const step = useCallback((g) => nextBlock(g), [])
-  const pb = usePlayback(game, act, step)
+  const moments = useMoments()
+  // The race waits for the start lights, and goes when they go out.
+  const [holding, setHolding] = useState(false)
+  const pb = usePlayback(game, act, step, holding)
   const open = w.calls.filter((c) => !(c.id in w.answered))
   const flag = w.phase === 'flag' && pb.caughtUp
   // The picture on screen: a block being played back, or the race as it stands.
@@ -437,6 +443,50 @@ function RaceScreen({ game, act }) {
   const rowsById = snap ? Object.fromEntries(snap.order.map((r, i) => [r.c.id, { ...r, pos: i + 1 }])) : {}
   const waiting = pb.caughtUp && open.length > 0
   const skip = () => { act((g) => playToMoment(g)); pb.jump() }
+
+  // Moments, as the playback reaches them: the safety car, rain, one of your
+  // cars out (or both), team-mates colliding, a podium place, the flag. Only
+  // changes while the screen is open count, so leaving and coming back does
+  // not replay them; podium places once a car a race.
+  const mine = myCars(st)
+  const outNow = mine.filter((c) => (playingBack ? (c.status !== 'running' && c.dnfSeg < pb.frame.seg && !pb.frame.out.includes(c.idx)) || snap.gone.some((r) => r.c === c) : c.status !== 'running')).map((c) => c.id)
+  const order = (snap?.order ?? []).map((r) => r.c)
+  const revealed = playingBack ? st.events.slice(0, pb.frame.events1).filter((e, i) => i < pb.frame.events0 || e.lap <= snap.lap).length : st.events.length
+  const facts = {
+    sc: neutral === 'sc', out: outNow, flag, cond: cnd, events: revealed, started: st.started,
+    top3: st.started ? order.slice(0, 3).filter((c) => c.e.isPlayer).map((c) => c.id) : [],
+  }
+  const seen = useRef(null)
+  const once = useRef(new Set())
+  useEffect(() => {
+    const prev = seen.current
+    seen.current = facts
+    if (!prev) return
+    const first = (key) => { if (once.current.has(key)) return false; once.current.add(key); return true }
+    if (facts.sc && !prev.sc) moments.show(scMoment(lap))
+    if (facts.cond !== 'dry' && prev.cond === 'dry' && facts.started) moments.show(rainMoment(facts.cond, lap))
+    for (const id of facts.out) if (!prev.out.includes(id)) moments.show(outMoment(game, st.cars.find((c) => c.id === id)))
+    if (facts.out.length === 2 && prev.out.length < 2) moments.show(doubleOutMoment(game, mine))
+    for (const e of st.events.slice(prev.events, facts.events)) {
+      if (['incident', 'dnf'].includes(e.type) && e.ids.length > 1 && e.ids.every((id) => mine.some((c) => c.id === id))) moments.show(clashMoment(game, mine, e.lap))
+    }
+    for (const id of facts.top3) {
+      if (!prev.top3.includes(id) && first(`top3-${id}`)) moments.show(podiumRunMoment(game, st.cars.find((c) => c.id === id), order.findIndex((c) => c.id === id) + 1, lap))
+    }
+    if (facts.flag && !prev.flag) moments.show(flagMoment(game, st))
+  })
+  const play = () => {
+    if (!pb.playing && !st.started && !holding) {
+      moments.show(lightsMoment(game.round))
+      setHolding(true)
+      setTimeout(() => setHolding(false), LIGHTS_OUT_MS)
+    }
+    pb.setPlaying(!pb.playing)
+  }
+  const finish = () => {
+    const res = act((g) => finishWeekend(g))
+    if (res) for (const m of resultMoments(game, res, { live: true })) moments.show(m)
+  }
   return (
     <div>
       <Head title={st.track.name} chip={COND[cnd]} right={flag ? 'FINISH' : lap ? `LAP ${lap}/${st.laps}` : 'START'} game={game}>
@@ -460,9 +510,9 @@ function RaceScreen({ game, act }) {
       </div>
       <div className="controls">
         {flag ? (
-          <button className="primary" onClick={() => act((g) => finishWeekend(g))}>To the debrief</button>
+          <button className="primary" onClick={finish}>To the debrief</button>
         ) : <>
-          <button className={`primary playbtn`} disabled={waiting} onClick={() => pb.setPlaying(!pb.playing)}>{pb.playing ? '❚❚ Pause' : '▶ Play'}</button>
+          <button className={`primary playbtn`} disabled={waiting} onClick={play}>{pb.playing ? '❚❚ Pause' : '▶ Play'}</button>
           <button className="speed" onClick={() => pb.setSpeed(SPEEDS[(SPEEDS.indexOf(pb.speed) + 1) % SPEEDS.length])} title="Playback speed">{pb.speed}×</button>
           <button disabled={waiting || w.phase !== 'race'} onClick={skip} title="Jump to the next call, safety car, change in the weather or trouble for your cars">⏭ Key moment</button>
           <button className="ghost" onClick={() => { act((g) => handOver(g)); pb.jump() }}>Strategist</button>
@@ -475,6 +525,16 @@ function RaceScreen({ game, act }) {
 
 export default function LiveWeekend({ game, act }) {
   const w = game.weekend
+  // Qualifying moments as each session ends (Q3, the front row, pole).
+  const moments = useMoments()
+  const sessions = w.state?.qs?.sessions.length ?? 0
+  const seenSessions = useRef(sessions)
+  useEffect(() => {
+    if (sessions > seenSessions.current) {
+      for (let s = seenSessions.current; s < sessions; s++) for (const m of qualiMoments(game, w.state, w.state.qs.sessions[s])) moments.show(m)
+    }
+    seenSessions.current = sessions
+  }, [sessions, game, w.state, moments])
   if (w.phase === 'briefing') return <Briefing game={game} act={act} />
   if (w.phase === 'quali') return <QualiScreen game={game} act={act} />
   if (w.phase === 'grid') return <GridScreen game={game} act={act} />

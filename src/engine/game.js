@@ -181,6 +181,11 @@ function playerEntryExtras(game, slot) {
 // Brings a save from an earlier build up to date. Safe to run on any save.
 export function migrateSave(game) {
   settleOldBorrowing(game)
+  // Q2 and Q3 firsts were added later: a team that has already scored or reached
+  // the podium is taken to have been there, so it is not told it is new.
+  const f = game.honours?.firsts
+  if (f && !f.q2 && f.point) f.q2 = { legacy: true }
+  if (f && !f.q3 && f.podium) f.q3 = { legacy: true }
   return game
 }
 
@@ -250,7 +255,16 @@ export function simulateRound(game) {
 // review, objectives, the crisis check and the next decision.
 export function postRace(game, result, objectives = []) {
   recordRace(game, result)
+  const had = new Set(Object.keys(game.honours.firsts))
   honoursRound(game, result)
+  // Career firsts from this race (first point, podium, win, pole, Q2, Q3), for the moments on screen.
+  result.firsts = Object.keys(game.honours.firsts).filter((k) => !had.has(k))
+  if (game.phase === 'seasonEnd') {
+    // The final round: where the team finished, and against the rival from last year.
+    const order = getStandings(game).constructors.map((c) => c.id)
+    const rival = game.lastStandings[game.lastStandings.indexOf(PLAYER) - 1]
+    result.seasonEnd = { pos: order.indexOf(PLAYER) + 1, rival: rival ? { id: rival, name: game.teams[rival].name, beaten: order.indexOf(PLAYER) < order.indexOf(rival) } : null }
+  }
   // A number-one driver resents being made to play second fiddle.
   const fav = { driver1: 0, driver2: 1 }[game.settings.priority]
   if (fav !== undefined) {

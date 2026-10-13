@@ -8,7 +8,7 @@ export function initialHonours() {
   return {
     starts: 0, points: 0, wins: 0, podiums: 0, poles: 0, pointsFinishes: 0, doubleFinishes: 0,
     bestFinish: null, bestPos: null,
-    firsts: {}, // point, podium, win, pole: { year, track, driver }
+    firsts: {}, // point, podium, win, pole, q2, q3: { year, track, driver }
     titles: { constructors: [], drivers: [] },
     streaks: { scoring: 0, scoringBest: 0, titles: 0, titlesBest: 0 },
   }
@@ -29,6 +29,11 @@ export function honoursRound(game, res) {
     if (r.status === 'finished' && (h.bestFinish === null || r.pos < h.bestFinish)) h.bestFinish = r.pos
   }
   if (mine.length === 2 && mine.every((r) => r.status === 'finished')) h.doubleFinishes++
+  for (const q of res.quali.filter((x) => x.teamId === PLAYER)) {
+    const reached = q.session ?? (q.pos <= 10 ? 3 : q.pos <= 17 ? 2 : 1)
+    if (reached >= 2) first('q2', q.id)
+    if (reached >= 3) first('q3', q.id)
+  }
   const pole = res.quali.find((q) => q.pos === 1)
   if (pole?.teamId === PLAYER) { h.poles++; first('pole', pole.id) }
   h.streaks.scoring = scored ? h.streaks.scoring + 1 : 0
