@@ -31,8 +31,12 @@ export function weekendObjectives(game) {
   // A result: the best car finishing a little better than the car's pace suggests.
   const expected = Math.min(24, 2 * r + 2)
   out.push({ kind: 'position', value: clamp(expected - 2, 1, 22) })
-  // Qualifying against the team just ahead, or both cars to the flag for a front-runner.
-  if (above) out.push({ kind: 'qualiAhead', team: above.id })
+  // Qualifying: through a knockout session when the car is near the cut,
+  // otherwise ahead of the team just ahead; both cars to the flag for a front-runner.
+  const grid = 2 * r + 1
+  if (grid >= 15 && grid <= 19) out.push({ kind: 'intoQ2' })
+  else if (grid >= 8 && grid <= 12) out.push({ kind: 'intoQ3' })
+  else if (above) out.push({ kind: 'qualiAhead', team: above.id })
   else out.push({ kind: 'bothFinish' })
   return out.map((o) => ({ ...o, text: objectiveText(game, o), met: null }))
 }
@@ -42,6 +46,8 @@ export function objectiveText(game, o) {
   if (o.kind === 'beatBoth') return `Finish ahead of both ${teamName(game, o.team)} cars`
   if (o.kind === 'position') return o.value <= 10 ? `Score points (P${o.value} or better)` : `A car in ${ordinal(o.value)} or better`
   if (o.kind === 'qualiAhead') return `Qualify ahead of a ${teamName(game, o.team)} car`
+  if (o.kind === 'intoQ2') return 'A car into Q2'
+  if (o.kind === 'intoQ3') return 'A car into the Q3 top-ten shoot-out'
   return 'Both cars to the flag'
 }
 
@@ -52,6 +58,10 @@ export function objectiveStatus(o, result) {
   if (o.kind === 'beatOne') return best < Math.max(...theirs)
   if (o.kind === 'beatBoth') return best < Math.min(...theirs)
   if (o.kind === 'position') return best <= o.value
+  if (o.kind === 'intoQ2' || o.kind === 'intoQ3') {
+    const reached = (q) => q.session ?? (q.pos <= 10 ? 3 : q.pos <= 17 ? 2 : 1)
+    return result.quali.some((q) => q.teamId === PLAYER && reached(q) >= (o.kind === 'intoQ2' ? 2 : 3))
+  }
   if (o.kind === 'qualiAhead') {
     const q = result.quali
     const me = Math.min(...q.filter((x) => x.teamId === PLAYER).map((x) => x.pos))

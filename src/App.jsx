@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { newGame, startSeason, simulateRound, endSeason, prepareTargets, backToPreseason, currentTrack, year, playerPosition, PLAYER, SAVE_VERSION } from './engine/game.js'
+import { newGame, startSeason, simulateRound, endSeason, prepareTargets, backToPreseason, currentTrack, year, playerPosition, PLAYER, SAVE_VERSION, migrateSave } from './engine/game.js'
 import { forecast } from './engine/economy.js'
 import { plannedSpendPerRound, tighteningPlan, AREAS } from './engine/development.js'
 import NewGame from './ui/NewGame.jsx'
@@ -7,7 +7,7 @@ import WeekendReport, { TrackLine } from './ui/Weekend.jsx'
 import { Standings, Results, Grid } from './ui/Tables.jsx'
 import CarTab from './ui/CarTab.jsx'
 import HqTab from './ui/HqTab.jsx'
-import { CommercialTab, FinanceTab, TeamTab } from './ui/MoneyTabs.jsx'
+import { CommercialTab, FinanceTab, TeamTab, OverdraftNotice } from './ui/MoneyTabs.jsx'
 import { DecisionPanel, DecisionLog, TargetPicker, TargetReport, TargetsTab } from './ui/M3Ui.jsx'
 import DriversTab, { Approaches, MarketStatus } from './ui/Drivers.jsx'
 import HonoursTab from './ui/Honours.jsx'
@@ -24,7 +24,7 @@ function loadSave() {
   try {
     const raw = localStorage.getItem(KEY)
     const g = raw ? JSON.parse(raw) : null
-    return g && g.version === SAVE_VERSION ? g : null
+    return g && g.version === SAVE_VERSION ? migrateSave(g) : null
   } catch {
     return null
   }
@@ -87,6 +87,7 @@ function Home({ game, act, last, setTab }) {
         <p>When the team is as you want it, set the season's targets. The driver market then closes, and drivers and power unit are fixed for the season.</p>
         {expired.length > 0 && <div className="err">Out of contract: {expired.map((d) => d.name).join(' and ')}. Re-sign them on the <button onClick={() => setTab('drivers')}>Drivers</button> tab or they leave when the market closes.</div>}
         {!seatsReady(game) && expired.length === 0 && <div className="err">A race seat is empty. Sign a driver on the <button onClick={() => setTab('drivers')}>Drivers</button> tab.</div>}
+        {game.finance.cash < 0 && <OverdraftNotice game={game} />}
         <MarketStatus game={game} act={act} />
         <Approaches game={game} act={act} />
         <button className="primary" onClick={() => act((g) => (g.options.targets ? prepareTargets(g) : startSeason(g)))}>{game.options.targets ? 'Set season targets' : 'Start the season'}</button>
@@ -119,6 +120,7 @@ function Home({ game, act, last, setTab }) {
   return (
     <div>
       {last && <Debrief game={game} result={last} />}
+      {game.finance.cash < 0 && <OverdraftNotice game={game} />}
       <div className="panel">
         <div className="kicker">Next: round {game.round + 1} of {game.calendar.length}</div>
         <h2 style={{ margin: '2px 0 4px' }}>{track.name}, {track.country}</h2>
@@ -199,6 +201,7 @@ function SaveTab({ game, setGame }) {
     try {
       const g = JSON.parse(await f.text())
       if (g.version !== SAVE_VERSION || !g.teams || !g.drivers) throw new Error('Not a save from this version')
+      migrateSave(g)
       setGame(g)
       writeSave(g)
       setMsg('Save loaded.')

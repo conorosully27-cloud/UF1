@@ -122,8 +122,10 @@ let inBand = 0
 inBand += band('Retirements per start', tally.dnf / tally.starts, 0.10, 0.12)
 inBand += band('Races with a safety car', tally.scRaces / tally.races, 0.55, 0.60)
 inBand += band('Wet or mixed races', tally.wet / tally.races, 0.10, 0.15)
-inBand += band('Pole converts to a win', tally.poleWin / tally.races, 0.45, 0.50)
-inBand += band('Fastest car on the day wins', tally.fastestDayWin / tally.races, 0.55, 0.65)
+// A design choice: a little more chaos than real F1, so pole and the fastest
+// car win less often and the front does not go stale (DESIGN.md 5.10).
+inBand += band('Pole converts to a win', tally.poleWin / tally.races, 0.35, 0.45)
+inBand += band('Fastest car on the day wins', tally.fastestDayWin / tally.races, 0.40, 0.55)
 inBand += band('Bottom-three rival car scores points', tally.rivalSlowPoints / tally.rivalSlowStarts, 0.05, 0.10)
 console.log(`${inBand} of 6 calibration measures in band`)
 

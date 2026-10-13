@@ -126,7 +126,7 @@ export function seasonMetrics(game) {
   const levels = Object.values(game.org.facilities).reduce((s, f) => s + f.level, 0)
   return {
     pos: order[PLAYER], order, points: me.points, best: me.best ?? 24, wins: me.wins, podiums: me.podiums, classified, ahead,
-    cash: game.finance.cash - game.finance.bank, sponsor: game.finance.season.income.sponsors,
+    cash: game.finance.cash, sponsor: game.finance.season.income.sponsors,
     rating: start ? { aero: car.aero - start.car.aero, chassis: car.chassis - start.car.chassis } : { aero: 0, chassis: 0 },
     facilities: start ? levels - start.facilityLevels : 0,
   }

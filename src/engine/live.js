@@ -1,12 +1,13 @@
 // The race weekend run live (RACE_WEEKEND.md): the player sets the wing,
-// watches qualifying, picks start tyres and runs the pit wall during the
-// race. The weekend is kept in game.weekend, so a save made part-way through
+// runs the three qualifying sessions, picks start tyres and runs the pit wall
+// during the race. The weekend is kept in game.weekend, so a save made part-way through
 // carries on where it left off.
 
 import { PLAYER, clamp, ordinal, currentTrack } from './core.js'
 import { preRace, postRace, createWeekendRace, completeRace, recommendedWing } from './game.js'
 import {
   stepRace, runToEnd, advice, neutralGain, bestStop, planRest, TYRES, ORDERS, DEFAULT_ORDERS, tyreLife, wearRate, lapAt, tyreDelta,
+  runQualiSession, qualiPlan, qualiDrop, qualiPace, QUALI,
 } from './weekend.js'
 import { weekendObjectives, objectiveStatus } from './highlights.js'
 import { hashString } from './rng.js'
@@ -41,7 +42,7 @@ export function beginWeekend(game) {
 // stay close to the track's usual odds.
 function forecast(game) {
   const track = game.weatherOverride == null ? currentTrack(game) : { ...currentTrack(game), rain: game.weatherOverride }
-  const peek = createWeekendRace(game)
+  const peek = createWeekendRace(game, { liveQuali: true })
   const r = game.org.keyStaff.chiefStrategist.rating
   const k = clamp((r - 30) / 70, 0.1, 0.9)
   const lean = (base, truth) => Math.round(100 * clamp(base + ((truth ? 1 : 0) - base) * k, 0.02, 0.98))
@@ -50,6 +51,7 @@ function forecast(game) {
   // A good strategist can say roughly when the rain comes or goes.
   if (r >= 70 && peek.raceWeather === 'mixed') out.hint = peek.cond[0] === 'dry' ? 'Rain is more likely late in the race' : 'A wet start that should dry out'
   else if (r >= 70 && peek.raceWeather === 'wet') out.hint = 'Rain for most of the race'
+  if (r >= 70) out.qualiHint = { drying: 'Qualifying starts damp and should dry out', rain: 'Rain is likely to arrive during qualifying', wet: 'A wet qualifying' }[peek.qs.weather] ?? null
   return out
 }
 
@@ -59,11 +61,120 @@ export function setWing(game, slot, level) {
   w.wing[slot] = clamp(Math.round(level), 1, 5)
 }
 
+// ---- Saturday: qualifying ----
+
+const strategistRating = (game) => game.org.keyStaff.chiefStrategist.rating
+
+// Into qualifying: the wing is locked and Q1 is next.
+export function startQualifying(game) {
+  const w = game.weekend
+  if (!w || w.phase !== 'briefing') throw new Error('Qualifying has already started')
+  w.state = createWeekendRace(game, { liveQuali: true })
+  w.phase = 'quali'
+  w.qRadio = []
+  w.tow = null
+  adviseSession(game)
+}
+
+// The strategist's plan for each of your cars still in qualifying, as the default.
+function adviseSession(game) {
+  const w = game.weekend
+  const st = w.state
+  const read = strategistRating(game) >= 60
+  w.qChoices = {}
+  for (const i of st.qs.left) {
+    const c = st.cars[i]
+    if (!c.e.isPlayer || c.qCrash) continue
+    const p = qualiPlan(st, c, read)
+    w.qChoices[c.id] = { runs: p.runs, push: p.push }
+  }
+  if (w.tow && !(w.tow.giver in w.qChoices && w.tow.taker in w.qChoices)) w.tow = null
+}
+
+export function setQualiPlan(game, carId, plan) {
+  const w = game.weekend
+  if (!w || w.phase !== 'quali') throw new Error('Qualifying is not running')
+  if (!w.qChoices[carId]) throw new Error('That car is not in this session')
+  if (plan.runs === 1 || plan.runs === 2) w.qChoices[carId].runs = plan.runs
+  if (plan.push === 'normal' || plan.push === 'big') w.qChoices[carId].push = plan.push
+}
+
+// One of your cars gives the other a tow; `takerId` null for none.
+export function setTow(game, takerId) {
+  const w = game.weekend
+  if (!w || w.phase !== 'quali') throw new Error('Qualifying is not running')
+  if (!takerId) { w.tow = null; return }
+  const ids = Object.keys(w.qChoices)
+  if (ids.length !== 2 || !ids.includes(takerId)) throw new Error('Both cars must be in the session for a tow')
+  w.tow = { taker: takerId, giver: ids.find((id) => id !== takerId) }
+}
+
+// What the session looks like from the pit wall: how many go out, the
+// conditions now and (as well as the strategist can tell) later, and where
+// each of your cars should end up.
+export function qualiOutlook(game) {
+  const w = game.weekend
+  const st = w.state
+  const qs = st.qs
+  if (!qs || qs.done) return null
+  const s = qs.session
+  const r = strategistRating(game)
+  const early = qs.slots[s * 2]
+  const late = qs.slots[s * 2 + 1]
+  let lateText
+  if (r >= 70) lateText = late === early ? 'no change expected' : late === 'dry' ? 'drying: slicks for the final runs' : early === 'dry' ? 'rain arriving for the final runs' : `turning ${late} for the final runs`
+  else if (r >= 50) lateText = late === early ? 'probably no change' : 'conditions may change late on'
+  else lateText = 'hard to say'
+  const field = qs.left.map((i) => st.cars[i]).filter((c) => !c.qCrash)
+  const order = field.slice().sort((a, b) => qualiPace(st, a, late) - qualiPace(st, b, late))
+  const cars = {}
+  for (const id of Object.keys(w.qChoices)) {
+    const c = carById(st, id)
+    const p = qualiPlan(st, c, r >= 60)
+    const rank = order.indexOf(c) + 1
+    let outlook
+    if (p.margin === null) outlook = r >= 60 ? `Projected about P${rank} on pace` : rank <= 3 ? 'In the fight for pole' : 'Fighting for the front of the grid'
+    else if (r >= 80) outlook = `About ${Math.abs(p.margin).toFixed(2)} s ${p.margin >= 0 ? 'inside' : 'short of'} the cut on pace`
+    else if (r >= 60) outlook = Math.abs(p.margin) < 0.05 ? 'Right on the cut' : `Around ${Math.max(0.1, Math.round(Math.abs(p.margin) * 10) / 10).toFixed(1)} s ${p.margin >= 0 ? 'inside' : 'short of'} the cut`
+    else outlook = p.margin > 0.3 ? 'Should get through' : p.margin < -0.3 ? 'Unlikely to get through' : 'On the bubble'
+    cars[id] = { advice: { runs: p.runs, push: p.push }, why: p.why, outlook, sets: c.sets }
+  }
+  const towGain = QUALI.towGain * (st.track.w.power / 0.25)
+  return { session: s, n: qs.left.length, drop: qualiDrop(qs.left.length, s), early, late: lateText, cars, towGain }
+}
+
+// Runs the next session with your plans; after Q3, on to the grid.
+export function runSession(game) {
+  const w = game.weekend
+  if (!w || w.phase !== 'quali') throw new Error('Qualifying is not running')
+  const st = w.state
+  const s = st.qs.session
+  runQualiSession(st, { ...w.qChoices, tow: w.tow })
+  const ses = st.qs.sessions[s]
+  const say = (c, text) => w.qRadio.push({ session: s + 1, id: c.id, text: `${surname(c.e.name)}: "${text}"` })
+  for (const row of ses.rows) {
+    const c = st.cars[row.idx]
+    if (!c.e.isPlayer) continue
+    if (row.laps.some((l) => l.crash)) say(c, "I've lost it. I'm in the wall, sorry.")
+    else if (row.time === null) say(c, row.laps.some((l) => l.flagged) ? 'The flag came out on my lap! No time.' : 'No lap. That hurts.')
+    else if (row.out) say(c, `P${row.pos}. ${row.pos === ses.rows.length - ses.drop + 1 ? 'So close.' : 'That was all there was.'}`)
+    else if (s < 2) say(c, row.pos > ses.rows.length - ses.drop - 2 ? `Phew, P${row.pos}. Through!` : `P${row.pos}, through to Q${s + 2}.`)
+    else say(c, row.pos === 1 ? 'POLE! Yes! What a car!' : `P${row.pos}. ${row.pos <= 3 ? 'Front rows, great job.' : 'Good lap.'}`)
+    if (row.laps.some((l) => l.error && !l.crash)) say(c, 'I made a mistake on one lap.')
+  }
+  if (st.qs.done) {
+    w.phase = 'grid'
+    w.qChoices = {}
+    w.tow = null
+  } else adviseSession(game)
+}
+
+// Qualifying with the strategist's plans, from the briefing or part-way through.
 export function runQualifying(game) {
   const w = game.weekend
-  if (!w || w.phase !== 'briefing') throw new Error('Qualifying has already run')
-  w.state = createWeekendRace(game)
-  w.phase = 'grid'
+  if (!w || (w.phase !== 'briefing' && w.phase !== 'quali')) throw new Error('Qualifying has already run')
+  if (w.phase === 'briefing') startQualifying(game)
+  while (w.phase === 'quali') runSession(game)
 }
 
 export function setStartTyre(game, carId, comp) {
@@ -297,12 +408,45 @@ export function nextBlock(game) {
   w.lastOrder = st.order.slice()
   const before = Object.fromEntries(myCars(st).map((c) => [c.id, { pos: st.order.indexOf(c.idx), passes: c.passes, status: c.status, damage: c.wingDamage, stops: c.stops, forced: c.forced }]))
   const neutralBefore = st.neutral
+  const running0 = st.cars.map((c) => c.status === 'running')
+  const frame = { seg: st.seg, t0: st.cars.map((c) => round3(c.t)), stops0: st.cars.map((c) => c.stops), tyre0: st.cars.map((c) => c.tyre), events0: st.events.length }
   stepRace(st, orders)
+  // What the block looked like, for the track map to play back: every car's
+  // race time at both ends of the block, who stopped, who retired, and any
+  // safety car running during it.
+  Object.assign(frame, {
+    t1: st.cars.map((c) => round3(c.t)), stops1: st.cars.map((c) => c.stops), out: st.cars.filter((c) => running0[c.idx] && c.status !== 'running').map((c) => c.idx),
+    under: st.neutralNow, events1: st.events.length,
+  })
+  ;(w.frames ??= []).push(frame)
+  if (w.frames.length > 40) w.frames.splice(0, w.frames.length - 40)
   w.calls = []
   w.answered = {}
   radio(w, st, before, neutralBefore)
   if (st.done) { w.phase = 'flag'; return }
   computeCalls(game)
+}
+
+const round3 = (x) => Math.round(x * 1000) / 1000
+
+// Whether the block just run had something worth stopping for: a safety car,
+// a change in the weather, or one of your cars crashing, retiring, damaged or punctured.
+function keyMoment(w) {
+  const f = w.frames?.[w.frames.length - 1]
+  if (!f) return false
+  const st = w.state
+  const mine = new Set(myCars(st).map((c) => c.id))
+  return !!st.neutral || st.events.slice(f.events0).some((e) => e.type === 'weather' || e.type === 'sc' || e.type === 'vsc' ||
+    (e.ids.some((id) => mine.has(id)) && ['dnf', 'incident', 'error'].includes(e.type)))
+}
+
+// Runs blocks to the next key moment: a pit-wall call, a safety car, a change
+// in the weather or trouble for one of your cars; or to the flag.
+export function playToMoment(game) {
+  const w = game.weekend
+  if (openCalls(w).length) throw new Error('Answer the pit wall first')
+  do nextBlock(game)
+  while (w.phase === 'race' && !openCalls(w).length && !keyMoment(w))
 }
 
 // Runs blocks until the pit wall has something to decide, or the flag.
@@ -330,7 +474,7 @@ export function handOver(game) {
 export function quickFinish(game) {
   const w = game.weekend
   if (!w?.live) throw new Error('No race weekend under way')
-  if (w.phase === 'briefing') runQualifying(game)
+  if (w.phase === 'briefing' || w.phase === 'quali') runQualifying(game)
   if (w.phase === 'grid') startRace(game)
   if (w.phase === 'race') handOver(game)
   return finishWeekend(game)
@@ -362,6 +506,15 @@ export function objectivesNow(game) {
   const w = game.weekend
   if (!w?.state || w.phase === 'briefing') return w?.objectives.map((o) => ({ ...o, now: null })) ?? []
   const st = w.state
+  if (w.phase === 'quali') {
+    // Only "into Q2" and "into Q3" can be settled part-way through qualifying.
+    const done = st.qs.sessions.length
+    const reached = Math.max(...st.cars.filter((c) => c.e.isPlayer).map((c) => (c.qOut ? c.qOut : done + 1)))
+    return w.objectives.map((o) => {
+      const need = o.kind === 'intoQ2' ? 2 : o.kind === 'intoQ3' ? 3 : 0
+      return { ...o, now: need && (reached >= need || done >= need - 1) ? reached >= need : null }
+    })
+  }
   const running = st.order.map((i) => st.cars[i])
   const race = st.cars.map((c) => ({ id: c.id, teamId: c.e.teamId, status: c.status === 'running' ? 'finished' : 'dnf', pos: c.status === 'running' ? running.indexOf(c) + 1 : 99 }))
   const result = { race, quali: st.quali }
@@ -378,7 +531,9 @@ function callValues(w) {
     const run = (key) => finishAfter(JSON.parse(s.state), call.carId, (st) => applyOption(st, call, key))
     const mine = run(s.choice)
     const theirs = run(s.recommend)
-    return { title: call.title, carId: call.carId, lap: null, choice: call.options.find((o) => o.key === s.choice)?.label, recommend: call.options.find((o) => o.key === s.recommend)?.label, places: theirs - mine }
+    // A retirement in one version of the race and not the other is luck as much as the call.
+    const retired = mine > 24 && theirs <= 24 ? 'yours' : theirs > 24 && mine <= 24 ? 'theirs' : null
+    return { title: call.title, carId: call.carId, lap: null, choice: call.options.find((o) => o.key === s.choice)?.label, recommend: call.options.find((o) => o.key === s.recommend)?.label, places: theirs - mine, retired }
   })
 }
 

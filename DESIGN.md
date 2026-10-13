@@ -38,7 +38,8 @@ There is no win screen and no game over.
 
 - **Season targets.** Three a season, each at a chosen level of ambition (section 5.12). They are the main driver of owner confidence. After a first title the targets move on to defending it, winning the drivers' title too, and winning several in a row.
 - **Honours board.** Points, podiums, wins, titles and streaks are recorded for the life of the save.
-- **Crisis instead of game over.** A crisis starts if cash is below the −£5m overdraft limit for two consecutive rounds, or owner confidence (0–100) reaches zero. An investor clears the debt and takes a permanent 5% of prize money (stacking to a maximum of 25%). One austerity season follows: no facility builds, a hiring freeze, and the forced sale of the most valuable driver or key staff contract. Reputation falls by 10 and confidence resets to 40.
+- **No borrowing; a small overdraft.** There are no loans or prize advances. Cash can dip below zero, down to −£5m, but while the team is in the red no new spending can start (upgrades, facilities, hiring, pay rises, buyouts) until cash is back above zero, so a team that gets there has to climb out on its income.
+- **Crisis instead of game over.** A crisis starts if cash is below the −£5m overdraft limit for two consecutive rounds, or owner confidence (0–100) reaches zero. An investor clears the debt and takes a permanent 5% of prize money (stacking to a maximum of 25%), and restructures the team: the most expensive departments are cut, newest hires first and without severance, until running costs fit income again. A rescue can never fund a team the business cannot carry. One austerity season follows: no facility builds, a hiring freeze, and the forced sale of the most valuable driver or key staff contract. Reputation falls by 10 and confidence resets to 40.
 
 ## 5. Systems
 
@@ -266,7 +267,7 @@ Cash moves every round. A forecast screen projects the balance to season end und
 
 Season 1 roughly breaks even on a modest development budget.
 
-**Borrowing:** a bank loan (limit set by reputation, 8–14% interest) or an advance of up to half the remaining season's prize payments at a 10% discount.
+**No borrowing.** There are no bank loans or prize advances (both were removed as a financial headache). Cash can go into an overdraft of up to −£5m, but while it is below zero nothing new can start: no upgrades, facility builds, hiring, pay rises, key-staff buyouts or sponsor buyouts. Running costs carry on, designers bank their work for free, and income brings the team back above zero. Below −£5m after two races in a row brings in the investor (section 2). Saves from before the change have any loan or advance settled from cash when they load.
 
 **Reputation** moves 40% of the way each winter (tuned from 30%) towards a level set by championship position (about 9 for 12th, 95 for 1st), plus a little for points, podiums and wins.
 
@@ -335,7 +336,7 @@ A weekend is played one of two ways, set in Settings and changeable for a single
 
 A weekend in progress is part of the save (`game.weekend`), so it carries on where it left off.
 
-**Qualifying.** Lap time = car pace at this track (with the wing level) + driver Pace + setup roll + random variation, with a small chance of a mistake. Grid penalties are then applied.
+**Qualifying** is three knockout sessions: all 24 cars in Q1, where the slowest seven are out, 17 in Q2, where seven more go, and a top-ten shoot-out in Q3. A lap time = car pace at this track (with the wing level) + driver Pace + setup roll + the conditions + random variation, with a small chance of a mistake (a few of which end in the wall). In each session a car runs once, late, or twice: an early banker lap, then a late one about 0.12 s quicker as the track rubbers in (and each session is 0.2 s quicker than the one before). Each run takes one of four new sets of Softs for the whole of qualifying; a run without one is about 0.3 s slower. A big-risk lap is about 0.12 s quicker and three times likelier to go wrong. One car can tow the other on the straights (about 0.1 s at an average track, more where Power counts). A late yellow or red flag (about one session in ten, more after a crash) wipes out some cars' final laps; a car left with no time gets one more go after a restart half the time, and otherwise starts from the back of that session. About one weekend in ten qualifying is wet, drying (one late run is right) or caught by rain part-way (bank a lap early). Rival pit walls choose the same way, reading the weather as well as their strategy rating allows. Grid penalties are then applied. Over many weekends a top-four car is knocked out in Q1 about 3% of the time and in Q2 about 3%: the odd shock, not a lottery.
 
 **The race** (`src/engine/weekend.js`) runs in blocks of about five laps (at least eight blocks). Each block every car's time comes from:
 
@@ -357,30 +358,31 @@ Every random roll is keyed to the save, the race, the block and the car, so the 
 **The live weekend** (`src/engine/live.js`):
 
 1. **Briefing:** the forecast for qualifying and the race (a strong Chief Strategist's numbers lean towards what will happen, and from 70 they say roughly when the rain comes), the track's pit loss and tyre wear, the weekend objectives, and the wing level for each car (1 low drag to 5 high downforce) with the race engineer's suggestion. The wing is locked once qualifying starts.
-2. **Grid:** the qualifying result, the start tyre for each car (with the plan it leads to and how it compares with the best), and the lap-one order.
-3. **Race:** a timing tower, the race feed and team radio, and a card for each car with its tyre wear, standing orders and a Box button. The race pauses for pit-wall calls: safety car, virtual safety car, the planned stop, the tyre cliff, rain, a drying track, the compound rule, an undercut by the car behind, wing damage, and team-mates running together (swap, let them race, hold). A puncture needs no decision: the car comes in. Each call shows the strategist's pick and an estimate for each option from a few simulated futures, as a position (Chief Strategist 80+), a range (60+) or a feel (below 60). A strategist of 60 or more goes with the numbers when they clearly beat the textbook call. A driver told to let a team-mate through remembers it at contract time.
-4. **Debrief:** the result, the weekend's money, the objectives, a rating out of 10 for each drive, and what each call that went against the strategist was worth, found by replaying the race from that moment with the strategist's choice on the same luck. The whole race is also replayed with the strategist in charge, for comparison.
+2. **Qualifying:** before each session the strategist suggests a plan for each of your cars (one late run or two, a normal or big-risk lap) and says how close to the cut it should be: to the hundredth with a Chief Strategist of 80 or more, to the tenth from 60, in words below that. From 70 the strategist also says whether conditions will change late in the session. The player can change each plan and set a tow, then runs the session; the strategist can run the rest of qualifying at any point. A save made between sessions carries on the same way, and the choices for your cars never change a rival's laps or Sunday's luck.
+3. **Grid:** the qualifying result, the start tyre for each car (with the plan it leads to and how it compares with the best), and the lap-one order.
+4. **Race:** a live track map on the real outline of the circuit (from the MIT-licensed bacinger/f1-circuits data), a timing tower, the race feed and team radio, and a card for each car with its tyre wear, standing orders and a Box button. The race plays back: between the ends of each block every car moves round the map at its own pace for that block, so gaps open and close, the tower reorders as cars pass, retirements show on the car, and the field bunches up behind a safety car. A stopping car turns into a pit lane drawn alongside the main straight (on the inside, joining and leaving where the straight begins and ends; approximate, as the outline data has no pit lanes), crawls down it for the time the stop costs and drops places on the tower while it does. Where a circuit crosses itself, as Suzuka does, the later part of the lap is drawn as a bridge and cars on the section underneath pass out of sight beneath it. Play and pause, 1×, 2× or 4× speed, and "key moment", which jumps to the next pit-wall call, safety car, change in the weather or trouble for one of your cars. Playback pauses for a call and carries on once it is answered. Your two drivers each have their own colour (the first the team colour, the second a contrasting one) on the map, the tower, their cards, the calls, the radio and the results. The race pauses for pit-wall calls: safety car, virtual safety car, the planned stop, the tyre cliff, rain, a drying track, the compound rule, an undercut by the car behind, wing damage, and team-mates running together (swap, let them race, hold). A puncture needs no decision: the car comes in. Each call shows the strategist's pick and an estimate for each option from a few simulated futures, as a position (Chief Strategist 80+), a range (60+) or a feel (below 60). A strategist of 60 or more goes with the numbers when they clearly beat the textbook call. A driver told to let a team-mate through remembers it at contract time.
+5. **Debrief:** the result, the weekend's money, the objectives, a rating out of 10 for each drive, and what each call that went against the strategist was worth, found by replaying the race from that moment with the strategist's choice on the same luck. The whole race is also replayed with the strategist in charge, for comparison.
 
-Race-weekend cards in the decision deck that the live race covers (one-stop split, safety-car plan, start tyres, team orders, lap one, showers, driver strategy, low drag, maximum downforce) are not drawn when weekends are played live.
+Race-weekend cards in the decision deck that the live race covers (one-stop split, safety-car plan, start tyres, team orders, lap one, showers, driver strategy, low drag, maximum downforce, drying qualifying, the qualifying run plan, the qualifying tow) are not drawn when weekends are played live.
 
 **What the pit wall is worth** (`tests/w2-check.js`, a midfield car, Chief Strategist 90, 32 weekends): following the strategist finishes about 0.7 places a car better than the quick sim, because a live pit wall is never late with a stop; picking the worst-looking option at every call costs about 2.8 places a car; a call chosen that way loses about 1.1 places on average in the debrief. At the very back in season 1 the gaps are too big for calls to change much (under 0.1 places).
 
-**Weekend objectives.** Three small goals each weekend, set from where the car stands on pace at this track: beat one or both cars of the team just ahead (or just behind), a finishing position a little better than the car's pace suggests, and qualifying ahead of the team ahead (or both cars to the flag for the fastest car). Each one met adds 0.3 owner confidence and 0.5 satisfaction with every sponsor. About half are met, worth about 7 confidence a season. Home also shows the head-to-head with the team just ahead in last year's championship and a chart of the gap to the fastest car.
+**Weekend objectives.** Three small goals each weekend, set from where the car stands on pace at this track: beat one or both cars of the team just ahead (or just behind), a finishing position a little better than the car's pace suggests, and a qualifying goal: a car into Q2 or Q3 when the car's pace puts it near that cut, otherwise qualifying ahead of the team ahead (or both cars to the flag for the fastest car). Each one met adds 0.3 owner confidence and 0.5 satisfaction with every sponsor. About half are met, worth about 7 confidence a season. Home also shows the head-to-head with the team just ahead in last year's championship and a chart of the gap to the fastest car.
 
 **Calibration** (quick sim), measured over 1,000 simulated seasons with the cars held fixed. The targets are my estimates of recent real-world rates and have not yet been checked against published data:
 
 | Measure | Target | Built |
 |---|---|---|
 | Retirements per start | 10–12% | 11.8% |
-| Races with a safety car | 55–60% overall, set per track | 57.0% |
+| Races with a safety car | 55–60% overall, set per track | 56.5% |
 | Wet or mixed races | 10–15% | 13.0% |
-| Pole converts to a win | 45–50% | 49.3% |
-| The fastest car on the day wins | 55–65% | 51.9% |
-| A car from the three slowest rival teams scores points | 5–10% of starts | 4.7% |
+| Pole converts to a win | 35–45% (a design choice, below real F1's 45–50%) | 40.6% |
+| The fastest car on the day wins | 40–55% (a design choice, below real F1's 55–65%) | 45.9% |
+| A car from the three slowest rival teams scores points | 5–10% of starts | 4.9% |
 
 The player's own season-1 cars score in almost no starts, and the better of them beats at least one Cadillac in about 40% of races.
 
-The two misses are linked: four cars start within 0.15 s of each other, so the quickest on the day is rarely clear of the next, and anything that helps slow cars score also costs the quickest car wins. With one car made 0.3 s clear, it wins about 70% of races. Average stops run from about one a car (Monza, Spa) to about two (Montreal), and a race takes about 1 ms in the quick sim.
+The game is deliberately a little more chaotic than real F1, so that one team or driver does not win too predictably and the front never goes stale: qualifying varies more from lap to lap, the start shuffles the order more, and strategy and safety-car timing swing more. Pole therefore converts about 40% of the time and the fastest car on the day wins about 46%, both below real-world rates by design. A clearly faster car still dominates: with one car made 0.3 s clear, it wins about 65% of races. The slowest three rival teams score in just under 5% of starts, a hair under the target. Average stops run from about one a car (Monza, Spa) to about two (Montreal), and a race takes about 1 ms in the quick sim.
 
 **Points:** 25-18-15-12-10-8-6-4-2-1 across 24 cars. Ties in the constructors' table are broken by best finishes, so 11th against 12th matters on zero points.
 
@@ -420,7 +422,7 @@ Each pre-season the game offers six objectives built from the team's current sta
 
 - **Results targets** (position, points, best finish, races ahead of a rival, podiums, wins, both cars classified) are placed where that average team reaches them in about 80%, 50% and 20% of runs. Measured over 120 seasons of average management the rates were 79%, 45% and 22%.
 - **Management targets** (cash, sponsor fees, rating gained, facility levels) depend mostly on the player's own choices, so they are set against what the average manager achieves. Rating gained: 70%, 100% and 135% of what the average manager manages. Cash: 30%, 65% and 105% of the cash the average manager, who neither builds nor hires, would be left with. Sponsor fees are mostly fixed by the deals already signed, so Safe is 95% of the projection, Standard adds one more partner deal and Stretch a principal deal on top (tuned: a percentage over the projection could not be reached without new slots).
-- **Cash** is counted net of bank debt, so borrowing cannot meet the target.
+- **Cash** is the cash at season end; with no borrowing it cannot be dressed up.
 
 Setting targets is the last step of pre-season. Drivers and power unit are fixed from then on, so the marks cannot be lowered by setting them with a weak line-up and then changing it.
 
@@ -469,7 +471,7 @@ Target curve for good play on Normal:
 |---|---|---|---|---|---|---|---|---|---|---|
 | Median position | 12th | 11th | 10th | 8th | 6th | 5th | 4th | 3rd | 2nd | 1st |
 
-First points in season 3, first podium in season 7 and first win in season 9 (medians). The first title comes in seasons 8–12 in 37% of saves and by season 15 in 85% (45% and 89% before the race-weekend rebuild: the fastest car on the day now wins a little less often, so the step to champion takes a little longer). The curve is met to season 5; seasons 6 to 9 sit at 5th, a season or two behind the curve, because the top four teams are a clear step above the rest and breaking into them takes a front-running organisation; the title then follows quickly. Once champion, a well-run team usually stays there (72% of these saves are champions in season 15). That is intended: a player good enough to reach the top has earned it, and staying there gets no extra difficulty beyond the rules that already bear on every leader (annual loss, aero allowance, cost cap).
+First points in season 3, first podium in season 7 and first win in season 9 (medians). The first title comes in seasons 8–12 in 38% of saves and by season 15 in 82% (45% and 89% before the race-weekend rebuild: the fastest car on the day now wins less often, by design, so the step to champion takes a little longer). The curve is met to season 5; seasons 6 to 9 sit at 5th, a season or two behind the curve, because the top four teams are a clear step above the rest and breaking into them takes a front-running organisation; the title then follows quickly. Once champion, a well-run team usually stays there (70% of these saves are champions in season 15). That is intended: a player good enough to reach the top has earned it, and staying there gets no extra difficulty beyond the rules that already bear on every leader (annual loss, aero allowance, cost cap).
 
 A manager that does nothing at all now climbs slowly to about 10th, because designers with nothing queued bank their work for free and the starting staff produce more than before tuning. It has no sponsors left after two seasons and wins nothing.
 
@@ -494,7 +496,7 @@ A manager that does nothing at all now climbs slowly to about 10th, because desi
 | Loans and academy | Borrow rivals' juniors now, grow your own later | Recalls, slow payback |
 | Commercial first | Build sponsor income before lap time | Stays slow for longer |
 | Star hire | Poach a top Technical Director early | Buyout, gardening leave, large salary |
-| Borrowing | Loans and advances to accelerate | Interest, crisis risk |
+| Living on the edge | Spend down to zero every round to accelerate | One crash bill or bad weekend puts the team in the red, where everything freezes |
 
 ## 8. Starting grid
 
@@ -610,7 +612,7 @@ The engine will be plain JavaScript with a seeded random generator and no UI dep
 |---|---|---|
 | Competent | Sensible priorities, follows the cash forecast, picks the better A/B option | First title in seasons 8–12 in about half of saves; a crisis in under 10% |
 | Naive | Spreads money evenly, picks A/B at random | Plateaus at 7th–9th; a title by season 15 in under 5% |
-| Reckless | Maximum spend and borrowing | A crisis in over half of saves |
+| Reckless | Maximum spend, no saving | A crisis in over half of saves |
 
 Further checks:
 
@@ -623,21 +625,21 @@ Each tuning change is checked against 200 saves per bot.
 
 **As built.** `tests/m5-balance.js` plays saves of 15 seasons with every system on (decisions, targets, market), four at a time on worker threads; `npm run test:m5` runs 200 saves per bot (well over an hour with the race-weekend simulation; 60 saves take about 10 minutes). Each finished save is written to `.m5/results.jsonl`, so a run can be stopped and resumed, and `--report` reports on the saves finished so far. The scripted managers are in `tests/bot.js`:
 
-- **Competent** plans a season ahead (next season's income and running costs, not just this season's cash forecast) and takes a prize advance or a bank loan rather than fall into the overdraft. It signs the drivers worth most for their cost (an Overall point is worth more as reputation rises), switches power unit when a better one is affordable without its Chassis cap falling, builds the Design Office, CFD and Factory first, goes in-house once Chassis presses against the parts package's cap, saves for the next facility by banking design work (which costs nothing to build), puts most new engineers into Aero, invests in race operations and race staff once the car is near the midfield, and picks low-risk season targets.
+- **Competent** plans a season ahead (next season's income and running costs, not just this season's cash forecast) and keeps its forecast clear of zero, banking design work rather than spend into the red. It signs the drivers worth most for their cost (an Overall point is worth more as reputation rises), switches power unit when a better one is affordable without its Chassis cap falling, builds the Design Office, CFD and Factory first, goes in-house once Chassis presses against the parts package's cap, saves for the next facility by banking design work (which costs nothing to build), puts most new engineers into Aero, invests in race operations and race staff once the car is near the midfield, and picks low-risk season targets.
 - **Naive** keeps the designers busy on small safe upgrades, banks a quarter, accepts every sponsor, keeps two drivers at a fair price, and spreads the rest evenly: one facility after another in a fixed rotation and the same few heads for every department. It watches this season's forecast but plans no further, and picks A/B at random.
-- **Reckless** spends everything and borrows to the limit.
+- **Reckless** spends everything it can, every round, and never saves.
 
-Results over 60 saves per bot after the race-weekend rebuild (all targets met; the 200-save figures from before it are in brackets where they differ):
+Results over 60 saves per bot after the race-weekend rebuild, the extra race chaos and the removal of borrowing (one target missed, the naive plateau; the 200-save figures from before the rebuild are in brackets where they differ):
 
 | Check | Target | Built |
 |---|---|---|
-| Competent: first title in seasons 8–12 | About half | 37%, 85% by season 15 (45%, 89%) |
+| Competent: first title in seasons 8–12 | About half | 37%, 82% by season 15 (45%, 89%); no crises without any borrowing |
 | Competent: crisis | Under 10% | 0% |
-| Naive: plateau | 7th–9th | 9th from season 6, edging to 7th by season 12 |
+| Naive: plateau | 7th–9th | Missed: 9th from season 7, 7th by season 12 and 6th in season 15; the extra chaos helps a middling team score |
 | Naive: title by season 15 | Under 5% | 0% |
-| Reckless: crisis | Over half | 100% |
-| A/B value | About 10% | Random choices score 94% of the points over ten seasons (92%); first title by season 15 in 77% of saves instead of 85% |
-| Season targets, competent | 80 / 50 / 20% | 77 / 36 / 11% over every offered objective; results objectives 71–84 / 37–55 / 11–24%. Sponsor-fee targets above Safe need an extra deal (4% and 0%), and Aero rating gained is rarely met by a manager that banks heavily for facilities (28 / 10 / 0%) |
+| Reckless: crisis | Over half | 100%, about one a season, and it sinks to last: each rescue cuts the team back to what it can pay for |
+| A/B value | About 10% | Random choices score 91% of the points over ten seasons; poorer choices also bring a crisis in 5% of saves |
+| Season targets, competent | 80 / 50 / 20% | 77 / 38 / 13% over every offered objective; results objectives 71–84 / 37–55 / 11–24%. Sponsor-fee targets above Safe need an extra deal (4% and 0%), and Aero rating gained is rarely met by a manager that banks heavily for facilities (28 / 10 / 0%) |
 
 World health with no player (30 seasons, six saves): the front-to-back gap stays between 1.1 and 1.5 s, three or four teams win titles and the title changes hands several times, and teams move about half a place a year. Mercedes still wins about two-thirds of titles: its starting car settles about 0.09 s clear and it signs the best drivers; small development swings near the top barely move this because of the diminishing returns.
 
@@ -659,7 +661,7 @@ World health with no player (30 seasons, six saves): the front-to-back gap stays
 | Found in the build: with no winter loss, every car's Reliability would creep towards 100 in a long save | Reliability loses 2% each winter |
 | Found in the build: one mechanical department could not hold three ratings against the winter loss | Mechanical designers produce more work per head than aerodynamicists |
 | Found in the build: a team could set easy targets with weak drivers and then sign better ones | Targets are set last; drivers and power unit are then fixed for the season |
-| Found in the build: borrowing on the last day met a cash target | Cash targets are net of bank debt |
+| Found in the build: borrowing on the last day met a cash target | Cash targets were made net of bank debt; borrowing has since been removed |
 | Found in the build: 38 of the 80 decisions always favoured the same option | Numbers reworked; every decision now has each option come out best in some situation, by the scripted manager's own valuation |
 | Found in the build: the fastest starting team (Mercedes) won about 80% of titles over 30 seasons, because diminishing returns pin top cars to their starting ratings | Each rival's reading of the winter rules adds a random ±0.9 to Aero and Chassis. The title now changes hands several times in 30 seasons (Mercedes still wins about 70%; milestone 5) |
 | Found in the build: a driver whose contract expired had to vanish at once, before the player could react | Out-of-contract drivers stay until the market closes and can be re-signed; rivals can take them from stage 2 |

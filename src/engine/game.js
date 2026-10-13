@@ -13,7 +13,7 @@ import {
   SAVE_VERSION, START_YEAR, PLAYER, START_REPUTATION, ROUNDS, clone, clamp, year, currentTrack, effectiveCar, teamOps,
   getStandings, playerPosition, paceTable, atrFor, overall, seasonMetrics,
 } from './core.js'
-import { initialFinance, applyRoundFinance, checkCrisis, triggerCrisis, closeSeasonBooks, canSpend, spend, perRound } from './economy.js'
+import { initialFinance, applyRoundFinance, checkCrisis, triggerCrisis, closeSeasonBooks, canSpend, spend, perRound, settleOldBorrowing } from './economy.js'
 import { initialDev, progressDevelopment, tighteningPlan, playerWinter } from './development.js'
 import { progressOrg, refreshStaffMarket } from './hq.js'
 import { initRivals, rivalRound, rivalWinter, scheduleRivalUpgrades } from './rivals.js'
@@ -178,12 +178,18 @@ function playerEntryExtras(game, slot) {
   return { wing: w.wing?.[slot], controlled: !!w.live, startTyre: w.startTyre?.[slot], orders: w.orders?.[slot] }
 }
 
+// Brings a save from an earlier build up to date. Safe to run on any save.
+export function migrateSave(game) {
+  settleOldBorrowing(game)
+  return game
+}
+
 // Qualifying and the race grid for this round. Rolls come from the save's seed.
-export function createWeekendRace(game) {
+export function createWeekendRace(game, opts = {}) {
   // A weather decision replaces the track's usual chance of rain for this race.
   const track = game.weatherOverride == null ? currentTrack(game) : { ...currentTrack(game), rain: game.weatherOverride }
   const rng = streamRng(game.seed, 'weekend', game.season, game.round)
-  return createRace(track, buildEntries(game), rng)
+  return createRace(track, buildEntries(game), rng, opts)
 }
 
 // Files a finished race: the result, and the round moves on.

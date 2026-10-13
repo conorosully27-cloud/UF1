@@ -20,18 +20,21 @@ export const DIFFICULTY = {
 
 const blankSeason = () => ({
   income: { prize: 0, sponsors: 0, backing: 0, merchandise: 0, owner: 0, bonuses: 0, other: 0 },
-  costs: { workforce: 0, keyStaff: 0, drivers: 0, powerUnit: 0, raceOps: 0, carBuild: 0, facilities: 0, development: 0, damage: 0, interest: 0, other: 0 },
+  costs: { workforce: 0, keyStaff: 0, drivers: 0, powerUnit: 0, raceOps: 0, carBuild: 0, facilities: 0, development: 0, damage: 0, other: 0 },
   cap: 0,
 })
 
 export function initialFinance(difficulty) {
   return {
-    cash: DIFFICULTY[difficulty].cash, bank: 0, advancePerRound: 0, prizeShareLost: 0,
+    cash: DIFFICULTY[difficulty].cash, prizeShareLost: 0,
     overdraftRounds: 0, austerity: 0, crises: 0, season: blankSeason(), lastRound: null, history: [],
   }
 }
 
-export const canSpend = (game, amount) => game.finance.cash - amount >= OVERDRAFT
+// There is no borrowing. Cash can dip into a small overdraft, but a team in
+// the red cannot start any new spending until it has climbed back above zero.
+export const inOverdraft = (game) => game.finance.cash < 0
+export const canSpend = (game, amount) => !inOverdraft(game) && game.finance.cash - amount >= OVERDRAFT
 
 export function spend(game, category, amount, countsForCap = false) {
   game.finance.cash -= amount
@@ -64,14 +67,6 @@ export function headCost(dept) {
 
 const deptHeads = (dept) => dept.heads + dept.incoming.reduce((s, x) => s + x.heads, 0)
 
-export function bankLimit(game) {
-  return 5 + game.reputation * 0.5
-}
-
-export function bankRate(game) {
-  return 0.14 - game.reputation * 0.0006
-}
-
 // Recurring income and costs for one round, as things stand. `ahead` looks
 // that many rounds into the future so facility instalments drop off on time.
 export function perRound(game, ahead = 0) {
@@ -80,7 +75,7 @@ export function perRound(game, ahead = 0) {
   const team = game.teams[PLAYER]
   const supplier = game.suppliers[team.supplier]
   const income = {
-    prize: Math.max(0, prizeThisSeason(game) / ROUNDS - f.advancePerRound),
+    prize: prizeThisSeason(game) / ROUNDS,
     sponsors: game.sponsors.deals.reduce((s, d) => s + d.fee, 0) / ROUNDS,
     backing: team.drivers.reduce((s, id) => s + (game.drivers[id].contract?.backing || 0), 0) / ROUNDS,
     merchandise: merchandise(game) / ROUNDS,
@@ -110,7 +105,6 @@ export function perRound(game, ahead = 0) {
     raceOps: RACE_OPS,
     carBuild: CAR_BUILD / ROUNDS,
     facilities: (facilityUpkeep(o) + juniors * ACADEMY_COST) / ROUNDS + (o.facilities.windTunnel.level === 0 ? TUNNEL_RENT : 0) + building,
-    interest: (f.bank * bankRate(game)) / ROUNDS,
   }
   const sum = (x) => Object.values(x).reduce((s, v) => s + v, 0)
   return { income, costs, net: sum(income) - sum(costs), cap: capWorkforce + capKey + RACE_OPS + CAR_BUILD / ROUNDS }
@@ -148,33 +142,18 @@ export function applyRoundFinance(game, result) {
   if (game.finance.austerity > 0) game.finance.austerity--
 }
 
-export function takeLoan(game, amount) {
-  if (!(amount > 0)) throw new Error('Enter an amount')
-  if (game.finance.bank + amount > bankLimit(game) + 1e-9) throw new Error(`The bank will lend up to £${bankLimit(game).toFixed(1)}m in total`)
-  game.finance.bank += amount
-  game.finance.cash += amount
-}
-
-export function repayLoan(game, amount) {
-  const pay = Math.min(amount, game.finance.bank)
-  if (!(pay > 0)) throw new Error('Nothing to repay')
-  if (!canSpend(game, pay)) throw new Error('Not enough cash to repay that')
-  game.finance.bank -= pay
-  game.finance.cash -= pay
-}
-
-export function advanceLimit(game) {
-  const n = roundsLeft(game)
-  if (game.phase !== 'season' || n === 0) return 0
-  return Math.max(0, (prizeThisSeason(game) / ROUNDS) * 0.5 - game.finance.advancePerRound) * n
-}
-
-// Take part of the remaining prize payments now, for a 10% discount.
-export function takeAdvance(game, amount) {
-  if (!(amount > 0)) throw new Error('Enter an amount')
-  if (amount > advanceLimit(game) + 1e-9) throw new Error(`Up to £${advanceLimit(game).toFixed(1)}m of prize money can be advanced`)
-  game.finance.advancePerRound += amount / roundsLeft(game)
-  earn(game, 'other', amount * 0.9)
+// Saves from before borrowing was removed: an outstanding bank loan, and any
+// prize money taken early, are settled from cash.
+export function settleOldBorrowing(game) {
+  const f = game.finance
+  const owed = (f.bank || 0) + (f.advancePerRound || 0) * roundsLeft(game)
+  delete f.bank
+  delete f.advancePerRound
+  if (owed > 0.005) {
+    f.cash -= owed
+    game.news.push(`Borrowing has been withdrawn: £${owed.toFixed(1)}m of loans and advances has been settled from cash`)
+  }
+  return owed
 }
 
 // Cash below the overdraft limit for two rounds running, or (from milestone 3)
@@ -191,7 +170,6 @@ export function triggerCrisis(game, reason = 'confidence') {
   f.crises++
   f.crisisLog = [...(f.crisisLog || []), { season: game.season, round: game.round, reason }]
   f.cash = Math.max(f.cash, 0) + 3
-  f.bank = 0
   f.overdraftRounds = 0
   f.prizeShareLost = clamp(f.prizeShareLost + 0.05, 0, 0.25)
   f.austerity = ROUNDS
@@ -201,7 +179,25 @@ export function triggerCrisis(game, reason = 'confidence') {
   const [role, top] = Object.entries(game.org.keyStaff).sort((a, b) => b[1].salary - a[1].salary)[0]
   const deputy = { name: staffName(streamRng(game.seed, 'crisis', f.crises)), rating: 45, salary: keyStaffSalary(45) }
   game.org.keyStaff[role] = deputy
-  game.news.push(`Crisis: an investor has cleared the team's debts for a permanent 5% of prize money. ${top.name} has been sold on, building and hiring are frozen for ${ROUNDS} rounds, and reputation has fallen`)
+  const cut = restructure(game)
+  game.news.push(`Crisis: an investor has cleared the team's debts for a permanent 5% of prize money. ${top.name} has been sold on, ${cut ? `${cut} staff have been let go so the team can pay its way, ` : ''}building and hiring are frozen for ${ROUNDS} rounds, and reputation has fallen`)
+}
+
+// The investor's restructuring: the most expensive departments are cut,
+// newest hires first and without severance, until the team's running costs fit
+// its income again. A rescue clears the debt, but it cannot keep an
+// unaffordable team going, so a crisis is never a way to fund one.
+export function restructure(game) {
+  const o = game.org
+  let cut = 0
+  for (let guard = 0; guard < 1000 && perRound(game).net < 0.05; guard++) {
+    const pick = Object.values(o.staff).filter((d) => deptHeads(d) > 5).sort((a, b) => deptHeads(b) * headCost(b) - deptHeads(a) * headCost(a))[0]
+    if (!pick) break
+    const last = pick.incoming[pick.incoming.length - 1]
+    if (last) { last.heads--; if (last.heads <= 0) pick.incoming.pop() } else pick.heads--
+    cut++
+  }
+  return cut
 }
 
 export function closeSeasonBooks(game) {
@@ -209,5 +205,4 @@ export function closeSeasonBooks(game) {
   const sum = (x) => Object.values(x).reduce((s, v) => s + v, 0)
   f.history.push({ season: game.season, income: f.season.income, costs: f.season.costs, totalIncome: sum(f.season.income), totalCosts: sum(f.season.costs), cap: f.season.cap, cashEnd: f.cash })
   f.season = blankSeason()
-  f.advancePerRound = 0
 }

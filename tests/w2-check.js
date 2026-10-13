@@ -7,7 +7,7 @@
 import { newGame, startSeason, simulateRound, endSeason, PLAYER } from '../src/engine/game.js'
 import {
   beginWeekend, setWing, runQualifying, setStartTyre, setOrders, startRace, answerCall, nextBlock, handOver, finishWeekend, boxCar,
-  objectivesNow, quickFinish, weekendActive,
+  objectivesNow, quickFinish, weekendActive, playToMoment,
 } from '../src/engine/live.js'
 import { LIVE_CALLS } from '../src/engine/decisions.js'
 import { OBJECTIVE_REWARD } from '../src/engine/highlights.js'
@@ -97,6 +97,35 @@ function seasonGame(seed, extra) {
   check('the debrief is kept and the objectives are settled', g.lastDebrief?.round === round && res.objectives.every((o) => typeof o.met === 'boolean') && !!res.ratings)
 }
 
+// ---- Playback frames and the key-moment skip ----
+{
+  const g = seasonGame(31)
+  beginWeekend(g)
+  runQualifying(g)
+  startRace(g)
+  const st = g.weekend.state
+  let stops = 0
+  let bad = null
+  while (g.weekend.phase === 'race') {
+    for (const call of g.weekend.calls) if (!(call.id in g.weekend.answered)) answerCall(g, call.id, call.recommend)
+    const before = g.weekend.frames?.length ?? 0
+    playToMoment(g)
+    stops++
+    const f = g.weekend.frames
+    const last = f[f.length - 1]
+    const w = g.weekend
+    const why = w.phase !== 'race' || w.calls.length > 0 || !!w.state.neutral || w.state.events.slice(last.events0).some((e) => ['weather', 'sc', 'vsc', 'dnf', 'incident', 'error'].includes(e.type))
+    if (!why || f.length <= before) { bad = `stop ${stops}`; break }
+  }
+  check('the key-moment skip stops only at a call, a safety car, the weather, trouble or the flag', !bad, bad ?? '')
+  const frames = g.weekend.frames
+  check('every block is recorded for playback, in order', frames.length === st.S && frames.every((f, i) => f.seg === i))
+  check('each record has every car\'s race time at both ends of the block', frames.every((f) => f.t0.length === 24 && f.t1.length === 24 && f.t1.every(Number.isFinite)))
+  const outs = frames.reduce((n, f) => n + f.out.length, 0)
+  check('retirements are recorded in the block they happen', outs === g.weekend.state.cars.filter((c) => c.status !== 'running').length, `${outs} recorded`)
+  check('the key-moment skip pauses a few times a race, not every block', stops >= 2 && stops < st.S, `${stops} stops in ${st.S} blocks`)
+}
+
 // ---- Same choices, same race; a mid-race save carries on ----
 {
   const a = seasonGame(21)
@@ -123,6 +152,7 @@ for (const car of [MIDFIELD, null]) {
   let calls = 0; let weekends = 0; let callsWithEstimates = 0; let total = 0; let recOk = 0
   const kinds = {}
   const values = []
+  let retirements = 0
   for (let i = 0; i < n; i++) {
     const seed = 300 + Math.floor(i / 4)
     const base = seasonGame(seed)
@@ -143,7 +173,10 @@ for (const car of [MIDFIELD, null]) {
       const out = playLive(g, spy)
       tally[name].push(...finish(out.result))
       if (name === 'follow') { calls += out.calls; weekends++ }
-      if (name === 'worst') values.push(...g.lastDebrief.values.map((v) => v.places))
+      if (name === 'worst') {
+        values.push(...g.lastDebrief.values.filter((v) => !v.retired).map((v) => v.places))
+        retirements += g.lastDebrief.values.filter((v) => v.retired).length
+      }
     }
     const q = clone(base)
     tally.quick.push(...finish(simulateRound(q)))
@@ -160,7 +193,7 @@ for (const car of [MIDFIELD, null]) {
   check('following the strategist on the pit wall finishes close to the quick path', Math.abs(m.follow - m.quick) < 1, `${m.follow.toFixed(2)} vs ${m.quick.toFixed(2)}`)
   check('picking the worst option at every call costs places', m.worst - m.follow > 0.3, `${(m.worst - m.follow).toFixed(2)} places a car`)
   check('the debrief values bad calls as places lost on average', mean(values) < 0, `${mean(values).toFixed(2)} places a call over ${values.length} calls`)
-  check('no single call is worth an absurd number of places', values.every((v) => Math.abs(v) <= 12), `largest ${Math.max(...values.map(Math.abs))}`)
+  check('no single call is worth an absurd number of places, unless a retirement is involved', values.every((v) => Math.abs(v) <= 12), `largest ${Math.max(...values.map(Math.abs))}; ${retirements} call(s) with a retirement in one version`)
 }
 
 // ---- A strategist's precision ----

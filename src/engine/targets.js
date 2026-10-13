@@ -134,7 +134,7 @@ export function buildOffer(game, runs, yearIncome) {
       case 'points': return { name: 'Points scored', levels: each((n) => plural(n, 'point')) }
       case 'ahead': return { name: `Races with a car ahead of a ${rivalName} car`, levels: each((n) => plural(n, 'race')) }
       case 'best': return { name: 'Best race finish', levels: each((n) => `${ordinal(n)} or better`) }
-      case 'cash': return { name: 'Cash at season end, net of bank debt', levels: each((n) => `£${n.toFixed(1)}m`) }
+      case 'cash': return { name: 'Cash at season end', levels: each((n) => `£${n.toFixed(1)}m`) }
       case 'sponsor': return { name: 'Sponsor fees earned this season', levels: each((n) => `£${n.toFixed(1)}m`) }
       case 'rating': return { name: `${x.area === 'aero' ? 'Aero' : 'Chassis'} rating gained during the season`, levels: each((n) => `+${n.toFixed(1)}`) }
       case 'classified': return { name: 'Races with both cars classified', levels: each((n) => plural(n, 'race')) }

@@ -4,9 +4,9 @@
 // Usage: node tests/m2-check.js [seasons]
 
 import { newGame, startSeason, simulateRound, endSeason, effectiveCar, paceTable, PLAYER } from '../src/engine/game.js'
-import { forecast, perRound, takeLoan, repayLoan, takeAdvance, advanceLimit, bankLimit, prizeThisSeason, COST_CAP } from '../src/engine/economy.js'
+import { forecast, perRound, prizeThisSeason, COST_CAP, OVERDRAFT, canSpend, inOverdraft, settleOldBorrowing } from '../src/engine/economy.js'
 import { startProject, capacity, expectedGain, tighteningPlan, chassisCap } from '../src/engine/development.js'
-import { buildFacility, hire, fire, hireKeyStaff } from '../src/engine/hq.js'
+import { buildFacility, hire, fire, hireKeyStaff, setPay } from '../src/engine/hq.js'
 import { acceptOffer, endDeal, freeSlots, slotTiers } from '../src/engine/sponsors.js'
 import { passive, steady, reckless } from './bot.js'
 
@@ -89,16 +89,26 @@ function hasBadNumber(x, path = '') {
   fire(g, 'commercial', 2)
   check('redundancies cost severance', g.finance.cash < c0 && g.org.staff.commercial.heads === 13)
 
-  // Borrowing
-  takeLoan(g, 5)
-  check('a bank loan adds cash and debt', g.finance.bank === 5)
-  check('the bank has a limit', expectThrow(() => takeLoan(g, bankLimit(g))))
-  repayLoan(g, 5)
-  check('and can be repaid', g.finance.bank === 0)
-  const prizeBefore = perRound(g).income.prize
-  const lim = advanceLimit(g)
-  takeAdvance(g, lim)
-  check('a prize advance halves the remaining prize payments', Math.abs(perRound(g).income.prize - prizeBefore / 2) < 1e-6 && advanceLimit(g) < 1e-6)
+  // The overdraft: no borrowing, and nothing new starts while the team is in the red.
+  {
+    const h = JSON.parse(JSON.stringify(g))
+    const cash = h.finance.cash
+    check('spending can dip into the overdraft but not past it', canSpend(h, cash + 2) && !canSpend(h, cash - OVERDRAFT + 0.5))
+    h.finance.cash = -1
+    check('in the red, no new spending can start', inOverdraft(h) && !canSpend(h, 0.1) &&
+      expectThrow(() => hire(h, 'commercial', 1)) && expectThrow(() => buildFacility(h, 'simulator')) &&
+      expectThrow(() => startProject(h, { area: 'aero', size: 'minor', approach: 'standard' })) && expectThrow(() => setPay(h, 'aero', 'premium')))
+    setPay(h, 'aero', 'low')
+    check('but pay can still be cut', h.org.staff.aero.pay === 'low')
+    h.finance.cash = 0.5
+    check('back above zero, spending opens again', canSpend(h, 0.5) && !inOverdraft(h))
+    const old = JSON.parse(JSON.stringify(g))
+    old.finance.bank = 4
+    old.finance.advancePerRound = 0.25
+    const before = old.finance.cash
+    const owed = settleOldBorrowing(old)
+    check('an old save\'s loan and advance are settled from cash', Math.abs(owed - (4 + 0.25 * (16 - old.round))) < 1e-9 && Math.abs(old.finance.cash - (before - owed)) < 1e-9 && !('bank' in old.finance))
+  }
 
   // Key staff
   const cand = g.staffMarket.find((c) => c.minReputation <= g.reputation && c.leave > 0)
