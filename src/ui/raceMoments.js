@@ -140,10 +140,6 @@ export function qualiMoments(game, st, ses) {
 
 // ---- During the race ----
 
-export const leadMoment = (game, c, lap) => ({
-  key: `lead-${c.id}`, size: 'medium', kind: 'lead', color: driverColor(game, c.id, c.e.slot), kicker: lap ? `Lap ${lap}` : null, title: 'Leading the race',
-  drivers: [{ name: surname(c.e.name), color: driverColor(game, c.id, c.e.slot), text: 'P1' }],
-})
 export const podiumRunMoment = (game, c, pos, lap) => ({
   key: `top3-${c.id}`, size: 'medium', kind: 'top3', kicker: lap ? `Lap ${lap}` : null, title: 'In the podium places',
   drivers: [{ name: surname(c.e.name), color: driverColor(game, c.id, c.e.slot), text: `P${pos}` }],
