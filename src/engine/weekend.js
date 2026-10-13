@@ -20,7 +20,7 @@ export const SIM = {
   teamFormSd: 0.13, // weekend-to-weekend car variation, shared by both cars
   dayFormSd: 0.03, // race-day driver variation
   lapNoise: 0.16, // lap-to-lap variation
-  qualiSdBase: 0.04, qualiSdCons: 0.003, // qualifying lap variation, and how much Consistency narrows it
+  qualiSdBase: 0.05, qualiSdCons: 0.003, // qualifying lap variation, and how much Consistency narrows it
   gridGap: 0.4, // seconds between grid slots after lap one
   startSd: 0.3,
   strategySd: 0.6, // the strategy luck the tyre model does not cover
@@ -36,7 +36,7 @@ export const SIM = {
   pileUp: 0.15, // share of first-lap incidents that involve five cars
   chaosSd: 0.75, // race-to-race spread in crashes and contact: most races calm, the odd one carnage
   wetChaos: 1.4, // extra chaos in a wet or mixed race
-  crashScale: 0.88, // keeps the average retirement rate where it was once the spread is wider
+  crashScale: 0.86, // keeps the average retirement rate where it was once the spread is wider
   wingCost: 0.04, // seconds a lap per level², away from the ideal wing
   cliff: 0.5, // extra seconds a lap, each lap, past a tyre's life
   missedCompound: 20, // seconds added if a dry race ends on one compound
@@ -246,6 +246,63 @@ export function bestStop(state, c, seg) {
 
 // ---- Weekend set-up and qualifying ----
 
+// Qualifying (RACE_WEEKEND.md 4.3): three knockout sessions. In each one a
+// car runs once, late, or twice: an early banker lap and a late attempt. Each
+// run takes a new set of Softs while there is one left. The track gets
+// quicker, a flag can spoil the late laps, and rain or a drying track decides
+// which of the two runs counts.
+export const QUALI = {
+  sets: 4, // new Soft sets for qualifying
+  usedTyre: 0.3, // seconds slower on a used set
+  evolution: 0.2, // seconds quicker each session
+  lateGain: 0.12, // a late run against an early one in the same session
+  bigPush: 0.12, // a big-risk lap is this much quicker...
+  bigErr: 3, // ...and this many times likelier to go wrong
+  errScale: 0.7, // per run: a weekend has up to six runs a car
+  crashShare: 0.15, // share of mistakes that end in the wall
+  lateFlag: 0.04, // chance a yellow or red flag spoils the late laps, before any crash
+  beatFlag: 0.6, // share of cars that finish their late lap before a flag
+  restart: 0.5, // chance the session restarts with time for one more lap, for a car left with no time
+  towGain: 0.1, // a tow at a track with average Power weighting
+  towCost: 0.04, // the car giving the tow
+  condTime: { dry: 0, damp: 4.5, wet: 8 },
+}
+const QRNG = { run: 11, flag: 12, beat: 13, read: 14 }
+// Cars knocked out in a session: Q3 keeps ten, Q1 and Q2 drop the rest evenly.
+export const qualiDrop = (n, s) => (s >= 2 ? 0 : Math.ceil((n - 10) / (2 - s)))
+
+// The six runs of qualifying (early and late in each session), dry, damp or wet.
+function qualiConditions(rng, wet) {
+  const slots = new Array(6).fill('dry')
+  if (!wet) return { weather: 'dry', slots }
+  const u = rng.next()
+  if (u < 0.4) {
+    for (let i = 0; i < 6; i++) slots[i] = i >= 4 && rng.chance(0.5) ? 'damp' : 'wet'
+    return { weather: 'wet', slots }
+  }
+  const k = rng.int(1, 5)
+  if (u < 0.7) {
+    // Drying: damp (wet at the start if the drying is late), then slicks from run k.
+    for (let i = 0; i < 6; i++) slots[i] = i >= k ? 'dry' : i === 0 && k >= 3 ? 'wet' : 'damp'
+    return { weather: 'drying', slots, change: k }
+  }
+  // Rain arriving at run k.
+  const heavy = rng.chance(0.5)
+  for (let i = 0; i < 6; i++) slots[i] = i < k ? 'dry' : i === k || !heavy ? 'damp' : 'wet'
+  return { weather: 'rain', slots, change: k }
+}
+
+// A car's qualifying pace in given conditions, before the run's own luck.
+export function qualiPace(state, c, cond) {
+  if (cond === 'dry') return c.qBase + wetSetupEffect(c.m, false)
+  const dr = c.e.driver
+  return c.qBase + QUALI.condTime[cond] + (100 - dr.wet) * SIM.wetPerPoint * (cond === 'wet' ? 1 : 0.6) +
+    wingLoss(c.wing, idealWing(state.track, c.e.car, true)) - wingLoss(c.wing, c.idealWing) + wetSetupEffect(c.m, true)
+}
+
+// Everything rolled before the weekend: the cars, the weather for qualifying
+// and the race, and the race's luck. Qualifying itself uses keyed rolls, so the
+// choices made in it never change what happens to anyone else, or on Sunday.
 export function createRace(track, entries, rng, opts = {}) {
   const P = SIM
   const events = []
@@ -254,7 +311,7 @@ export function createRace(track, entries, rng, opts = {}) {
   const raceWeather = u < track.rain * 0.45 ? 'wet' : u < track.rain ? 'mixed' : 'dry'
 
   const teamForm = {}
-  const cars = entries.map((e) => {
+  const cars = entries.map((e, idx) => {
     const m = { ...(e.mods || {}) }
     // Teams with weaker setup work swing more from one weekend to the next.
     if (!(e.teamId in teamForm)) teamForm[e.teamId] = rng.normal(0, P.teamFormSd * clamp(1 + (85 - e.ops.setup) * 0.02, 0.8, 1.6))
@@ -270,43 +327,17 @@ export function createRace(track, entries, rng, opts = {}) {
       events.push({ lap: 0, type: 'penalty', ids: [e.id], text: `${e.name} takes new power unit parts: 10-place grid penalty` })
     }
     return {
-      id: e.id, e, m, ap, wing, idealWing: ideal, carDelta, setupLoss,
+      id: e.id, idx, e, m, ap, wing, idealWing: ideal, carDelta, setupLoss,
+      qBase: carDelta + (100 - e.driver.pace) * P.secPerPace + setupLoss + (m.qualiPace || 0), sets: QUALI.sets, qOut: false,
       status: 'running', t: 0, dt: 0, traffic: 0, penalty: 0, damage: 0, pitExtra: 0, pitTime: 0, strat: 0,
       errors: 0, passes: 0, dnfSeg: -1, reason: null, notes: [],
       tyre: 'M', wear: 0, used: [], stints: [], stops: 0, lastStop: -9, plan: [], wingDamage: 0, forced: null,
       orders: { ...DEFAULT_ORDERS, ...(e.orders || {}) }, controlled: !!e.controlled,
     }
   })
+  const qc = qualiConditions(rng, qualiWet)
 
-  // ---- Qualifying ----
-  for (const c of cars) {
-    const dr = c.e.driver
-    let t = c.carDelta + (100 - dr.pace) * P.secPerPace + c.setupLoss + (c.m.qualiPace || 0)
-    let sd = P.qualiSdBase + (100 - dr.consistency) * P.qualiSdCons
-    if (qualiWet) {
-      t += (100 - dr.wet) * P.wetPerPoint + wingLoss(c.wing, idealWing(track, c.e.car, true)) - wingLoss(c.wing, c.idealWing)
-      sd *= 1.8
-    }
-    t += wetSetupEffect(c.m, qualiWet) + rng.normal(0, sd)
-    const pErr = (0.01 + (100 - dr.consistency) * 0.0012) * (qualiWet ? 2 : 1)
-    c.qError = rng.chance(pErr)
-    if (c.qError) t += rng.range(0.6, 2.0)
-    c.qTime = t
-  }
-  const qOrder = cars.slice().sort((a, b) => a.qTime - b.qTime)
-  qOrder.forEach((c, i) => { c.qPos = i + 1 })
-  const gridOrder = cars.slice().sort((a, b) => {
-    const ka = a.qPos + (a.m.gridDrop || 0) + (a.m.gridDrop ? 0.5 : 0)
-    const kb = b.qPos + (b.m.gridDrop || 0) + (b.m.gridDrop ? 0.5 : 0)
-    return ka - kb
-  })
-  gridOrder.forEach((c, i) => { c.grid = i + 1 })
-  const quali = qOrder.map((c) => ({
-    pos: c.qPos, id: c.e.id, teamId: c.e.teamId, time: track.baseLap * (qualiWet ? 1.12 : 1) + c.qTime, gap: c.qTime - qOrder[0].qTime,
-    error: c.qError, grid: c.grid,
-  }))
-
-  // ---- Race set-up ----
+  // ---- The race's weather and luck ----
   const laps = track.laps
   const S = Math.max(8, Math.round(laps / 5))
   const segLaps = laps / S
@@ -332,7 +363,7 @@ export function createRace(track, entries, rng, opts = {}) {
   cars.slice().sort((a, b) => dayPace(a) - dayPace(b)).forEach((c, i) => { c.paceRank = i + 1 })
 
   const state = {
-    v: 1, trackId: track.id,
+    v: 2, trackId: track.id,
     track: { id: track.id, name: track.name, laps, baseLap: track.baseLap, w: track.w, overtaking: track.overtaking, sc: track.sc, lap1: track.lap1, pitLoss: track.pitLoss ?? 21, wear: track.wear ?? 1 },
     laps, S, segLaps, seg: 0, started: false, done: false,
     key: Math.floor(rng.next() * 4294967296), cond, wetRace: raceWeather === 'wet', qualiWet, raceWeather,
@@ -341,14 +372,175 @@ export function createRace(track, entries, rng, opts = {}) {
     // Rain makes it more likely still.
     chaos: clamp(Math.exp(rng.normal(0, P.chaosSd) - (P.chaosSd * P.chaosSd) / 2), 0.25, 4) * (raceWeather === 'dry' ? 1 : P.wetChaos),
     neutral: null, neutralNow: null, safetyCars: 0, vscs: 0, teamHold: {},
-    cars, order: gridOrder.map((c) => cars.indexOf(c)), events, quali,
-    ...opts,
+    cars, order: [], events, quali: null,
+    qs: { key: Math.floor(rng.next() * 4294967296), session: 0, done: false, weather: qc.weather, slots: qc.slots, change: qc.change ?? null, left: cars.map((c) => c.idx), sessions: [] },
   }
+  if (!opts.liveQuali) for (let s = 0; s < 3; s++) runQualiSession(state)
+  return state
+}
+
+// The strategist's plan for a car in this session: one late run or two, and
+// how hard to push. `read` is whether the pit wall reads the weather right.
+export function qualiPlan(state, c, read = true) {
+  const qs = state.qs
+  const s = qs.session
+  const early = qs.slots[s * 2]
+  const late = qs.slots[s * 2 + 1]
+  const field = qs.left.map((i) => state.cars[i]).filter((x) => !x.qCrash)
+  const pace = (x) => qualiPace(state, x, late)
+  const sorted = field.slice().sort((a, b) => pace(a) - pace(b))
+  // Damaged cars set no time and take places in the drop zone first.
+  const drop = Math.max(0, qualiDrop(qs.left.length, s) - (qs.left.length - field.length))
+  let runs = 2
+  let push = 'normal'
+  let why = 'Two runs: a banker, then the real lap.'
+  let margin = null
+  if (drop > 0) {
+    const firstOut = sorted[sorted.length - drop]
+    const lastIn = sorted[sorted.length - drop - 1] ?? sorted[0]
+    margin = c === firstOut || pace(c) >= pace(firstOut) ? pace(lastIn) - pace(c) : pace(firstOut) - pace(c)
+    // One run saves a set for later, but a late flag would leave no time: only when well clear.
+    if (margin > (s === 0 ? 1.2 : 0.6) && c.sets >= 1) { runs = 1; why = 'Well clear of the cut: one run saves a set of tyres for later.' }
+    if (Math.abs(margin) < 0.15) { push = 'big'; why = 'On the bubble: two runs, and a big lap.' }
+  } else if (c.sets < 2) { runs = 1; why = 'One new set left: one run on it.' }
+  if (read && QUALI.condTime[late] < QUALI.condTime[early]) { runs = 1; why = 'The track is getting quicker: one late run when it is fastest.' }
+  if (read && QUALI.condTime[late] > QUALI.condTime[early]) { runs = 2; why = 'Rain is coming: bank a lap early.' }
+  return { runs, push, why, margin }
+}
+
+// Runs the next session. `choices` gives the player's cars a plan
+// ({ runs, push }) and `tow` names { giver, taker }; everyone else's pit wall
+// decides for itself, reading the weather as well as its strategy rating allows.
+export function runQualiSession(state, choices = {}) {
+  const qs = state.qs
+  const s = qs.session
+  if (qs.done) return state
+  const Q = QUALI
+  const R = (label, c, n = 0) => mixRng(qs.key, s + 1, label, c ? c.idx + 1 : 0, n)
+  const field = qs.left.map((i) => state.cars[i])
+  const drop = qualiDrop(field.length, s)
+  const tow = choices.tow && field.some((c) => c.id === choices.tow.giver && !c.qCrash) ? choices.tow : null
+  const powerScale = state.track.w.power / 0.25
+  const plans = {}
+  for (const c of field) {
+    if (c.qCrash) continue
+    const mine = c.controlled && choices[c.id]
+    plans[c.id] = mine ? { runs: choices[c.id].runs === 1 ? 1 : 2, push: choices[c.id].push === 'big' ? 'big' : 'normal' }
+      : qualiPlan(state, c, R(QRNG.read, c).chance(0.45 + c.e.ops.strategy / 180))
+  }
+  // A yellow or red flag in the closing minutes: only some cars finish their last lap.
+  let flag = R(QRNG.flag).chance(Q.lateFlag)
+  const rows = []
+  // `n` picks the lap's own rolls: 0 and 1 for the two runs, 2 for a lap after a restart.
+  const lap = (c, run, n = run) => {
+    const plan = plans[c.id]
+    const rng = R(QRNG.run, c, n)
+    const cnd = qs.slots[s * 2 + run]
+    const dr = c.e.driver
+    const wet = cnd !== 'dry'
+    let t = qualiPace(state, c, cnd) - s * Q.evolution - (run === 1 ? Q.lateGain : 0)
+    const used = c.sets <= 0
+    if (used) t += Q.usedTyre
+    else c.sets--
+    if (plan.push === 'big') t -= Q.bigPush
+    if (tow?.taker === c.id) t -= Q.towGain * powerScale
+    if (tow?.giver === c.id) t += Q.towCost
+    const sd = (SIM.qualiSdBase + (100 - dr.consistency) * SIM.qualiSdCons) * (wet ? 1.8 : 1)
+    t += rng.normal(0, sd)
+    const pErr = (0.01 + (100 - dr.consistency) * 0.0012) * (wet ? 2 : 1) * (plan.push === 'big' ? Q.bigErr : 1) * Q.errScale
+    if (rng.chance(pErr)) {
+      if (rng.chance(Q.crashShare)) return { run, cond: cnd, used, crash: true, time: null }
+      t += rng.range(0.6, 2.0)
+      return { run, cond: cnd, used, error: true, time: t }
+    }
+    return { run, cond: cnd, used, time: t }
+  }
+  for (const c of field) {
+    const row = { id: c.id, idx: c.idx, laps: [], time: null, runs: 0, push: 'normal' }
+    rows.push(row)
+    if (c.qCrash) { row.note = 'damaged'; continue }
+    const plan = plans[c.id]
+    row.runs = plan.runs
+    row.push = plan.push
+    if (plan.runs === 2) {
+      const l = lap(c, 0)
+      row.laps.push(l)
+      if (l.crash) { c.qCrash = true; continue }
+    }
+    const l = lap(c, 1)
+    row.laps.push(l)
+    if (l.crash) { c.qCrash = true; flag = true }
+  }
+  if (flag) {
+    for (const row of rows) {
+      const l = row.laps.find((x) => x.run === 1)
+      const rng = R(QRNG.beat, state.cars[row.idx])
+      if (!l || l.crash || rng.chance(Q.beatFlag)) continue
+      l.flagged = true
+      l.time = null
+      // With no lap on the board, a restart may leave time for one more go.
+      if (!row.laps.some((x) => x.time !== null) && rng.chance(Q.restart)) {
+        const again = lap(state.cars[row.idx], 1, 2)
+        again.restart = true
+        if (again.crash) state.cars[row.idx].qCrash = true
+        row.laps.push(again)
+      }
+    }
+  }
+  for (const row of rows) {
+    const times = row.laps.map((l) => l.time).filter((t) => t !== null)
+    row.time = times.length ? Math.min(...times) : null
+    row.error = row.laps.some((l) => l.error)
+  }
+  // Cars with no time go to the back, in their base order.
+  rows.sort((a, b) => (a.time ?? 1e9) - (b.time ?? 1e9) || state.cars[a.idx].qBase - state.cars[b.idx].qBase)
+  rows.forEach((r, i) => { r.pos = i + 1; r.out = i >= rows.length - drop })
+  const event = flag ? (rows.find((r) => r.laps.some((l) => l.crash && l.run === 1)) ? 'red' : 'yellow') : null
+  if (event) state.events.push({ lap: 0, type: 'quali', ids: [], text: `Q${s + 1}: ${event === 'red' ? 'a crash brings out the red flag' : 'a late yellow flag'} and some final laps are lost` })
+  for (const row of rows) {
+    if (row.laps.some((l) => l.crash)) state.events.push({ lap: 0, type: 'quali', ids: [row.id], text: `Q${s + 1}: ${state.cars[row.idx].e.name} crashes` })
+  }
+  qs.sessions.push({ s, rows, drop, flag: event, slots: [qs.slots[s * 2], qs.slots[s * 2 + 1]], tow })
+  qs.left = rows.filter((r) => !r.out).map((r) => r.idx)
+  for (const r of rows) if (r.out) state.cars[r.idx].qOut = s + 1
+  qs.session++
+  if (qs.session >= 3) gridUp(state)
+  return state
+}
+
+// After Q3: the classification, grid penalties, and every car's start tyre and plan.
+function gridUp(state) {
+  const qs = state.qs
+  qs.done = true
+  const cars = state.cars
+  const order = []
+  for (let s = 2; s >= 0; s--) for (const r of qs.sessions[s].rows) if (s === 2 || r.out) order.push({ ...r, s })
+  const pole = qs.sessions.map((x) => x.rows[0])
+  order.forEach((r, i) => {
+    const c = cars[r.idx]
+    c.qPos = i + 1
+    c.qError = r.error
+    c.qTime = r.time
+    c.qSession = r.s + 1
+  })
+  const gridOrder = cars.slice().sort((a, b) => {
+    const ka = a.qPos + (a.m.gridDrop || 0) + (a.m.gridDrop ? 0.5 : 0)
+    const kb = b.qPos + (b.m.gridDrop || 0) + (b.m.gridDrop ? 0.5 : 0)
+    return ka - kb
+  })
+  gridOrder.forEach((c, i) => { c.grid = i + 1 })
+  state.quali = order.map((r, i) => ({
+    pos: i + 1, id: r.id, teamId: cars[r.idx].e.teamId, time: r.time === null ? null : state.track.baseLap + r.time,
+    gap: r.time === null || pole[r.s].time === null ? null : r.time - pole[r.s].time, session: r.s + 1,
+    error: r.error, noTime: r.time === null, grid: cars[r.idx].grid,
+  }))
+  state.order = gridOrder.map((c) => c.idx)
   // Every car's starting tyre and plan.
+  const c0 = state.cond[0]
   for (const c of cars) {
-    if (cond[0] !== 'dry') { c.tyre = cond[0] === 'wet' ? 'W' : 'I'; c.plan = []; continue }
+    if (c0 !== 'dry') { c.tyre = c0 === 'wet' ? 'W' : 'I'; c.plan = []; continue }
     // A weaker pit wall sometimes picks a plan that is not quite the best.
-    const noise = mixRng(state.key, RNG.plan, state.cars.indexOf(c))
+    const noise = mixRng(state.key, RNG.plan, c.idx)
     const sd = (100 - c.e.ops.strategy) / 25
     let best = null
     for (const comp of SLICKS) {
@@ -359,8 +551,7 @@ export function createRace(track, entries, rng, opts = {}) {
     c.tyre = c.e.startTyre ?? best.comp
     c.plan = c.e.startTyre ? planRest(state, c, 0, c.tyre, 0, false).stops : best.stops
   }
-  cars.forEach((c, i) => { c.idx = i; c.used = [c.tyre]; c.stints = [{ comp: c.tyre, lap: 0 }]; c.two = usedTwo(c) })
-  return state
+  for (const c of cars) { c.used = [c.tyre]; c.stints = [{ comp: c.tyre, lap: 0 }]; c.two = usedTwo(c) }
 }
 
 const byOrder = (state) => state.order.map((i) => state.cars[i])
@@ -791,7 +982,7 @@ export function raceResult(state) {
   const events = state.events.slice().sort((a, b) => a.lap - b.lap)
   return {
     trackId: state.trackId,
-    weather: { quali: state.qualiWet ? 'wet' : 'dry', race: state.raceWeather },
+    weather: { quali: state.qualiWet ? 'wet' : 'dry', qualiType: state.qs?.weather ?? (state.qualiWet ? 'wet' : 'dry'), race: state.raceWeather },
     quali: state.quali, race, events, detail,
     stats: { safetyCars: state.safetyCars + state.vscs, vsc: state.vscs, retirements: retired.length, starters: cars.length, chaos: state.chaos },
   }

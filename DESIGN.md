@@ -335,7 +335,7 @@ A weekend is played one of two ways, set in Settings and changeable for a single
 
 A weekend in progress is part of the save (`game.weekend`), so it carries on where it left off.
 
-**Qualifying.** Lap time = car pace at this track (with the wing level) + driver Pace + setup roll + random variation, with a small chance of a mistake. Grid penalties are then applied.
+**Qualifying** is three knockout sessions: all 24 cars in Q1, where the slowest seven are out, 17 in Q2, where seven more go, and a top-ten shoot-out in Q3. A lap time = car pace at this track (with the wing level) + driver Pace + setup roll + the conditions + random variation, with a small chance of a mistake (a few of which end in the wall). In each session a car runs once, late, or twice: an early banker lap, then a late one about 0.12 s quicker as the track rubbers in (and each session is 0.2 s quicker than the one before). Each run takes one of four new sets of Softs for the whole of qualifying; a run without one is about 0.3 s slower. A big-risk lap is about 0.12 s quicker and three times likelier to go wrong. One car can tow the other on the straights (about 0.1 s at an average track, more where Power counts). A late yellow or red flag (about one session in ten, more after a crash) wipes out some cars' final laps; a car left with no time gets one more go after a restart half the time, and otherwise starts from the back of that session. About one weekend in ten qualifying is wet, drying (one late run is right) or caught by rain part-way (bank a lap early). Rival pit walls choose the same way, reading the weather as well as their strategy rating allows. Grid penalties are then applied. Over many weekends a top-four car is knocked out in Q1 about 2% of the time and in Q2 about 3%.
 
 **The race** (`src/engine/weekend.js`) runs in blocks of about five laps (at least eight blocks). Each block every car's time comes from:
 
@@ -357,26 +357,27 @@ Every random roll is keyed to the save, the race, the block and the car, so the 
 **The live weekend** (`src/engine/live.js`):
 
 1. **Briefing:** the forecast for qualifying and the race (a strong Chief Strategist's numbers lean towards what will happen, and from 70 they say roughly when the rain comes), the track's pit loss and tyre wear, the weekend objectives, and the wing level for each car (1 low drag to 5 high downforce) with the race engineer's suggestion. The wing is locked once qualifying starts.
-2. **Grid:** the qualifying result, the start tyre for each car (with the plan it leads to and how it compares with the best), and the lap-one order.
-3. **Race:** a timing tower, the race feed and team radio, and a card for each car with its tyre wear, standing orders and a Box button. The race pauses for pit-wall calls: safety car, virtual safety car, the planned stop, the tyre cliff, rain, a drying track, the compound rule, an undercut by the car behind, wing damage, and team-mates running together (swap, let them race, hold). A puncture needs no decision: the car comes in. Each call shows the strategist's pick and an estimate for each option from a few simulated futures, as a position (Chief Strategist 80+), a range (60+) or a feel (below 60). A strategist of 60 or more goes with the numbers when they clearly beat the textbook call. A driver told to let a team-mate through remembers it at contract time.
-4. **Debrief:** the result, the weekend's money, the objectives, a rating out of 10 for each drive, and what each call that went against the strategist was worth, found by replaying the race from that moment with the strategist's choice on the same luck. The whole race is also replayed with the strategist in charge, for comparison.
+2. **Qualifying:** before each session the strategist suggests a plan for each of your cars (one late run or two, a normal or big-risk lap) and says how close to the cut it should be: to the hundredth with a Chief Strategist of 80 or more, to the tenth from 60, in words below that. From 70 the strategist also says whether conditions will change late in the session. The player can change each plan and set a tow, then runs the session; the strategist can run the rest of qualifying at any point. A save made between sessions carries on the same way, and the choices for your cars never change a rival's laps or Sunday's luck.
+3. **Grid:** the qualifying result, the start tyre for each car (with the plan it leads to and how it compares with the best), and the lap-one order.
+4. **Race:** a timing tower, the race feed and team radio, and a card for each car with its tyre wear, standing orders and a Box button. The race pauses for pit-wall calls: safety car, virtual safety car, the planned stop, the tyre cliff, rain, a drying track, the compound rule, an undercut by the car behind, wing damage, and team-mates running together (swap, let them race, hold). A puncture needs no decision: the car comes in. Each call shows the strategist's pick and an estimate for each option from a few simulated futures, as a position (Chief Strategist 80+), a range (60+) or a feel (below 60). A strategist of 60 or more goes with the numbers when they clearly beat the textbook call. A driver told to let a team-mate through remembers it at contract time.
+5. **Debrief:** the result, the weekend's money, the objectives, a rating out of 10 for each drive, and what each call that went against the strategist was worth, found by replaying the race from that moment with the strategist's choice on the same luck. The whole race is also replayed with the strategist in charge, for comparison.
 
-Race-weekend cards in the decision deck that the live race covers (one-stop split, safety-car plan, start tyres, team orders, lap one, showers, driver strategy, low drag, maximum downforce) are not drawn when weekends are played live.
+Race-weekend cards in the decision deck that the live race covers (one-stop split, safety-car plan, start tyres, team orders, lap one, showers, driver strategy, low drag, maximum downforce, drying qualifying, the qualifying run plan, the qualifying tow) are not drawn when weekends are played live.
 
 **What the pit wall is worth** (`tests/w2-check.js`, a midfield car, Chief Strategist 90, 32 weekends): following the strategist finishes about 0.7 places a car better than the quick sim, because a live pit wall is never late with a stop; picking the worst-looking option at every call costs about 2.8 places a car; a call chosen that way loses about 1.1 places on average in the debrief. At the very back in season 1 the gaps are too big for calls to change much (under 0.1 places).
 
-**Weekend objectives.** Three small goals each weekend, set from where the car stands on pace at this track: beat one or both cars of the team just ahead (or just behind), a finishing position a little better than the car's pace suggests, and qualifying ahead of the team ahead (or both cars to the flag for the fastest car). Each one met adds 0.3 owner confidence and 0.5 satisfaction with every sponsor. About half are met, worth about 7 confidence a season. Home also shows the head-to-head with the team just ahead in last year's championship and a chart of the gap to the fastest car.
+**Weekend objectives.** Three small goals each weekend, set from where the car stands on pace at this track: beat one or both cars of the team just ahead (or just behind), a finishing position a little better than the car's pace suggests, and a qualifying goal: a car into Q2 or Q3 when the car's pace puts it near that cut, otherwise qualifying ahead of the team ahead (or both cars to the flag for the fastest car). Each one met adds 0.3 owner confidence and 0.5 satisfaction with every sponsor. About half are met, worth about 7 confidence a season. Home also shows the head-to-head with the team just ahead in last year's championship and a chart of the gap to the fastest car.
 
 **Calibration** (quick sim), measured over 1,000 simulated seasons with the cars held fixed. The targets are my estimates of recent real-world rates and have not yet been checked against published data:
 
 | Measure | Target | Built |
 |---|---|---|
 | Retirements per start | 10–12% | 11.8% |
-| Races with a safety car | 55–60% overall, set per track | 57.0% |
+| Races with a safety car | 55–60% overall, set per track | 56.7% |
 | Wet or mixed races | 10–15% | 13.0% |
-| Pole converts to a win | 45–50% | 49.3% |
-| The fastest car on the day wins | 55–65% | 51.9% |
-| A car from the three slowest rival teams scores points | 5–10% of starts | 4.7% |
+| Pole converts to a win | 45–50% | 49.2% |
+| The fastest car on the day wins | 55–65% | 50.9% |
+| A car from the three slowest rival teams scores points | 5–10% of starts | 4.6% |
 
 The player's own season-1 cars score in almost no starts, and the better of them beats at least one Cadillac in about 40% of races.
 

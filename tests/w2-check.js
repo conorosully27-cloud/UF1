@@ -123,6 +123,7 @@ for (const car of [MIDFIELD, null]) {
   let calls = 0; let weekends = 0; let callsWithEstimates = 0; let total = 0; let recOk = 0
   const kinds = {}
   const values = []
+  let retirements = 0
   for (let i = 0; i < n; i++) {
     const seed = 300 + Math.floor(i / 4)
     const base = seasonGame(seed)
@@ -143,7 +144,10 @@ for (const car of [MIDFIELD, null]) {
       const out = playLive(g, spy)
       tally[name].push(...finish(out.result))
       if (name === 'follow') { calls += out.calls; weekends++ }
-      if (name === 'worst') values.push(...g.lastDebrief.values.map((v) => v.places))
+      if (name === 'worst') {
+        values.push(...g.lastDebrief.values.filter((v) => !v.retired).map((v) => v.places))
+        retirements += g.lastDebrief.values.filter((v) => v.retired).length
+      }
     }
     const q = clone(base)
     tally.quick.push(...finish(simulateRound(q)))
@@ -160,7 +164,7 @@ for (const car of [MIDFIELD, null]) {
   check('following the strategist on the pit wall finishes close to the quick path', Math.abs(m.follow - m.quick) < 1, `${m.follow.toFixed(2)} vs ${m.quick.toFixed(2)}`)
   check('picking the worst option at every call costs places', m.worst - m.follow > 0.3, `${(m.worst - m.follow).toFixed(2)} places a car`)
   check('the debrief values bad calls as places lost on average', mean(values) < 0, `${mean(values).toFixed(2)} places a call over ${values.length} calls`)
-  check('no single call is worth an absurd number of places', values.every((v) => Math.abs(v) <= 12), `largest ${Math.max(...values.map(Math.abs))}`)
+  check('no single call is worth an absurd number of places, unless a retirement is involved', values.every((v) => Math.abs(v) <= 12), `largest ${Math.max(...values.map(Math.abs))}; ${retirements} call(s) with a retirement in one version`)
 }
 
 // ---- A strategist's precision ----

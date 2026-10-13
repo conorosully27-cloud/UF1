@@ -1,13 +1,13 @@
 import React from 'react'
 import { PLAYER } from '../engine/game.js'
-import { TYRES, ORDERS, planRest, lapAt, tyreLife, wearRate } from '../engine/weekend.js'
+import { TYRES, ORDERS, planRest, lapAt, tyreLife, wearRate, qualiDrop } from '../engine/weekend.js'
 import {
   setWing, runQualifying, setStartTyre, setOrders, startRace, answerCall, followStrategist, nextBlock, playToCall, handOver,
-  finishWeekend, boxCar, objectivesNow, quickFinish,
+  finishWeekend, boxCar, objectivesNow, quickFinish, startQualifying, setQualiPlan, setTow, runSession, qualiOutlook,
 } from '../engine/live.js'
 import { TRACK_BY_ID } from '../engine/data/tracks.js'
 import { TrackLine } from './Weekend.jsx'
-import { carCode, teamColor, ordinal, gap } from './format.js'
+import { carCode, teamColor, ordinal, gap, lapTime } from './format.js'
 
 const SLICKS = ['S', 'M', 'H']
 const WING_LABELS = ['Low drag', 'Low', 'Medium', 'High', 'High downforce']
@@ -21,7 +21,7 @@ export function Tyre({ comp, age, lg }) {
 function Seg({ options, value, onPick, disabled }) {
   return (
     <div className="seg">
-      {options.map(([k, label]) => <button key={k} className={value === k ? 'on' : ''} disabled={disabled} onClick={() => onPick(k)}>{label}</button>)}
+      {options.map(([k, label]) => <button key={String(k)} className={value === k ? 'on' : ''} disabled={disabled} onClick={() => onPick(k)}>{label}</button>)}
     </div>
   )
 }
@@ -66,6 +66,7 @@ function Briefing({ game, act }) {
             <div className="tile"><div className="kicker">Race</div><div className="big">{f.race}%</div><span className="muted">chance of rain</span></div>
           </div>
           {f.hint && <p>{f.hint}.</p>}
+          {f.qualiHint && <p>{f.qualiHint}.</p>}
           <p className="muted">Your Chief Strategist (rated {strat}) {f.sure ? 'reads the radar well' : strat >= 55 ? 'gives a fair idea' : 'is guessing a little'}. Rain wants more wing.</p>
         </div>
         <div className="panel">
@@ -99,14 +100,124 @@ function Briefing({ game, act }) {
         </div>
       </div>
       <div className="controls">
-        <button className="primary" onClick={() => act((g) => runQualifying(g))}>Run qualifying</button>
+        <button className="primary" onClick={() => act((g) => startQualifying(g))}>To qualifying</button>
         <button className="ghost" onClick={() => act((g) => quickFinish(g))}>Hand to the strategist</button>
       </div>
     </div>
   )
 }
 
-// ---- Saturday and the grid ----
+// ---- Saturday: qualifying ----
+
+const PLAN_OPTS = [[2, 'Two runs'], [1, 'One late run']]
+const PUSH_OPTS = [['normal', 'Normal lap'], ['big', 'Big-risk lap']]
+
+function SessionTower({ game, ses }) {
+  const st = game.weekend.state
+  const name = (id) => game.drivers[id]?.name ?? id
+  const best = ses.rows[0].time
+  const cut = ses.rows.length - ses.drop
+  return (
+    <ol className="tower">
+      {ses.rows.map((r) => {
+        const c = st.cars[r.idx]
+        const marks = [r.runs === 1 ? '1 run' : '', r.push === 'big' ? 'big lap' : '', r.laps.some((l) => l.flagged) ? 'flagged' : '', r.laps.some((l) => l.crash) ? 'crash' : r.error ? 'mistake' : '', r.laps.some((l) => l.used) ? 'used tyres' : '', r.note ?? ''].filter(Boolean).join(' · ')
+        return (
+          <React.Fragment key={r.id}>
+            <li className={`trow${c.e.isPlayer ? ' me' : ''}${r.out ? ' out' : ''}`}>
+              <span className="p">{r.pos}</span><span className="bar" style={{ background: teamColor(game, c.e.teamId) }} />
+              <span className="code">{carCode(name(r.id))}</span><span className="team">{marks || c.e.teamName}</span>
+              <span className="g">{r.time === null ? 'No time' : r.pos === 1 ? lapTime(st.track.baseLap + r.time) : `+${(r.time - best).toFixed(3)}`}</span><span /><span />
+            </li>
+            {r.pos === cut && ses.drop > 0 && <li className="cutoff" />}
+          </React.Fragment>
+        )
+      })}
+    </ol>
+  )
+}
+
+function QualiScreen({ game, act }) {
+  const w = game.weekend
+  const st = w.state
+  const qs = st.qs
+  const o = qualiOutlook(game)
+  const s = qs.session
+  const last = qs.sessions[qs.sessions.length - 1]
+  const ids = Object.keys(w.qChoices)
+  const mine = st.cars.filter((c) => c.e.isPlayer)
+  return (
+    <div>
+      <div className="race-head">
+        <div className="line"><span className="gp">{st.track.name}</span><span className="chip">{COND[o.early]}</span><span className="lap">Q{s + 1}</span></div>
+        <div style={{ marginTop: 8 }}><Objectives game={game} /></div>
+      </div>
+      <div className="race-grid">
+        <section className="panel flush">
+          <h3>{last ? `Q${last.s + 1} result${last.flag ? ` · ${last.flag} flag` : ''}` : 'Qualifying'}</h3>
+          {last ? <SessionTower game={game} ses={last} /> : <p className="muted" style={{ padding: '0 12px 8px' }}>Three knockout sessions. Q1: all {o.n} cars, the slowest {o.drop} are out. Q2: the next {qualiDropText(o.n)} are out. Q3: the top ten fight for pole.</p>}
+        </section>
+        <div className="race-side">
+          <section className="panel">
+            <div className="kicker">Q{s + 1} · {o.n} cars{o.drop ? ` · the slowest ${o.drop} are out` : ' · the shoot-out for pole'}</div>
+            <p>Now: <b>{COND[o.early]}</b>. Late in the session: <b>{o.late}</b>.</p>
+            <div className="cars" style={{ marginTop: 8 }}>
+              {mine.map((c) => {
+                const ch = w.qChoices[c.id]
+                const info = o.cars[c.id]
+                if (!ch) {
+                  return (
+                    <div className="car out" key={c.id}>
+                      <div className="head"><span className="pos">{c.qOut ? `Q${c.qOut}` : '—'}</span><span className="name">{c.e.name}</span><span className="meta">{c.qCrash ? 'car damaged' : 'knocked out'}</span></div>
+                    </div>
+                  )
+                }
+                const followed = ch.runs === info.advice.runs && ch.push === info.advice.push
+                return (
+                  <div className="car" key={c.id}>
+                    <div className="head"><span className="name">{c.e.name}</span><span className="meta">{info.sets} new set{info.sets === 1 ? '' : 's'} of Softs left</span></div>
+                    <div className="meta">{info.outlook}</div>
+                    <div className="ctl">
+                      <span>Runs</span><Seg options={PLAN_OPTS} value={ch.runs} onPick={(v) => act((g) => setQualiPlan(g, c.id, { runs: v }))} />
+                      <span>Lap</span><Seg options={PUSH_OPTS} value={ch.push} onPick={(v) => act((g) => setQualiPlan(g, c.id, { push: v }))} />
+                    </div>
+                    <div className="meta">{followed ? '✓ ' : ''}Strategist: {info.why}{followed ? '' : ` (suggests ${info.advice.runs === 1 ? 'one late run' : 'two runs'}, ${info.advice.push === 'big' ? 'a big lap' : 'a normal lap'})`}</div>
+                    {info.sets < ch.runs && <div className="meta warn">Not enough new tyres: {ch.runs - info.sets} run{ch.runs - info.sets > 1 ? 's' : ''} on a used set (about 0.3 s slower).</div>}
+                  </div>
+                )
+              })}
+            </div>
+            {ids.length === 2 && (
+              <div style={{ marginTop: 10 }}>
+                <div className="ctl" style={{ display: 'grid', gridTemplateColumns: '52px 1fr', gap: 6, alignItems: 'center', fontSize: 12, color: 'var(--muted)' }}>
+                  <span>Tow</span>
+                  <Seg options={[[null, 'No tow'], ...ids.map((id) => [id, `${carCode(st.cars.find((c) => c.id === id).e.name)} gets it`])]} value={w.tow?.taker ?? null} onPick={(v) => act((g) => setTow(g, v))} />
+                </div>
+                <p className="muted" style={{ fontSize: 12 }}>A tow is worth about {o.towGain.toFixed(2)} s here to the car behind; the car giving it loses about 0.04 s.</p>
+              </div>
+            )}
+            <p className="muted" style={{ fontSize: 12 }}>Two runs bank a lap early in case of a late flag or rain, but use two sets of new Softs; there are four for the whole of qualifying. A big-risk lap is about 0.12 s quicker and three times likelier to go wrong.</p>
+          </section>
+          {w.qRadio?.length > 0 && (
+            <section className="panel flush"><h3>Team radio</h3>
+              <ul className="feed">{[...w.qRadio].reverse().map((x, i) => <li key={i}><span className="l">Q{x.session}</span>{x.text}</li>)}</ul>
+            </section>
+          )}
+        </div>
+      </div>
+      <div className="controls">
+        {ids.length ? <>
+          <button className="primary" onClick={() => act((g) => runSession(g))}>▶ Run Q{s + 1}</button>
+          <button className="ghost" onClick={() => act((g) => runQualifying(g))}>Strategist runs qualifying</button>
+        </> : <button className="primary" onClick={() => act((g) => runQualifying(g))}>▶ Finish qualifying</button>}
+      </div>
+    </div>
+  )
+}
+
+const qualiDropText = (n) => qualiDrop(n - qualiDrop(n, 0), 1)
+
+// ---- The grid ----
 
 function planText(st, c, comp) {
   const p = planRest(st, c, 0, comp, 0, false)
@@ -133,10 +244,10 @@ function GridScreen({ game, act }) {
               <React.Fragment key={q.id}>
                 <li className={`trow${q.teamId === PLAYER ? ' me' : ''}`}>
                   <span className="p">{q.pos}</span><span className="bar" style={{ background: teamColor(game, q.teamId) }} />
-                  <span className="code">{carCode(name(q.id))}</span><span className="team">{game.teams[q.teamId].name}{q.error ? ' · mistake' : ''}</span>
-                  <span className="g">{q.pos === 1 ? 'Pole' : gap(q.gap)}</span><span className="stops">{q.grid !== q.pos ? `grid ${q.grid}` : ''}</span><span />
+                  <span className="code">{carCode(name(q.id))}</span><span className="team">{game.teams[q.teamId].name}{q.error ? ' · mistake' : ''}{q.session && q.session < 3 ? ` · out in Q${q.session}` : ''}</span>
+                  <span className="g">{q.noTime ? 'No time' : q.pos === 1 ? 'Pole' : q.session && q.session < 3 ? <span className="muted">{lapTime(q.time)}</span> : gap(q.gap)}</span><span className="stops">{q.grid !== q.pos ? `grid ${q.grid}` : ''}</span><span />
                 </li>
-                {q.pos === 10 && <li className="cutoff" />}
+                {(q.pos === 10 || q.pos === 17) && <li className="cutoff" />}
               </React.Fragment>
             ))}
           </ol>
@@ -333,6 +444,7 @@ function RaceScreen({ game, act }) {
 export default function LiveWeekend({ game, act }) {
   const w = game.weekend
   if (w.phase === 'briefing') return <Briefing game={game} act={act} />
+  if (w.phase === 'quali') return <QualiScreen game={game} act={act} />
   if (w.phase === 'grid') return <GridScreen game={game} act={act} />
   return <RaceScreen game={game} act={act} />
 }
@@ -376,7 +488,8 @@ export function Debrief({ game, result }) {
             <ul className="plain">
               {values.map((v, i) => (
                 <li key={i}>{surname(name(v.carId))}, {v.title}: you chose <b>{v.choice}</b>, the strategist said {v.recommend}.{' '}
-                  <span className={v.places > 0 ? 'good' : v.places < 0 ? 'bad' : 'muted'}>{v.places > 0 ? `${v.places} place${v.places > 1 ? 's' : ''} gained` : v.places < 0 ? `${-v.places} place${v.places < -1 ? 's' : ''} lost` : 'no difference'}</span></li>
+                  <span className={v.places > 0 ? 'good' : v.places < 0 ? 'bad' : 'muted'}>{v.places > 0 ? `${v.places} place${v.places > 1 ? 's' : ''} gained` : v.places < 0 ? `${-v.places} place${v.places < -1 ? 's' : ''} lost` : 'no difference'}</span>
+                  {v.retired && <span className="muted"> ({v.retired === 'yours' ? 'your way, the car retired' : "the strategist's way, the car retired"}: luck as much as the call)</span>}</li>
               ))}
             </ul>
           )}

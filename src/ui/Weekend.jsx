@@ -51,7 +51,7 @@ export default function WeekendReport({ game, result }) {
     <div>
       <h2>Round {result.round + 1}: {track.name}</h2>
       <p><TrackLine track={track} /></p>
-      <p>Qualifying: <b>{result.weather.quali}</b> · Race: <b>{result.weather.race}</b> · Safety cars: <b>{result.stats.safetyCars}</b> · Retirements: <b>{result.stats.retirements}</b></p>
+      <p>Qualifying: <b>{{ drying: 'drying track', rain: 'rain arrived' }[result.weather.qualiType] ?? result.weather.quali}</b> · Race: <b>{result.weather.race}</b> · Safety cars: <b>{result.stats.safetyCars}</b> · Retirements: <b>{result.stats.retirements}</b></p>
       <PlayerBreakdown game={game} result={result} />
       <div className="row">
         <div className="scroll">
@@ -71,17 +71,17 @@ export default function WeekendReport({ game, result }) {
         <div className="scroll">
           <h3>Qualifying</h3>
           <table>
-            <thead><tr><th className="n">Pos</th><th>Driver</th><th>Team</th><th className="n">Time</th><th className="n">Gap</th><th className="n">Grid</th></tr></thead>
+            <thead><tr><th className="n">Pos</th><th>Driver</th><th>Team</th><th>Out in</th><th className="n">Time</th><th className="n">Gap</th><th className="n">Grid</th></tr></thead>
             <tbody>
               {result.quali.map((q) => (
                 <tr key={q.id} className={q.teamId === PLAYER ? 'me' : ''}>
-                  <td className="n">{q.pos}</td><td>{nameOf(q.id)}{q.error ? ' *' : ''}</td><td>{teamOf(q.teamId)}</td>
-                  <td className="n">{lapTime(q.time)}</td><td className="n">{gap(q.gap)}</td><td className="n">{q.grid}</td>
+                  <td className="n">{q.pos}</td><td>{nameOf(q.id)}{q.error ? ' *' : ''}</td><td>{teamOf(q.teamId)}</td><td>{q.session && q.session < 3 ? `Q${q.session}` : ''}</td>
+                  <td className="n">{lapTime(q.time)}</td><td className="n">{q.session && q.session < 3 ? '' : gap(q.gap)}</td><td className="n">{q.grid}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="muted">* mistake on the lap</p>
+          <p className="muted">* a mistake on a lap. Gaps are to pole in Q3; cars out in Q1 and Q2 show their best time there.</p>
         </div>
       </div>
       <h3>Key events</h3>

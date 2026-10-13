@@ -14,7 +14,7 @@ import { makeDriver } from './people.js'
 
 export const NO_REPEAT = 32 // rounds before the same decision can come round again
 // Race-weekend cards that a live race covers with its own calls, wing level and orders.
-export const LIVE_CALLS = new Set(['one-stop-split', 'safety-car-plan', 'start-tyres', 'team-orders', 'lap-one', 'showers', 'driver-strategy', 'low-drag', 'max-downforce'])
+export const LIVE_CALLS = new Set(['one-stop-split', 'safety-car-plan', 'start-tyres', 'team-orders', 'lap-one', 'showers', 'driver-strategy', 'low-drag', 'max-downforce', 'quali-drying', 'quali-run-plan', 'quali-tow'])
 const BY_ID = Object.fromEntries(DECK.map((d) => [d.id, d]))
 const WEEKEND_TYPES = new Set(['Race weekend', 'Reliability'])
 const SIZE_GAIN = { minor: 1.0, major: 2.5, package: 6.0 }

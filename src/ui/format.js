@@ -1,12 +1,13 @@
 export const money = (m, digits = 1) => `${m < 0 ? '−' : ''}£${Math.abs(m).toFixed(digits)}m`
 
 export function lapTime(sec) {
+  if (sec == null) return 'No time'
   const m = Math.floor(sec / 60)
   const s = sec - m * 60
   return `${m}:${s.toFixed(3).padStart(6, '0')}`
 }
 
-export const gap = (sec) => (sec === 0 ? '—' : `+${sec.toFixed(3)}`)
+export const gap = (sec) => (sec == null ? '—' : sec === 0 ? '—' : `+${sec.toFixed(3)}`)
 
 export function raceGap(r) {
   if (r.status === 'dnf') return `DNF (${r.reason})`

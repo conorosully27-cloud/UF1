@@ -179,11 +179,11 @@ function playerEntryExtras(game, slot) {
 }
 
 // Qualifying and the race grid for this round. Rolls come from the save's seed.
-export function createWeekendRace(game) {
+export function createWeekendRace(game, opts = {}) {
   // A weather decision replaces the track's usual chance of rain for this race.
   const track = game.weatherOverride == null ? currentTrack(game) : { ...currentTrack(game), rain: game.weatherOverride }
   const rng = streamRng(game.seed, 'weekend', game.season, game.round)
-  return createRace(track, buildEntries(game), rng)
+  return createRace(track, buildEntries(game), rng, opts)
 }
 
 // Files a finished race: the result, and the round moves on.
