@@ -5,7 +5,7 @@ import {
   FACILITIES, FACILITY_COST, FACILITY_TIME, MAX_BUILDS, DEPTS, ROLES, PAY,
   headcountCap, engineerCount, skillTarget, staffName, keyStaffSalary,
 } from './org.js'
-import { canSpend, spend, capRoom, headCost } from './economy.js'
+import { canSpend, spend, capRoom, headCost, inOverdraft } from './economy.js'
 import { streamRng } from './rng.js'
 
 export const ONBOARDING_ROUNDS = 3
@@ -35,6 +35,7 @@ export function hire(game, dept, n) {
   const d = game.org.staff[dept]
   if (!d || !(n > 0)) throw new Error('Nothing to hire')
   if (frozen(game)) throw new Error('Hiring is frozen during the austerity period')
+  if (inOverdraft(game)) throw new Error('Hiring is frozen until the team is out of the red')
   const cap = headcountCap(game.org, dept)
   const engineers = dept === 'aero' || dept === 'mech'
   const current = engineers ? engineerCount(game.org) : d.heads + d.incoming.reduce((s, x) => s + x.heads, 0)
@@ -55,6 +56,7 @@ export function fire(game, dept, n) {
 
 export function setPay(game, dept, level) {
   if (!PAY[level]) throw new Error('Unknown pay level')
+  if (inOverdraft(game) && PAY[level].cost > PAY[game.org.staff[dept].pay].cost) throw new Error('Pay cannot go up while the team is in the red')
   game.org.staff[dept].pay = level
 }
 

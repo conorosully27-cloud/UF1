@@ -2,8 +2,7 @@ import React, { useState } from 'react'
 import { PLAYER, clock } from '../engine/core.js'
 import { TIERS, SHAPES, slotTiers, freeSlots, acceptOffer, endDeal } from '../engine/sponsors.js'
 import {
-  perRound, forecast, takeLoan, repayLoan, takeAdvance, advanceLimit, bankLimit, bankRate, merchandise, projectedCapSpend,
-  COST_CAP, OVERDRAFT, prizeThisSeason, ownerFunding,
+  perRound, forecast, merchandise, projectedCapSpend, COST_CAP, OVERDRAFT, prizeThisSeason, ownerFunding, inOverdraft,
 } from '../engine/economy.js'
 import { plannedSpendPerRound } from '../engine/development.js'
 import { changeSupplier, setPartsPackage } from '../engine/game.js'
@@ -14,7 +13,7 @@ const LABELS = {
   prize: 'Prize money', sponsors: 'Sponsor fees', backing: 'Driver backing', merchandise: 'Merchandise', owner: 'Owner funding',
   bonuses: 'Sponsor and target bonuses', other: 'Other', workforce: 'Workforce', keyStaff: 'Key staff', drivers: 'Drivers',
   powerUnit: 'Power unit and parts', raceOps: 'Race operations', carBuild: 'Car build', facilities: 'Facilities', development: 'Development',
-  damage: 'Crash damage', interest: 'Loan interest',
+  damage: 'Crash damage', interest: 'Loan interest (before borrowing was withdrawn)',
 }
 
 export function CommercialTab({ game, act }) {
@@ -70,9 +69,21 @@ export function CommercialTab({ game, act }) {
   )
 }
 
-export function FinanceTab({ game, act }) {
-  const [loan, setLoan] = useState('5')
-  const [adv, setAdv] = useState('2')
+// Shown while cash is below zero: what is frozen, and how close the investor is.
+export function OverdraftNotice({ game }) {
+  const f = game.finance
+  const deep = f.cash < OVERDRAFT
+  return (
+    <div className="err">
+      <b>In the red: {money(f.cash, 2)}.</b> No new spending can start until cash is back above zero; running costs carry on, and designers bank their work for free.
+      {deep
+        ? <> Below {money(OVERDRAFT, 0)}: {f.overdraftRounds >= 1 ? 'still down here after the next race and an investor takes over' : 'two races in a row down here and an investor takes over'}.</>
+        : <> Below {money(OVERDRAFT, 0)} after two races in a row brings in an investor.</>}
+    </div>
+  )
+}
+
+export function FinanceTab({ game }) {
   const f = game.finance
   const pr = perRound(game)
   const planned = plannedSpendPerRound(game)
@@ -93,9 +104,11 @@ export function FinanceTab({ game, act }) {
         Cash <b>{money(f.cash, 2)}</b> · forecast at season end <b className={forecast(game, planned) < 0 ? 'bad' : ''}>{money(forecast(game, planned), 1)}</b> ·
         recurring net {money(pr.net - planned, 2)} a round{planned > 0 && <> (including {money(planned, 2)} of repeating upgrades)</>}
       </p>
+      {inOverdraft(game) && <OverdraftNotice game={game} />}
       <p className="muted">
-        The forecast leaves out sponsor bonuses and crash damage. Spending stops at an overdraft of {money(OVERDRAFT, 0)}. Two rounds in a row below that brings in an investor,
-        who clears the debt for a permanent 5% of prize money{f.prizeShareLost > 0 ? ` (${pct(f.prizeShareLost)} already signed away)` : ''}.
+        The forecast leaves out sponsor bonuses and crash damage. There is no borrowing: cash can dip into an overdraft of up to {money(OVERDRAFT, 0)}, but while
+        the team is in the red no new spending can start (upgrades, facilities, hiring, pay rises, buyouts) until cash is back above zero. Two rounds in a row below
+        {' '}{money(OVERDRAFT, 0)} brings in an investor, who clears the debt for a permanent 5% of prize money{f.prizeShareLost > 0 ? ` (${pct(f.prizeShareLost)} already signed away)` : ''}.
       </p>
       <p>
         Prize money this season {money(prizeThisSeason(game))} · owner funding {money(ownerFunding(game))} ·
@@ -105,16 +118,6 @@ export function FinanceTab({ game, act }) {
         <div>{ledger('Income', f.season.income, pr.income)}</div>
         <div>{ledger('Costs', f.season.costs, pr.costs)}</div>
       </div>
-
-      <h3>Borrowing</h3>
-      <p>Bank loan: <b>{money(f.bank)}</b> of a {money(bankLimit(game))} limit at {pct(bankRate(game))} a year.</p>
-      <p>
-        <input value={loan} onChange={(e) => setLoan(e.target.value)} size="5" /> £m{' '}
-        <button onClick={() => act((g) => takeLoan(g, Number(loan)))}>Borrow</button>{' '}
-        <button disabled={f.bank <= 0} onClick={() => act((g) => repayLoan(g, Number(loan)))}>Repay</button>
-      </p>
-      <p>Prize-money advance: up to {money(advanceLimit(game))} of this season's remaining payments, for a 10% discount.</p>
-      <p><input value={adv} onChange={(e) => setAdv(e.target.value)} size="5" /> £m <button disabled={advanceLimit(game) <= 0} onClick={() => act((g) => takeAdvance(g, Number(adv)))}>Take advance</button></p>
 
       {f.history.length > 0 && (
         <>

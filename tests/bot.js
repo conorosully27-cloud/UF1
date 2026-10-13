@@ -2,7 +2,7 @@
 // functions the interface calls.
 
 import { PLAYER, getStandings } from '../src/engine/core.js'
-import { forecast, canSpend, takeLoan, repayLoan, bankLimit, headCost, roundsLeft, takeAdvance, advanceLimit, perRound, PRIZE, DIFFICULTY } from '../src/engine/economy.js'
+import { forecast, canSpend, headCost, roundsLeft, perRound, PRIZE, DIFFICULTY } from '../src/engine/economy.js'
 import { capacity, chassisCap, plannedSpendPerRound, diminishing } from '../src/engine/development.js'
 import { buildFacility, hire, hireKeyStaff } from '../src/engine/hq.js'
 import { acceptOffer, freeSlots } from '../src/engine/sponsors.js'
@@ -30,8 +30,6 @@ export function steady(g, { buffer = 4, bank = 50 } = {}) {
   // When the season's money is running out, bank design work for next year: it costs nothing to build.
   while (buffer >= 0 && g.phase === 'season' && g.dev.nextYearShare < 100 && forecast(g, plannedSpendPerRound(g)) < 0) g.dev.nextYearShare += 10
 
-  // An advance on prize money is cheaper than the overdraft when a crash bill lands late in the season.
-  if (buffer >= 0 && g.phase === 'season' && g.finance.cash < 0.5) tryDo(() => takeAdvance(g, Math.min(advanceLimit(g), 3 - g.finance.cash)))
   if (g.finance.austerity > 0) return
   const left = Math.max(1, roundsLeft(g))
   let spare = Math.min(forecast(g, plannedSpendPerRound(g)), g.finance.cash + 6) - buffer
@@ -71,11 +69,9 @@ export function steady(g, { buffer = 4, bank = 50 } = {}) {
   }
 }
 
-// Spends everything and borrows to the limit.
+// Spends everything it can, every round, and never saves.
 export function reckless(g) {
   steady(g, { buffer: -40, bank: 0 })
-  const room = bankLimit(g) - g.finance.bank
-  if (room > 0.5) tryDo(() => takeLoan(g, room))
   const o = g.org
   for (const id of BUILD_ORDER) if (canSpend(g, 1)) tryDo(() => buildFacility(g, id))
   for (const d of ['aero', 'mech', 'manufacturing', 'raceTeam']) tryDo(() => hire(g, d, 10))
@@ -238,10 +234,6 @@ export function competent(g) {
   // race, and bank more (it costs nothing to build) when money is short.
   const floor = (g.botCashFloor || 0) + 1
   g.settings.approach = g.phase === 'season' ? (playerPos(g) >= 9 ? 'aggressive' : playerPos(g) <= 4 ? 'conservative' : 'balanced') : g.settings.approach
-  // Keep out of the overdraft: an advance on prize money, then the bank, are cheaper than a crisis.
-  if (g.phase === 'season' && g.finance.cash < 0.5) tryDo(() => takeAdvance(g, Math.min(advanceLimit(g), 3 - g.finance.cash)))
-  if (g.finance.cash < -2) tryDo(() => takeLoan(g, Math.min(bankLimit(g) - g.finance.bank, 4 - g.finance.cash)))
-  if (g.finance.bank > 0 && g.finance.cash > 12) tryDo(() => repayLoan(g, Math.min(g.finance.bank, g.finance.cash - 10)))
 
   const saving = competentInvest(g, floor)
   // Whatever is left goes on parts for this season's car, after putting money
@@ -258,7 +250,7 @@ function competentInvest(g, floor) {
   // One-off money: what the forecast leaves above the floor before in-season parts, which can always be swapped for banked work.
   // Lasting money: what next season's books can carry.
   let spare = Math.min(forecast(g, 0), g.finance.cash + 6) - floor - 3
-  let lasting = nextSeasonNet(g) - plannedSpendPerRound(g) * ROUNDS * 0.4 - 5 - g.finance.bank
+  let lasting = nextSeasonNet(g) - plannedSpendPerRound(g) * ROUNDS * 0.4 - 5
   let saving = 0
   const fill = (dept, room, chunk) => {
     const n = Math.min(room, chunk)
@@ -328,7 +320,6 @@ export function naive(g) {
   g.dev.repeat.mech = { area: g.teams[PLAYER].car.chassis < chassisCap(g) - 1 ? areas[g.round % 3] : areas[1 + (g.round % 2)], size: 'minor', approach: 'standard' }
   g.dev.nextYearShare = 25
   while (g.phase === 'season' && g.dev.nextYearShare < 100 && forecast(g, plannedSpendPerRound(g)) < 0) g.dev.nextYearShare += 25
-  if (g.phase === 'season' && g.finance.cash < 0) tryDo(() => takeAdvance(g, Math.min(advanceLimit(g), 2 - g.finance.cash)))
   if (g.finance.austerity > 0) return
   const o = g.org
   const left = Math.max(1, roundsLeft(g))

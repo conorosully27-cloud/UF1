@@ -38,7 +38,8 @@ There is no win screen and no game over.
 
 - **Season targets.** Three a season, each at a chosen level of ambition (section 5.12). They are the main driver of owner confidence. After a first title the targets move on to defending it, winning the drivers' title too, and winning several in a row.
 - **Honours board.** Points, podiums, wins, titles and streaks are recorded for the life of the save.
-- **Crisis instead of game over.** A crisis starts if cash is below the −£5m overdraft limit for two consecutive rounds, or owner confidence (0–100) reaches zero. An investor clears the debt and takes a permanent 5% of prize money (stacking to a maximum of 25%). One austerity season follows: no facility builds, a hiring freeze, and the forced sale of the most valuable driver or key staff contract. Reputation falls by 10 and confidence resets to 40.
+- **No borrowing; a small overdraft.** There are no loans or prize advances. Cash can dip below zero, down to −£5m, but while the team is in the red no new spending can start (upgrades, facilities, hiring, pay rises, buyouts) until cash is back above zero, so a team that gets there has to climb out on its income.
+- **Crisis instead of game over.** A crisis starts if cash is below the −£5m overdraft limit for two consecutive rounds, or owner confidence (0–100) reaches zero. An investor clears the debt and takes a permanent 5% of prize money (stacking to a maximum of 25%), and restructures the team: the most expensive departments are cut, newest hires first and without severance, until running costs fit income again. A rescue can never fund a team the business cannot carry. One austerity season follows: no facility builds, a hiring freeze, and the forced sale of the most valuable driver or key staff contract. Reputation falls by 10 and confidence resets to 40.
 
 ## 5. Systems
 
@@ -266,7 +267,7 @@ Cash moves every round. A forecast screen projects the balance to season end und
 
 Season 1 roughly breaks even on a modest development budget.
 
-**Borrowing:** a bank loan (limit set by reputation, 8–14% interest) or an advance of up to half the remaining season's prize payments at a 10% discount.
+**No borrowing.** There are no bank loans or prize advances (both were removed as a financial headache). Cash can go into an overdraft of up to −£5m, but while it is below zero nothing new can start: no upgrades, facility builds, hiring, pay rises, key-staff buyouts or sponsor buyouts. Running costs carry on, designers bank their work for free, and income brings the team back above zero. Below −£5m after two races in a row brings in the investor (section 2). Saves from before the change have any loan or advance settled from cash when they load.
 
 **Reputation** moves 40% of the way each winter (tuned from 30%) towards a level set by championship position (about 9 for 12th, 95 for 1st), plus a little for points, podiums and wins.
 
@@ -421,7 +422,7 @@ Each pre-season the game offers six objectives built from the team's current sta
 
 - **Results targets** (position, points, best finish, races ahead of a rival, podiums, wins, both cars classified) are placed where that average team reaches them in about 80%, 50% and 20% of runs. Measured over 120 seasons of average management the rates were 79%, 45% and 22%.
 - **Management targets** (cash, sponsor fees, rating gained, facility levels) depend mostly on the player's own choices, so they are set against what the average manager achieves. Rating gained: 70%, 100% and 135% of what the average manager manages. Cash: 30%, 65% and 105% of the cash the average manager, who neither builds nor hires, would be left with. Sponsor fees are mostly fixed by the deals already signed, so Safe is 95% of the projection, Standard adds one more partner deal and Stretch a principal deal on top (tuned: a percentage over the projection could not be reached without new slots).
-- **Cash** is counted net of bank debt, so borrowing cannot meet the target.
+- **Cash** is the cash at season end; with no borrowing it cannot be dressed up.
 
 Setting targets is the last step of pre-season. Drivers and power unit are fixed from then on, so the marks cannot be lowered by setting them with a weak line-up and then changing it.
 
@@ -495,7 +496,7 @@ A manager that does nothing at all now climbs slowly to about 10th, because desi
 | Loans and academy | Borrow rivals' juniors now, grow your own later | Recalls, slow payback |
 | Commercial first | Build sponsor income before lap time | Stays slow for longer |
 | Star hire | Poach a top Technical Director early | Buyout, gardening leave, large salary |
-| Borrowing | Loans and advances to accelerate | Interest, crisis risk |
+| Living on the edge | Spend down to zero every round to accelerate | One crash bill or bad weekend puts the team in the red, where everything freezes |
 
 ## 8. Starting grid
 
@@ -611,7 +612,7 @@ The engine will be plain JavaScript with a seeded random generator and no UI dep
 |---|---|---|
 | Competent | Sensible priorities, follows the cash forecast, picks the better A/B option | First title in seasons 8–12 in about half of saves; a crisis in under 10% |
 | Naive | Spreads money evenly, picks A/B at random | Plateaus at 7th–9th; a title by season 15 in under 5% |
-| Reckless | Maximum spend and borrowing | A crisis in over half of saves |
+| Reckless | Maximum spend, no saving | A crisis in over half of saves |
 
 Further checks:
 
@@ -624,21 +625,21 @@ Each tuning change is checked against 200 saves per bot.
 
 **As built.** `tests/m5-balance.js` plays saves of 15 seasons with every system on (decisions, targets, market), four at a time on worker threads; `npm run test:m5` runs 200 saves per bot (well over an hour with the race-weekend simulation; 60 saves take about 10 minutes). Each finished save is written to `.m5/results.jsonl`, so a run can be stopped and resumed, and `--report` reports on the saves finished so far. The scripted managers are in `tests/bot.js`:
 
-- **Competent** plans a season ahead (next season's income and running costs, not just this season's cash forecast) and takes a prize advance or a bank loan rather than fall into the overdraft. It signs the drivers worth most for their cost (an Overall point is worth more as reputation rises), switches power unit when a better one is affordable without its Chassis cap falling, builds the Design Office, CFD and Factory first, goes in-house once Chassis presses against the parts package's cap, saves for the next facility by banking design work (which costs nothing to build), puts most new engineers into Aero, invests in race operations and race staff once the car is near the midfield, and picks low-risk season targets.
+- **Competent** plans a season ahead (next season's income and running costs, not just this season's cash forecast) and keeps its forecast clear of zero, banking design work rather than spend into the red. It signs the drivers worth most for their cost (an Overall point is worth more as reputation rises), switches power unit when a better one is affordable without its Chassis cap falling, builds the Design Office, CFD and Factory first, goes in-house once Chassis presses against the parts package's cap, saves for the next facility by banking design work (which costs nothing to build), puts most new engineers into Aero, invests in race operations and race staff once the car is near the midfield, and picks low-risk season targets.
 - **Naive** keeps the designers busy on small safe upgrades, banks a quarter, accepts every sponsor, keeps two drivers at a fair price, and spreads the rest evenly: one facility after another in a fixed rotation and the same few heads for every department. It watches this season's forecast but plans no further, and picks A/B at random.
-- **Reckless** spends everything and borrows to the limit.
+- **Reckless** spends everything it can, every round, and never saves.
 
-Results over 60 saves per bot after the race-weekend rebuild and the extra race chaos (one target missed, the naive plateau; the 200-save figures from before the rebuild are in brackets where they differ):
+Results over 60 saves per bot after the race-weekend rebuild, the extra race chaos and the removal of borrowing (one target missed, the naive plateau; the 200-save figures from before the rebuild are in brackets where they differ):
 
 | Check | Target | Built |
 |---|---|---|
-| Competent: first title in seasons 8–12 | About half | 38%, 82% by season 15 (45%, 89%) |
+| Competent: first title in seasons 8–12 | About half | 37%, 82% by season 15 (45%, 89%); no crises without any borrowing |
 | Competent: crisis | Under 10% | 0% |
 | Naive: plateau | 7th–9th | Missed: 9th from season 7, 7th by season 12 and 6th in season 15; the extra chaos helps a middling team score |
 | Naive: title by season 15 | Under 5% | 0% |
-| Reckless: crisis | Over half | 100% |
-| A/B value | About 10% | Random choices score 92% of the points over ten seasons; first title by season 15 in 70% of saves instead of 82% |
-| Season targets, competent | 80 / 50 / 20% | 76 / 37 / 13% over every offered objective; results objectives 71–84 / 37–55 / 11–24%. Sponsor-fee targets above Safe need an extra deal (4% and 0%), and Aero rating gained is rarely met by a manager that banks heavily for facilities (28 / 10 / 0%) |
+| Reckless: crisis | Over half | 100%, about one a season, and it sinks to last: each rescue cuts the team back to what it can pay for |
+| A/B value | About 10% | Random choices score 91% of the points over ten seasons; poorer choices also bring a crisis in 5% of saves |
+| Season targets, competent | 80 / 50 / 20% | 77 / 38 / 13% over every offered objective; results objectives 71–84 / 37–55 / 11–24%. Sponsor-fee targets above Safe need an extra deal (4% and 0%), and Aero rating gained is rarely met by a manager that banks heavily for facilities (28 / 10 / 0%) |
 
 World health with no player (30 seasons, six saves): the front-to-back gap stays between 1.1 and 1.5 s, three or four teams win titles and the title changes hands several times, and teams move about half a place a year. Mercedes still wins about two-thirds of titles: its starting car settles about 0.09 s clear and it signs the best drivers; small development swings near the top barely move this because of the diminishing returns.
 
@@ -660,7 +661,7 @@ World health with no player (30 seasons, six saves): the front-to-back gap stays
 | Found in the build: with no winter loss, every car's Reliability would creep towards 100 in a long save | Reliability loses 2% each winter |
 | Found in the build: one mechanical department could not hold three ratings against the winter loss | Mechanical designers produce more work per head than aerodynamicists |
 | Found in the build: a team could set easy targets with weak drivers and then sign better ones | Targets are set last; drivers and power unit are then fixed for the season |
-| Found in the build: borrowing on the last day met a cash target | Cash targets are net of bank debt |
+| Found in the build: borrowing on the last day met a cash target | Cash targets were made net of bank debt; borrowing has since been removed |
 | Found in the build: 38 of the 80 decisions always favoured the same option | Numbers reworked; every decision now has each option come out best in some situation, by the scripted manager's own valuation |
 | Found in the build: the fastest starting team (Mercedes) won about 80% of titles over 30 seasons, because diminishing returns pin top cars to their starting ratings | Each rival's reading of the winter rules adds a random ±0.9 to Aero and Chassis. The title now changes hands several times in 30 seasons (Mercedes still wins about 70%; milestone 5) |
 | Found in the build: a driver whose contract expired had to vanish at once, before the player could react | Out-of-contract drivers stay until the market closes and can be re-signed; rivals can take them from stage 2 |
