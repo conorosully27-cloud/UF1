@@ -30,6 +30,7 @@ function Drivers({ list }) {
 function Banner({ m }) {
   return (
     <div className={`moment-banner m-${m.kind}`} role="status" aria-live="polite" style={{ '--dur': `${BANNER_MS[m.kind] ?? BANNER_MS.default}ms`, '--dc': m.color }}>
+      <div className="m-dim" />
       <div className="m-strip">
         {m.kind === 'lights' ? <><Lights /><div className="m-title m-go">Lights out</div></> : (
           <div className="m-inner">
@@ -54,8 +55,9 @@ function Confetti({ colors }) {
 function Big({ m, onDone }) {
   return (
     <div className={`moment-big m-${m.kind}`} role="dialog" aria-modal="true" aria-label={m.title} onClick={onDone}>
-      <Confetti colors={m.confetti ?? ['#ffd23f', '#ffffff', m.color ?? '#ff5a36']} />
+      {m.confetti?.length !== 0 && <Confetti colors={m.confetti ?? ['#ffd23f', '#ffffff', m.color ?? '#ff5a36']} />}
       <div className="m-card" onClick={(e) => e.stopPropagation()}>
+        {m.ribbon && <div className="m-ribbon">{m.ribbon}</div>}
         {m.kicker && <div className="m-kicker">{m.kicker}</div>}
         {m.place && <div className={`m-place ${PLACE[m.place] ?? ''}`}>P{m.place}</div>}
         <div className="m-title">{m.title}</div>

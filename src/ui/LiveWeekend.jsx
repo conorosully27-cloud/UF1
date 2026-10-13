@@ -10,7 +10,7 @@ import { TrackLine } from './Weekend.jsx'
 import { TrackMap, usePlayback, frameSnapshot, gridSnapshot, stateSnapshot } from './RaceMap.jsx'
 import { carCode, teamColor, driverColor, ordinal, gap, lapTime } from './format.js'
 import { useMoments } from './Moments.jsx'
-import { lightsMoment, scMoment, outMoment, flagMoment, resultMoments, qualiMoments } from './raceMoments.js'
+import { lightsMoment, scMoment, outMoment, flagMoment, resultMoments, qualiMoments, leadMoment, podiumRunMoment, rainMoment, clashMoment, doubleOutMoment } from './raceMoments.js'
 
 const SLICKS = ['S', 'M', 'H']
 const WING_LABELS = ['Low drag', 'Low', 'Medium', 'High', 'High downforce']
@@ -444,19 +444,37 @@ function RaceScreen({ game, act }) {
   const waiting = pb.caughtUp && open.length > 0
   const skip = () => { act((g) => playToMoment(g)); pb.jump() }
 
-  // Moments, as the playback reaches them: the safety car, one of your cars
-  // out, the flag. Only changes while the screen is open count, so leaving
-  // and coming back does not replay them.
+  // Moments, as the playback reaches them: the safety car, rain, one of your
+  // cars out (or both), team-mates colliding, taking the lead or a podium
+  // place, the flag. Only changes while the screen is open count, so leaving
+  // and coming back does not replay them; lead and podium places once a race.
   const mine = myCars(st)
   const outNow = mine.filter((c) => (playingBack ? (c.status !== 'running' && c.dnfSeg < pb.frame.seg && !pb.frame.out.includes(c.idx)) || snap.gone.some((r) => r.c === c) : c.status !== 'running')).map((c) => c.id)
-  const facts = { sc: neutral === 'sc', out: outNow, flag }
+  const order = (snap?.order ?? []).map((r) => r.c)
+  const revealed = playingBack ? st.events.slice(0, pb.frame.events1).filter((e, i) => i < pb.frame.events0 || e.lap <= snap.lap).length : st.events.length
+  const facts = {
+    sc: neutral === 'sc', out: outNow, flag, cond: cnd, events: revealed, started: st.started,
+    lead: st.started && order[0]?.e.isPlayer ? order[0].id : null,
+    top3: st.started ? order.slice(0, 3).filter((c) => c.e.isPlayer).map((c) => c.id) : [],
+  }
   const seen = useRef(null)
+  const once = useRef(new Set())
   useEffect(() => {
     const prev = seen.current
     seen.current = facts
     if (!prev) return
+    const first = (key) => { if (once.current.has(key)) return false; once.current.add(key); return true }
     if (facts.sc && !prev.sc) moments.show(scMoment(lap))
+    if (facts.cond !== 'dry' && prev.cond === 'dry' && facts.started) moments.show(rainMoment(facts.cond, lap))
     for (const id of facts.out) if (!prev.out.includes(id)) moments.show(outMoment(game, st.cars.find((c) => c.id === id)))
+    if (facts.out.length === 2 && prev.out.length < 2) moments.show(doubleOutMoment(game, mine))
+    for (const e of st.events.slice(prev.events, facts.events)) {
+      if (['incident', 'dnf'].includes(e.type) && e.ids.length > 1 && e.ids.every((id) => mine.some((c) => c.id === id))) moments.show(clashMoment(game, mine, e.lap))
+    }
+    if (facts.lead && facts.lead !== prev.lead && first(`lead-${facts.lead}`)) moments.show(leadMoment(game, st.cars.find((c) => c.id === facts.lead), lap))
+    for (const id of facts.top3) {
+      if (!prev.top3.includes(id) && id !== facts.lead && first(`top3-${id}`)) moments.show(podiumRunMoment(game, st.cars.find((c) => c.id === id), order.findIndex((c) => c.id === id) + 1, lap))
+    }
     if (facts.flag && !prev.flag) moments.show(flagMoment(game, st))
   })
   const play = () => {
@@ -469,7 +487,7 @@ function RaceScreen({ game, act }) {
   }
   const finish = () => {
     const res = act((g) => finishWeekend(g))
-    if (res) for (const m of resultMoments(game, res)) moments.show(m)
+    if (res) for (const m of resultMoments(game, res, { live: true })) moments.show(m)
   }
   return (
     <div>

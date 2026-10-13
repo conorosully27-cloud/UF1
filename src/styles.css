@@ -235,7 +235,11 @@ details.fold > div { padding: 8px 2px; }
 }
 
 /* ---- Moments ---- */
-.moment-banner { position: fixed; z-index: 60; left: 0; right: 0; top: 32%; pointer-events: none; animation: m-sweep var(--dur) cubic-bezier(.2, .8, .2, 1) both; }
+.moment-banner { position: fixed; z-index: 60; inset: 0; pointer-events: none; display: flex; flex-direction: column; justify-content: center; padding-bottom: 12vh; }
+.moment-banner .m-strip { position: relative; width: 100%; animation: m-sweep var(--dur) cubic-bezier(.2, .8, .2, 1) both; }
+/* A light dimming behind a banner, so it stands out from the race. */
+.m-dim { position: absolute; inset: 0; background: rgba(4, 5, 8, .42); animation: m-dim var(--dur) ease both; }
+@keyframes m-dim { 0% { opacity: 0 } 10%, 86% { opacity: 1 } 100% { opacity: 0 } }
 .m-strip { margin: 0 auto; max-width: 980px; padding: 18px 24px 20px; text-align: center; color: #fff; background: linear-gradient(100deg, #0b0d12 0%, #1a1f2a 50%, #0b0d12 100%); clip-path: polygon(2.5% 0, 100% 0, 97.5% 100%, 0 100%); box-shadow: 0 20px 60px rgba(0, 0, 0, .55); border-top: 4px solid var(--accent); border-bottom: 4px solid var(--accent); }
 .m-kicker { font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; opacity: .75; }
 .m-title { font-size: clamp(30px, 7vw, 54px); font-weight: 700; font-style: italic; letter-spacing: .03em; text-transform: uppercase; line-height: 1.05; margin: 2px 0; }
@@ -299,6 +303,22 @@ details.fold > div { padding: 8px 2px; }
 @keyframes m-fade { from { opacity: 0 } }
 @keyframes m-pop { from { transform: scale(.7); opacity: 0 } }
 @media (prefers-reduced-motion: reduce) {
-  .moment-banner, .moment-big, .m-card, .m-go { animation-duration: .01s !important; }
+  .moment-banner .m-strip, .m-dim, .moment-big, .m-card, .m-go { animation-duration: .01s !important; }
   .confetti { display: none; }
 }
+
+/* More moments */
+.m-ribbon { display: inline-block; margin-bottom: 8px; padding: 3px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #1b1405; background: linear-gradient(90deg, #f5c518, #ffe680, #f5c518); box-shadow: 0 0 24px rgba(245, 197, 24, .45); }
+.m-rain .m-strip { background: linear-gradient(100deg, #061527, #12406e 50%, #061527); border-color: var(--wet); }
+.m-rain .m-strip::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(105deg, transparent 0 14px, rgba(160, 205, 255, .16) 14px 16px); clip-path: inherit; }
+.m-lead .m-strip, .m-top3 .m-strip { background: linear-gradient(100deg, #0b0d12, color-mix(in srgb, #f5c518 30%, #0b0d12) 50%, #0b0d12); border-color: #f5c518; }
+.m-clash .m-strip, .m-red .m-strip { background: linear-gradient(100deg, #1a0b0e, #3a1218 50%, #1a0b0e); border-color: var(--bad); }
+.m-sweep .m-strip, .m-rival .m-strip, .m-sponsor .m-strip, .m-signed .m-strip { background: linear-gradient(100deg, #0b0d12, color-mix(in srgb, var(--good) 28%, #0b0d12) 50%, #0b0d12); border-color: var(--good); }
+.m-decider .m-strip { background: linear-gradient(100deg, #0b0d12, #3b2a07 50%, #0b0d12); border-color: #f5c518; }
+.m-left .m-strip { background: linear-gradient(100deg, #0b0d12, #252b37 50%, #0b0d12); border-color: var(--muted); }
+.m-sweep .m-sub { font-size: 13px; }
+.moment-big.m-crisis { background: radial-gradient(circle at 50% 40%, rgba(60, 10, 16, .88), rgba(8, 2, 4, .96)); }
+.moment-big.m-crisis .m-card { box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 0 1px var(--bad); }
+.moment-big.m-crisis .m-title { background: linear-gradient(180deg, #ffb3bb, #ff4d5e); -webkit-background-clip: text; background-clip: text; }
+.moment-big.m-champions .m-title { background: linear-gradient(180deg, #fff3b0, #f5c518); -webkit-background-clip: text; background-clip: text; }
+.m-place:not(.gold):not(.silver):not(.bronze) { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 45%, #fff), var(--accent) 50%, color-mix(in srgb, var(--accent) 60%, #000)); color: var(--on-accent); box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 40%, transparent); }

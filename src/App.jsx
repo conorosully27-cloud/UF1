@@ -15,7 +15,10 @@ import LiveWeekend, { Debrief } from './ui/LiveWeekend.jsx'
 import { CalendarStrip, RivalCard, GapChart } from './ui/PitWall.jsx'
 import { beginWeekend, weekendActive } from './engine/live.js'
 import { PLAYER_COLORS } from './engine/data/teams.js'
-import { MomentContext, MomentLayer } from './ui/Moments.jsx'
+import { MomentContext, MomentLayer, useMoments } from './ui/Moments.jsx'
+import { resultMoments, deciderMoment, redMoment, crisisMoment, signedMoment, leftMoment, sponsorMoment } from './ui/raceMoments.js'
+import { titleDecider } from './engine/highlights.js'
+import { overall } from './engine/game.js'
 import { seatsReady } from './engine/people.js'
 import { ordinal, money, onColor } from './ui/format.js'
 
@@ -78,6 +81,7 @@ function LastSeason({ game }) {
 }
 
 function Home({ game, act, last, setTab }) {
+  const moments = useMoments()
   const track = currentTrack(game)
   if (game.phase === 'preseason') {
     const expired = game.teams[PLAYER].drivers.map((id) => game.drivers[id]).filter((d) => d.contract?.expired)
@@ -116,8 +120,17 @@ function Home({ game, act, last, setTab }) {
   if (weekendActive(game)) return <LiveWeekend game={game} act={act} />
   const waiting = !!game.decision && !game.decision.resolved
   const live = game.settings.involvement === 'live'
-  const goLive = <button className={live ? 'primary' : ''} disabled={waiting} onClick={() => act((g) => { beginWeekend(g) })}>{live ? 'Go to the race weekend' : 'Run this one live'}</button>
-  const goQuick = <button className={live ? 'ghost' : 'primary'} disabled={waiting} onClick={() => act((g) => { simulateRound(g) })}>{live ? 'Quick sim this one' : 'Simulate the weekend'}</button>
+  const startLive = () => {
+    const decider = titleDecider(game)
+    act((g) => { beginWeekend(g) })
+    if (decider) moments.show(deciderMoment(decider))
+  }
+  const quickSim = () => {
+    const res = act((g) => simulateRound(g))
+    if (res) for (const m of resultMoments(game, res)) moments.show(m)
+  }
+  const goLive = <button className={live ? 'primary' : ''} disabled={waiting} onClick={startLive}>{live ? 'Go to the race weekend' : 'Run this one live'}</button>
+  const goQuick = <button className={live ? 'ghost' : 'primary'} disabled={waiting} onClick={quickSim}>{live ? 'Quick sim this one' : 'Simulate the weekend'}</button>
   return (
     <div>
       {last && <Debrief game={game} result={last} />}
@@ -251,6 +264,20 @@ export default function App() {
   const show = useCallback((m) => setMoments((q) => (q.some((x) => x.key === m.key) ? q : [...q, m])), [])
   const momentDone = useCallback(() => setMoments((q) => q.slice(1)), [])
   const momentApi = useMemo(() => ({ show, active: moments[0] ?? null }), [show, moments])
+  // Moments off the track: into the red, a crisis, the driver market, a new title sponsor.
+  const before = useRef(null)
+  useEffect(() => {
+    if (!game) { before.current = null; return }
+    const now = { seed: game.seed, cash: game.finance.cash, crises: game.finance.crises, drivers: [...game.teams[PLAYER].drivers], deals: game.sponsors.deals.map((d) => d.id) }
+    const prev = before.current
+    before.current = now
+    if (!prev || prev.seed !== now.seed) return
+    if (now.crises > prev.crises) show(crisisMoment(game))
+    else if (now.cash < 0 && prev.cash >= 0) show(redMoment(now.cash))
+    for (const id of now.drivers) if (!prev.drivers.includes(id) && game.drivers[id]) show(signedMoment(game, game.drivers[id], overall(game.drivers[id]) >= 91))
+    for (const id of prev.drivers) if (!now.drivers.includes(id) && game.drivers[id]) show(leftMoment(game, game.drivers[id]))
+    for (const d of game.sponsors.deals) if (d.tier === 'title' && !prev.deals.includes(d.id)) show(sponsorMoment(d))
+  }, [game, show])
   useEffect(() => {
     const root = document.documentElement
     root.dataset.theme = theme

@@ -134,3 +134,15 @@ export function recordPace(game, gap, rivalGap) {
   h.push({ season: game.season, round: game.round, gap, rivalGap })
   if (h.length > 160) h.splice(0, h.length - 160)
 }
+
+// Before the final round: whether the constructors' title is still open with
+// the player in it (a one-two is worth 43 points). Returns the fight, or null.
+export function titleDecider(game) {
+  if (game.phase !== 'season' || game.round !== game.calendar.length - 1) return null
+  const st = getStandings(game).constructors
+  const me = st.findIndex((c) => c.id === PLAYER)
+  if (me > 1) return null
+  const other = st[me === 0 ? 1 : 0]
+  const gap = Math.abs(st[me].points - other.points)
+  return gap <= 43 ? { leading: me === 0, gap, rival: other.id, name: teamName(game, other.id) } : null
+}
