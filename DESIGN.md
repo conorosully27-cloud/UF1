@@ -335,7 +335,7 @@ A weekend is played one of two ways, set in Settings and changeable for a single
 
 A weekend in progress is part of the save (`game.weekend`), so it carries on where it left off.
 
-**Qualifying** is three knockout sessions: all 24 cars in Q1, where the slowest seven are out, 17 in Q2, where seven more go, and a top-ten shoot-out in Q3. A lap time = car pace at this track (with the wing level) + driver Pace + setup roll + the conditions + random variation, with a small chance of a mistake (a few of which end in the wall). In each session a car runs once, late, or twice: an early banker lap, then a late one about 0.12 s quicker as the track rubbers in (and each session is 0.2 s quicker than the one before). Each run takes one of four new sets of Softs for the whole of qualifying; a run without one is about 0.3 s slower. A big-risk lap is about 0.12 s quicker and three times likelier to go wrong. One car can tow the other on the straights (about 0.1 s at an average track, more where Power counts). A late yellow or red flag (about one session in ten, more after a crash) wipes out some cars' final laps; a car left with no time gets one more go after a restart half the time, and otherwise starts from the back of that session. About one weekend in ten qualifying is wet, drying (one late run is right) or caught by rain part-way (bank a lap early). Rival pit walls choose the same way, reading the weather as well as their strategy rating allows. Grid penalties are then applied. Over many weekends a top-four car is knocked out in Q1 about 2% of the time and in Q2 about 3%.
+**Qualifying** is three knockout sessions: all 24 cars in Q1, where the slowest seven are out, 17 in Q2, where seven more go, and a top-ten shoot-out in Q3. A lap time = car pace at this track (with the wing level) + driver Pace + setup roll + the conditions + random variation, with a small chance of a mistake (a few of which end in the wall). In each session a car runs once, late, or twice: an early banker lap, then a late one about 0.12 s quicker as the track rubbers in (and each session is 0.2 s quicker than the one before). Each run takes one of four new sets of Softs for the whole of qualifying; a run without one is about 0.3 s slower. A big-risk lap is about 0.12 s quicker and three times likelier to go wrong. One car can tow the other on the straights (about 0.1 s at an average track, more where Power counts). A late yellow or red flag (about one session in ten, more after a crash) wipes out some cars' final laps; a car left with no time gets one more go after a restart half the time, and otherwise starts from the back of that session. About one weekend in ten qualifying is wet, drying (one late run is right) or caught by rain part-way (bank a lap early). Rival pit walls choose the same way, reading the weather as well as their strategy rating allows. Grid penalties are then applied. Over many weekends a top-four car is knocked out in Q1 about 3% of the time and in Q2 about 3%: the odd shock, not a lottery.
 
 **The race** (`src/engine/weekend.js`) runs in blocks of about five laps (at least eight blocks). Each block every car's time comes from:
 
@@ -373,10 +373,10 @@ Race-weekend cards in the decision deck that the live race covers (one-stop spli
 | Measure | Target | Built |
 |---|---|---|
 | Retirements per start | 10–12% | 11.8% |
-| Races with a safety car | 55–60% overall, set per track | 56.7% |
+| Races with a safety car | 55–60% overall, set per track | 56.8% |
 | Wet or mixed races | 10–15% | 13.0% |
-| Pole converts to a win | 45–50% | 49.2% |
-| The fastest car on the day wins | 55–65% | 50.9% |
+| Pole converts to a win | 45–50% | 49.4% |
+| The fastest car on the day wins | 55–65% | 50.5% |
 | A car from the three slowest rival teams scores points | 5–10% of starts | 4.6% |
 
 The player's own season-1 cars score in almost no starts, and the better of them beats at least one Cadillac in about 40% of races.

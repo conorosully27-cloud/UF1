@@ -400,7 +400,7 @@ export function qualiPlan(state, c, read = true) {
     const lastIn = sorted[sorted.length - drop - 1] ?? sorted[0]
     margin = c === firstOut || pace(c) >= pace(firstOut) ? pace(lastIn) - pace(c) : pace(firstOut) - pace(c)
     // One run saves a set for later, but a late flag would leave no time: only when well clear.
-    if (margin > (s === 0 ? 1.2 : 0.6) && c.sets >= 1) { runs = 1; why = 'Well clear of the cut: one run saves a set of tyres for later.' }
+    if (margin > (s === 0 ? 1.0 : 0.6) && c.sets >= 1) { runs = 1; why = 'Well clear of the cut: one run saves a set of tyres for later.' }
     if (Math.abs(margin) < 0.15) { push = 'big'; why = 'On the bubble: two runs, and a big lap.' }
   } else if (c.sets < 2) { runs = 1; why = 'One new set left: one run on it.' }
   if (read && QUALI.condTime[late] < QUALI.condTime[early]) { runs = 1; why = 'The track is getting quicker: one late run when it is fastest.' }

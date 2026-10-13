@@ -136,8 +136,9 @@ const lapsOf = (st, s, id) => st.qs.sessions[s].rows.find((r) => r.id === id)?.l
   }
   const pct = (x) => `${(x * 100).toFixed(1)}%`
   console.log(`      ${t.races} weekends: top-four cars out in Q1 ${pct(t.q1 / t.top)}, in Q2 ${pct(t.q2 / t.top)}; no time ${pct(t.noTime / t.cars)}; flags in ${pct(t.flags / t.sessions)} of sessions; qualifying ${Object.entries(t.weather).map(([k, v]) => `${k} ${v}`).join(', ')}`)
-  check('a top-four car is rarely knocked out in Q1', t.q1 / t.top < 0.03, pct(t.q1 / t.top))
-  check('and only occasionally in Q2', t.q2 / t.top < 0.05, pct(t.q2 / t.top))
+  // About 3% in each: enough for the odd shock, not so often that the front of the grid is a lottery.
+  check('a top-four car is knocked out in Q1 about 3% of the time', t.q1 / t.top > 0.015 && t.q1 / t.top < 0.045, pct(t.q1 / t.top))
+  check('and in Q2 about 3% of the time', t.q2 / t.top > 0.015 && t.q2 / t.top < 0.045, pct(t.q2 / t.top))
   check('few cars end up with no time', t.noTime / t.cars < 0.04, pct(t.noTime / t.cars))
   check('pole nearly always goes to a top-four car', t.poleTop / t.races > 0.9, pct(t.poleTop / t.races))
   check('qualifying can be wet, drying or caught by rain', ['wet', 'drying', 'rain'].every((k) => t.weather[k] > 0))
