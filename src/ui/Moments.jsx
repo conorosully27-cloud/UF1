@@ -63,6 +63,8 @@ function Big({ m, onDone }) {
         <div className="m-title">{m.title}</div>
         {m.sub && <div className="m-sub">{m.sub}</div>}
         <Drivers list={m.drivers} />
+        {m.stats && <div className="m-stats" style={{ '--cols': m.stats.length <= 4 ? m.stats.length : Math.ceil(m.stats.length / 2) }}>{m.stats.map((x) => <div key={x.label} className="m-stat"><b>{x.value}</b><span>{x.label}</span></div>)}</div>}
+        {m.lines?.length > 0 && <ul className="m-lines">{m.lines.map((x) => <li key={x}>{x}</li>)}</ul>}
         <button className="primary" autoFocus onClick={onDone}>Continue</button>
       </div>
     </div>

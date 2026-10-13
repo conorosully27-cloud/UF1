@@ -23,7 +23,7 @@ import { averageManager, buildOffer, outlookFrom, chooseTargets, resolveTargets 
 import { initPeople, recordRace, peopleMidSeason, peopleWinter, closeMarket, seatsReady, releaseCost, releaseDriver } from './people.js'
 import { rivalReputationWinter, rivalFormEvents, supplierDrift, staffApproaches } from './world.js'
 import { initialHonours, honoursRound, honoursSeason } from './honours.js'
-import { weekendObjectives, settleObjectives, recordPace, driverRatings } from './highlights.js'
+import { weekendObjectives, settleObjectives, recordPace, driverRatings, seasonReview } from './highlights.js'
 
 export { SAVE_VERSION, START_YEAR, PLAYER, START_REPUTATION, year, currentTrack, effectiveCar, teamOps, getStandings, playerPosition, paceTable, overall, releaseCost, releaseDriver }
 
@@ -289,6 +289,7 @@ export function postRace(game, result, objectives = []) {
   recordPace(game, gapOf(PLAYER), above ? gapOf(above) : null)
   checkCrisis(game)
   drawDecision(game)
+  if (result.seasonEnd) result.seasonEnd.review = seasonReview(game)
   return result
 }
 

@@ -89,7 +89,7 @@ for (let s = 0; s < SEASONS; s++) {
     tally.races++
     tally.starts += res.race.length
     tally.dnf += res.stats.retirements
-    if (res.stats.safetyCars > 0) tally.scRaces++
+    if (res.stats.safetyCars > 0 || res.stats.redFlags > 0) tally.scRaces++ // a red flag neutralises the race too
     if (res.weather.race !== 'dry') tally.wet++
     const winner = res.race[0]
     if (winner.grid === 1) tally.poleWin++

@@ -70,7 +70,23 @@ function seasonEndMoments(game, res) {
   } else if (end.rival?.beaten) {
     out.push({ key: 'rival', size: 'medium', kind: 'rival', kicker: 'Final standings', title: `Ahead of ${end.rival.name}`, sub: `${ordinalText(end.pos)} in the championship: last year's rival beaten.` })
   }
+  if (end.review) out.push(reviewMoment(end.review))
   return out
+}
+
+const FIRST_TEXT = { point: 'first points', podium: 'first podium', win: 'first win', pole: 'first pole', q2: 'first time in Q2', q3: 'first time in Q3' }
+
+// The season review: the year in numbers, last of all.
+function reviewMoment(r) {
+  const move = !r.lastPos || r.lastPos === r.pos ? `The same as last year.` : r.pos < r.lastPos ? `Up from ${ordinalText(r.lastPos)} last year.` : `Down from ${ordinalText(r.lastPos)} last year.`
+  const stats = [['Points', r.points], ['Best finish', r.best ? `P${r.best}` : '–'], ['Podiums', r.podiums], ['Wins', r.wins]]
+  if (r.poles) stats.push(['Poles', r.poles])
+  stats.push(['In the points', r.scoring], ['Retirements', r.dnfs])
+  const lines = []
+  if (r.objectives) lines.push(`Weekend objectives met: ${r.objectives.met} of ${r.objectives.total}`)
+  if (r.firsts.length) lines.push(`Career firsts: ${r.firsts.map((k) => FIRST_TEXT[k] ?? k).join(', ')}`)
+  lines.push(`Owner confidence: ${r.confidence} of 100`)
+  return { key: `review-${r.year}`, size: 'big', kind: 'review', kicker: `${r.year} season review`, title: `${ordinalText(r.pos)} place`, sub: move, stats: stats.map(([label, value]) => ({ label, value })), lines, confetti: [] }
 }
 const ordinalText = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th'}`
 
@@ -173,3 +189,21 @@ export const signedMoment = (game, d, star) => ({
 })
 export const leftMoment = (game, d) => ({ key: `left-${d.id}`, size: 'medium', kind: 'left', kicker: 'Driver market', title: `${surname(d.name)} is leaving`, sub: d.teamId ? `Signed by ${game.teams[d.teamId]?.name ?? 'a rival'}.` : 'Out of contract.' })
 export const sponsorMoment = (deal) => ({ key: `sponsor-${deal.id}`, size: 'medium', kind: 'sponsor', kicker: 'New title sponsor', title: deal.name, sub: `£${deal.fee.toFixed(1)}m a season.` })
+
+// ---- More of the season ----
+
+export const redFlagMoment = (lap) => ({
+  key: `redflag-${lap}`, size: 'medium', kind: 'redflag', kicker: lap ? `Lap ${lap}` : null, title: 'Red flag', sub: 'The race is stopped. Every car can change tyres for free.',
+})
+export const titleFightMoment = (f) => ({
+  key: `titlefight-${f.left}`, size: 'medium', kind: 'decider', kicker: `${f.left} rounds to go`, title: 'Title fight on',
+  sub: f.gap === 0 ? `Level on points with ${f.name}.` : f.leading ? `${f.gap} points clear of ${f.name}.` : `${f.gap} points behind ${f.name}.`,
+})
+
+// The owner's verdict, as confidence crosses a line. `level`: 'low', 'final' or 'high'.
+const VERDICT = {
+  low: { kind: 'red', title: 'The owner is losing patience', sub: 'Results need to improve.' },
+  final: { kind: 'red', title: 'Final warning', sub: 'If confidence reaches zero, an investor steps in.' },
+  high: { kind: 'sweep', title: 'The owner is delighted', sub: 'Confidence in you is sky high.' },
+}
+export const ownerMoment = (level, when) => ({ key: `owner-${level}-${when}`, size: 'medium', kicker: "The owner's verdict", ...VERDICT[level] })

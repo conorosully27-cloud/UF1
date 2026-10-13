@@ -16,8 +16,8 @@ import { CalendarStrip, RivalCard, GapChart } from './ui/PitWall.jsx'
 import { beginWeekend, weekendActive } from './engine/live.js'
 import { PLAYER_COLORS } from './engine/data/teams.js'
 import { MomentContext, MomentLayer, useMoments } from './ui/Moments.jsx'
-import { resultMoments, deciderMoment, redMoment, crisisMoment, signedMoment, leftMoment, sponsorMoment } from './ui/raceMoments.js'
-import { titleDecider } from './engine/highlights.js'
+import { resultMoments, deciderMoment, titleFightMoment, ownerMoment, redMoment, crisisMoment, signedMoment, leftMoment, sponsorMoment } from './ui/raceMoments.js'
+import { titleDecider, titleFight } from './engine/highlights.js'
 import { overall } from './engine/game.js'
 import { seatsReady } from './engine/people.js'
 import { ordinal, money, onColor } from './ui/format.js'
@@ -120,13 +120,19 @@ function Home({ game, act, last, setTab }) {
   if (weekendActive(game)) return <LiveWeekend game={game} act={act} />
   const waiting = !!game.decision && !game.decision.resolved
   const live = game.settings.involvement === 'live'
+  // Before the weekend: the title decider at the last round, or once a
+  // season with a few rounds to go, a title fight.
+  const decider = titleDecider(game)
+  const fight = !decider && game.titleFightShown !== game.season ? titleFight(game) : null
+  const markFight = (g) => { if (fight) g.titleFightShown = g.season }
   const startLive = () => {
-    const decider = titleDecider(game)
-    act((g) => { beginWeekend(g) })
+    act((g) => { markFight(g); beginWeekend(g) })
     if (decider) moments.show(deciderMoment(decider))
+    if (fight) moments.show(titleFightMoment(fight))
   }
   const quickSim = () => {
-    const res = act((g) => simulateRound(g))
+    if (fight) moments.show(titleFightMoment(fight))
+    const res = act((g) => { markFight(g); return simulateRound(g) })
     if (res) for (const m of resultMoments(game, res)) moments.show(m)
   }
   const goLive = <button className={live ? 'primary' : ''} disabled={waiting} onClick={startLive}>{live ? 'Go to the race weekend' : 'Run this one live'}</button>
@@ -264,16 +270,22 @@ export default function App() {
   const show = useCallback((m) => setMoments((q) => (q.some((x) => x.key === m.key) ? q : [...q, m])), [])
   const momentDone = useCallback(() => setMoments((q) => q.slice(1)), [])
   const momentApi = useMemo(() => ({ show, active: moments[0] ?? null }), [show, moments])
-  // Moments off the track: into the red, a crisis, the driver market, a new title sponsor.
+  // Moments off the track: into the red, a crisis, the owner's verdict, the
+  // driver market, a new title sponsor.
   const before = useRef(null)
   useEffect(() => {
     if (!game) { before.current = null; return }
-    const now = { seed: game.seed, cash: game.finance.cash, crises: game.finance.crises, drivers: [...game.teams[PLAYER].drivers], deals: game.sponsors.deals.map((d) => d.id) }
+    const now = { seed: game.seed, cash: game.finance.cash, crises: game.finance.crises, drivers: [...game.teams[PLAYER].drivers], deals: game.sponsors.deals.map((d) => d.id), conf: game.confidence }
     const prev = before.current
     before.current = now
     if (!prev || prev.seed !== now.seed) return
     if (now.crises > prev.crises) show(crisisMoment(game))
-    else if (now.cash < 0 && prev.cash >= 0) show(redMoment(now.cash))
+    else {
+      if (now.cash < 0 && prev.cash >= 0) show(redMoment(now.cash))
+      if (now.conf < 15 && prev.conf >= 15) show(ownerMoment('final', `${game.season}-${game.round}`))
+      else if (now.conf < 30 && prev.conf >= 30) show(ownerMoment('low', `${game.season}-${game.round}`))
+      else if (now.conf >= 80 && prev.conf < 80) show(ownerMoment('high', `${game.season}-${game.round}`))
+    }
     for (const id of now.drivers) if (!prev.drivers.includes(id) && game.drivers[id]) show(signedMoment(game, game.drivers[id], overall(game.drivers[id]) >= 91))
     for (const id of prev.drivers) if (!now.drivers.includes(id) && game.drivers[id]) show(leftMoment(game, game.drivers[id]))
     for (const d of game.sponsors.deals) if (d.tier === 'title' && !prev.deals.includes(d.id)) show(sponsorMoment(d))

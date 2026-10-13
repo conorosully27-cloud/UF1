@@ -2,7 +2,7 @@
 // objectives, driver ratings, the rival head-to-head and the gap to the front
 // over time. They give a backmarker something to fight for every Sunday.
 
-import { PLAYER, clamp, effectiveCar, currentTrack, ordinal, getStandings } from './core.js'
+import { PLAYER, clamp, effectiveCar, currentTrack, ordinal, getStandings, year } from './core.js'
 import { carScore } from './weekend.js'
 
 const teamName = (game, id) => game.teams[id]?.name ?? id
@@ -145,4 +145,37 @@ export function titleDecider(game) {
   const other = st[me === 0 ? 1 : 0]
   const gap = Math.abs(st[me].points - other.points)
   return gap <= 43 ? { leading: me === 0, gap, rival: other.id, name: teamName(game, other.id) } : null
+}
+
+// With a few rounds to go: the player in a close fight for the constructors'
+// title (within 30 points of the lead, or leading by 30 or less). The final
+// round is the title decider instead.
+export function titleFight(game) {
+  const left = game.calendar.length - game.round
+  if (game.phase !== 'season' || left < 2 || left > 5) return null
+  const st = getStandings(game).constructors
+  const me = st.findIndex((c) => c.id === PLAYER)
+  if (me > 1) return null
+  const other = st[me === 0 ? 1 : 0]
+  const gap = Math.abs(st[me].points - other.points)
+  return gap <= 30 ? { leading: me === 0, gap, left, rival: other.id, name: teamName(game, other.id) } : null
+}
+
+// The season in numbers, at the last round, for the season review.
+export function seasonReview(game) {
+  const st = getStandings(game).constructors
+  const me = st.find((c) => c.id === PLAYER)
+  const mine = game.results.flatMap((r) => r.race.filter((x) => x.teamId === PLAYER))
+  const finished = mine.filter((r) => r.status === 'finished')
+  const t = game.objectiveTally
+  return {
+    year: year(game), pos: st.indexOf(me) + 1, lastPos: game.lastStandings.indexOf(PLAYER) + 1, points: me.points,
+    best: finished.length ? Math.min(...finished.map((r) => r.pos)) : null,
+    podiums: finished.filter((r) => r.pos <= 3).length, wins: finished.filter((r) => r.pos === 1).length,
+    poles: game.results.filter((r) => r.quali[0]?.teamId === PLAYER).length,
+    scoring: finished.filter((r) => r.points > 0).length, dnfs: mine.length - finished.length,
+    objectives: t && t.season === game.season ? { met: t.met, total: t.total } : null,
+    firsts: Object.entries(game.honours.firsts).filter(([, f]) => f.year === year(game)).map(([k]) => k),
+    confidence: Math.round(game.confidence),
+  }
 }

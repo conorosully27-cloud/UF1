@@ -54,6 +54,7 @@ export default function WeekendReport({ game, result }) {
         <span className="chip">Qualifying <b>{{ drying: 'drying', rain: 'rain arrived' }[result.weather.qualiType] ?? result.weather.quali}</b></span>
         <span className="chip">Race <b>{result.weather.race}</b></span>
         <span className="chip">Safety cars <b>{result.stats.safetyCars}</b></span>
+        {result.stats.redFlags > 0 && <span className="chip">Red flag <b>{result.stats.redFlags}</b></span>}
         <span className="chip">Retirements <b>{result.stats.retirements}</b></span>
       </div>
       <div className="row">

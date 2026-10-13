@@ -10,11 +10,11 @@ import { TrackLine } from './Weekend.jsx'
 import { TrackMap, usePlayback, frameSnapshot, gridSnapshot, stateSnapshot } from './RaceMap.jsx'
 import { carCode, teamColor, driverColor, ordinal, gap, lapTime } from './format.js'
 import { useMoments } from './Moments.jsx'
-import { lightsMoment, scMoment, outMoment, flagMoment, resultMoments, qualiMoments, podiumRunMoment, rainMoment, clashMoment, doubleOutMoment } from './raceMoments.js'
+import { lightsMoment, scMoment, redFlagMoment, outMoment, flagMoment, resultMoments, qualiMoments, podiumRunMoment, rainMoment, clashMoment, doubleOutMoment } from './raceMoments.js'
 
 const SLICKS = ['S', 'M', 'H']
 const WING_LABELS = ['Low drag', 'Low', 'Medium', 'High', 'High downforce']
-const CALL_KINDS = { sc: 'safety car', vsc: 'virtual safety car', plan: 'pit window', cliff: 'tyres', rain: 'weather', drying: 'weather', damage: 'damage', 'compound rule': 'tyre rules', undercut: 'undercut', teammates: 'team orders' }
+const CALL_KINDS = { red: 'red flag', sc: 'safety car', vsc: 'virtual safety car', plan: 'pit window', cliff: 'tyres', rain: 'weather', drying: 'weather', damage: 'damage', 'compound rule': 'tyre rules', undercut: 'undercut', teammates: 'team orders' }
 const COND = { dry: '☀ Dry', damp: '🌦 Damp', wet: '🌧 Wet' }
 const SPEEDS = [1, 2, 4]
 const LIGHTS_OUT_MS = 2600 // when the start lights go out (see .lights in styles.css)
@@ -409,7 +409,7 @@ function Feed({ game, st, w, upto }) {
       (otherStops[e.lap] ??= []).push(carCode(game.drivers[e.ids[0]]?.name ?? e.ids[0]))
       continue
     }
-    const tag = e.type === 'sc' || e.type === 'vsc' ? ['sc', e.type.toUpperCase()] : e.type === 'dnf' ? ['out', 'OUT'] : e.type === 'weather' ? ['wx', 'WX'] : e.type === 'pit' ? ['pit', 'PIT'] : null
+    const tag = e.type === 'sc' || e.type === 'vsc' ? ['sc', e.type.toUpperCase()] : e.type === 'red' ? ['red', 'RED'] : e.type === 'dnf' ? ['out', 'OUT'] : e.type === 'weather' ? ['wx', 'WX'] : e.type === 'pit' ? ['pit', 'PIT'] : null
     const c = e.ids.map((id) => st.cars.find((k) => k.id === id)).find((k) => k?.e.isPlayer)
     items.push({ lap: e.lap, tag, text: e.text, c })
   }
@@ -453,7 +453,7 @@ function RaceScreen({ game, act }) {
   const order = (snap?.order ?? []).map((r) => r.c)
   const revealed = playingBack ? st.events.slice(0, pb.frame.events1).filter((e, i) => i < pb.frame.events0 || e.lap <= snap.lap).length : st.events.length
   const facts = {
-    sc: neutral === 'sc', out: outNow, flag, cond: cnd, events: revealed, started: st.started,
+    sc: neutral === 'sc', red: neutral === 'red', out: outNow, flag, cond: cnd, events: revealed, started: st.started,
     top3: st.started ? order.slice(0, 3).filter((c) => c.e.isPlayer).map((c) => c.id) : [],
   }
   const seen = useRef(null)
@@ -464,6 +464,7 @@ function RaceScreen({ game, act }) {
     if (!prev) return
     const first = (key) => { if (once.current.has(key)) return false; once.current.add(key); return true }
     if (facts.sc && !prev.sc) moments.show(scMoment(lap))
+    if (facts.red && !prev.red) moments.show(redFlagMoment(st.events.find((e) => e.type === 'red')?.lap ?? lap))
     if (facts.cond !== 'dry' && prev.cond === 'dry' && facts.started) moments.show(rainMoment(facts.cond, lap))
     for (const id of facts.out) if (!prev.out.includes(id)) moments.show(outMoment(game, st.cars.find((c) => c.id === id)))
     if (facts.out.length === 2 && prev.out.length < 2) moments.show(doubleOutMoment(game, mine))
@@ -490,7 +491,7 @@ function RaceScreen({ game, act }) {
   return (
     <div>
       <Head title={st.track.name} chip={COND[cnd]} right={flag ? 'FINISH' : lap ? `LAP ${lap}/${st.laps}` : 'START'} game={game}>
-        {!flag && neutral && <div className="banner">⚠ {neutral === 'sc' ? 'Safety car' : 'Virtual safety car'}</div>}
+        {!flag && neutral && <div className={`banner ${neutral === 'red' ? 'red' : ''}`}>{neutral === 'red' ? '■ Red flag' : `⚠ ${neutral === 'sc' ? 'Safety car' : 'Virtual safety car'}`}</div>}
         {flag && <div className="banner flag">Chequered flag</div>}
       </Head>
       <div className="race-grid">
