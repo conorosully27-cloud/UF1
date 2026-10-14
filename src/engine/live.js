@@ -409,7 +409,7 @@ export function computeCalls(game) {
   for (const call of calls) {
     call.estimates = {}
     for (const o of call.options) {
-      const pos = estimate(st, call.carId, (s2) => applyOption(s2, call, o.key), `${call.id}|${o.key}`)
+      const pos = estimate(st, call.carId, (s2) => applyOption(s2, call, o.key), call.id)
       call.estimates[o.key] = pos
     }
     const keys = Object.keys(call.estimates)
