@@ -17,6 +17,10 @@ Status: W1 (the simulation), W2 (the live race), W3 (knockout qualifying), W4 (F
 - W4, practice (`src/engine/practice.js`, the Practice screen): wing and balance dials for each car from the engineers' setup, three runs a car with the driver's feedback and a lap time, or a long run for a little less tyre wear in the race. Practice and qualifying can each be left to the team in the settings or skipped for one weekend; the race cannot be skipped, but the strategist can take the calls while it plays on. Checks: `tests/w4-check.js`.
 - W3, knockout qualifying (`runQualiSession` in `weekend.js`, the session flow in `live.js`, the Qualifying screen): Q1, Q2 and Q3 with one late run or two, a normal or big-risk lap, a tow between your cars, four new sets of Softs for the whole of qualifying (a run without one is on a used set), track evolution, late yellow and red flags (with a restart for some cars left with no time), and qualifying that can be wet, drying or caught by rain part-way. The strategist suggests a plan for each car and says how close it is to the cut, as precisely as its rating allows. "A car into Q2" and "into Q3" objectives. The A/B cards for drying qualifying, the qualifying run plan and the tow are not drawn when weekends are played live. Checks: `tests/w3-check.js`.
 
+**Next goals, in this order:**
+- **W6, lap by lap.** The race is still simulated in blocks of about five laps, so calls, the Box button and orders only act at the start of a block and passes are settled at its end. Step the race one lap at a time instead: tyre wear, pace, errors, safety cars and stops every lap, and calls on the lap things happen. Every chance now set per block is reset per lap, and the M1 calibration and the W5 pit-wall measure are run again. Quick sim must stay fast, and the strategist's estimates affordable.
+- **W7, a speed profile on the map.** Cars now move round the map at a steady speed. Give each track a speed profile from its smoothed outline (slow in tight corners, top speed on straights, braking into corners and accelerating out), and have each car follow it at its own lap time, so gaps stretch on the straights and close up in the corners. Some corners may need fixing by hand. Best done after W6.
+
 **Not built yet from this plan:**
 - From W4's plan, left out to keep practice simple: rain in practice, long runs sharpening the strategist's tyre estimates (a long run lowers wear instead), and setup cards' effects on setup skill when the weekend is run live.
 - From W3's plan: tyre sets saved in qualifying are not carried into the race yet, and qualifying engine modes are only the Saturday incident card.
@@ -217,6 +221,8 @@ Short lines, generated from what happens, give the drivers voices, e.g. "Tyres a
 | W3 Saturday | Qualifying knockout sessions with run plans; parc fermé | Qualifying becomes interactive |
 | W4 Friday | Setup mini-game, long runs feeding the tyre estimates | The full weekend |
 | W5 Folding in | A/B weekend calls retired or turned into incidents; weekend objectives; involvement setting; balance harness extended with a scripted expert strategist to measure what good calls are worth | Balanced and finished |
+| W6 Lap by lap | The race stepped one lap at a time; calls on the lap things happen; calibration re-run | The race as close to live as the game gets |
+| W7 Speed profile | Cars on the map brake into corners and accelerate out, at their own lap times | The map looks like a race |
 
 **Checks for each step:**
 - the existing M1–M5 checks still pass
