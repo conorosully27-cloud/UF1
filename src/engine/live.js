@@ -11,7 +11,7 @@ import {
 } from './weekend.js'
 import { INCIDENT_DAY, isIncidentCard, resolveDecision, bestChoice } from './decisions.js'
 import { weekendObjectives, objectiveStatus } from './highlights.js'
-import { hashString } from './rng.js'
+import { hashString, streamRng } from './rng.js'
 import { startPractice, engineersBalance, practiceRun } from './practice.js'
 
 const ROLLOUTS = 4
@@ -413,14 +413,30 @@ export function computeCalls(game) {
       call.estimates[o.key] = pos
     }
     const keys = Object.keys(call.estimates)
-    const best = keys.reduce((b, k) => (call.estimates[k] < call.estimates[b] ? k : b), keys[0])
-    // A capable strategist goes with the numbers when they clearly beat the textbook call.
-    if (!call.recommend || (strategist >= 60 && call.estimates[call.recommend] - call.estimates[best] > 0.7)) call.recommend = best
+    call.recommend = strategistPick(call, keys, strategist, streamRng(st.key, 'judge', call.id))
     call.precision = strategist >= 80 ? 'sharp' : strategist >= 60 ? 'rough' : 'vague'
-    call.estimateText = Object.fromEntries(keys.map((k) => [k, k === call.recommend && strategist < 60 ? 'the textbook call' : estimateText(call.estimates[k], call.estimates[call.recommend], strategist)]))
+    call.estimateText = Object.fromEntries(keys.map((k) => [k, k === call.recommend && strategist < 60 ? "the strategist's pick" : estimateText(call.estimates[k], call.estimates[call.recommend], strategist)]))
   }
   w.calls = calls
   return calls
+}
+
+// How often the strategist's own judgement gets a call right: about two in
+// three for a weak one, nearly always for the best.
+export const judgement = (rating) => clamp(SETTLE.judgeBase + rating * SETTLE.judgePerPoint, 0.4, 0.97)
+export const SETTLE = { judgeBase: 0.25, judgePerPoint: 0.007, clearly: 0.3 }
+
+// The strategist's pick is a judgement call, separate from the simulations
+// behind the estimates. Judged right, it goes with the numbers when they
+// clearly beat the textbook call. Judged wrong, it sticks with the textbook
+// call where the numbers disagree, or takes the next-best option where they
+// agree. A player who reads the numbers can beat a weak strategist.
+function strategistPick(call, keys, strategist, rng) {
+  const ranked = keys.slice().sort((a, b) => call.estimates[a] - call.estimates[b])
+  const best = ranked[0]
+  const textbook = call.recommend ?? best
+  if (rng.chance(judgement(strategist))) return call.estimates[textbook] - call.estimates[best] > SETTLE.clearly ? best : textbook
+  return textbook !== best ? textbook : ranked[1]
 }
 
 function estimateText(pos, recPos, strategist) {
@@ -428,7 +444,7 @@ function estimateText(pos, recPos, strategist) {
   const p = Math.round(pos)
   if (strategist >= 80) return `about P${p}`
   if (strategist >= 60) return `P${Math.max(1, p - 1)}–P${p + 1}`
-  // A weaker strategist only has a feel for it, and sticks with the textbook call.
+  // A weaker strategist only has a feel for it.
   const d = pos - recPos
   return Math.abs(d) < 0.7 ? 'about the same' : d < 0 ? 'might be better' : 'probably worse'
 }
