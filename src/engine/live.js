@@ -7,11 +7,12 @@ import { PLAYER, clamp, ordinal, currentTrack } from './core.js'
 import { preRace, postRace, createWeekendRace, completeRace, recommendedWing } from './game.js'
 import {
   stepRace, runToEnd, advice, neutralGain, bestStop, planRest, TYRES, ORDERS, DEFAULT_ORDERS, tyreLife, wearRate, lapAt, tyreDelta,
-  runQualiSession, qualiPlan, qualiDrop, qualiPace, QUALI,
+  runQualiSession, qualiPlan, qualiDrop, qualiPace, QUALI, addCarMods,
 } from './weekend.js'
+import { INCIDENT_DAY, isIncidentCard, resolveDecision, bestChoice } from './decisions.js'
 import { weekendObjectives, objectiveStatus } from './highlights.js'
-import { hashString } from './rng.js'
-import { startPractice, engineersBalance } from './practice.js'
+import { hashString, streamRng } from './rng.js'
+import { startPractice, engineersBalance, practiceRun } from './practice.js'
 
 const ROLLOUTS = 4
 const SLICKS = ['S', 'M', 'H']
@@ -27,6 +28,10 @@ const carById = (state, id) => state.cars.find((c) => c.id === id)
 
 export function beginWeekend(game) {
   if (game.weekend) throw new Error('A race weekend is already under way')
+  // A race-weekend card drawn for this round comes up during the weekend instead.
+  const dec = game.decision
+  const incident = dec && !dec.resolved && isIncidentCard(dec.id) ? dec : null
+  if (incident) game.decision = null
   preRace(game)
   const wingAdvice = [0, 1].map((s) => recommendedWing(game, s))
   game.weekend = {
@@ -34,9 +39,52 @@ export function beginWeekend(game) {
     wing: wingAdvice.map((a) => a.level), wingAdvice, balance: [0, 1].map((s) => engineersBalance(game, s)), orders: [{ ...DEFAULT_ORDERS }, { ...DEFAULT_ORDERS }],
     objectives: weekendObjectives(game), calls: [], answered: {}, boxes: {}, log: [], radio: [], snapshots: [], state: null,
     forecast: forecast(game),
+    incident: incident ? { ...incident, day: INCIDENT_DAY[incident.id] } : null,
   }
   return game.weekend
 }
+
+// ---- Incidents ----
+
+const PHASE_DAY = { briefing: 0, practice: 1, quali: 2, grid: 3, race: 4, flag: 4 }
+export const DAY_NAMES = ['Thursday', 'Friday', 'Saturday', 'Sunday']
+
+// The weekend's incident, once its day has come: Friday's after the first
+// practice run (or on Saturday when practice is left to the engineers).
+export function incidentDue(game) {
+  const w = game.weekend
+  const inc = w?.incident
+  if (!inc || inc.resolved) return null
+  const today = PHASE_DAY[w.phase]
+  if (inc.day === 1 && w.phase === 'practice') return w.practice?.cars.some((c) => c.runs.length) ? inc : null
+  return inc.day <= today ? inc : null
+}
+
+function settleFirst(game) {
+  if (incidentDue(game)) throw new Error('Deal with the incident first')
+}
+
+// Answers the incident. Effects on the cars apply to this weekend straight
+// away, even when qualifying or the race is already set up.
+export function resolveIncident(game, choice) {
+  const w = game.weekend
+  const inc = incidentDue(game)
+  if (!inc) throw new Error('There is no incident waiting')
+  const n = { mods: game.weekendMods.length, buffs: game.buffs.length, later: game.delayed.length }
+  resolveDecision(game, choice, inc)
+  const added = game.weekendMods.slice(n.mods).map((x) => ({ car: x.car, mods: x.mods }))
+  // Decided after the round's own countdown, so it lasts as long as it would have before the weekend.
+  for (const b of game.buffs.slice(n.buffs)) { b.roundsLeft--; added.push({ car: b.car, mods: b.mods }) }
+  for (const d of game.delayed.slice(n.later)) d.roundsLeft--
+  if (w.state) {
+    for (const x of added) for (const c of myCars(w.state)) if (x.car === 'both' || x.car === c.e.slot) addCarMods(c, x.mods)
+  }
+  if (w.skipQuali && w.phase === 'quali' && !incidentDue(game)) { w.skipQuali = false; runQualifying(game) }
+  return inc
+}
+
+// The team's own pick, for a weekend left to the strategist.
+const teamChoice = (game) => bestChoice(game, game.weekend.incident)
 
 // The weather forecast at the strategist's precision: a strong Chief
 // Strategist's numbers lean towards what will really happen, a weak one's
@@ -73,8 +121,15 @@ export function beginPractice(game) {
   const w = game.weekend
   if (!w || w.phase !== 'briefing') throw new Error('Practice is before qualifying')
   w.balance ??= [0, 1].map((s) => engineersBalance(game, s)) // a save from before practice
+  settleFirst(game)
   w.phase = 'practice'
   startPractice(w, game)
+}
+
+// One practice run for each car, once any incident is dealt with.
+export function runPractice(game) {
+  settleFirst(game)
+  practiceRun(game)
 }
 
 // On from the briefing or practice: qualifying, or straight to the grid when
@@ -82,7 +137,10 @@ export function beginPractice(game) {
 // Practice not run keeps the engineers' setup.
 export function toQualifying(game, { skipQuali = !playsQualifying(game) } = {}) {
   startQualifying(game)
-  if (skipQuali) runQualifying(game)
+  if (!skipQuali) return
+  // An incident due now is answered first; qualifying then runs itself.
+  if (incidentDue(game)) game.weekend.skipQuali = true
+  else runQualifying(game)
 }
 
 // ---- Saturday: qualifying ----
@@ -93,6 +151,7 @@ const strategistRating = (game) => game.org.keyStaff.chiefStrategist.rating
 export function startQualifying(game) {
   const w = game.weekend
   if (!w || (w.phase !== 'briefing' && w.phase !== 'practice')) throw new Error('Qualifying has already started')
+  settleFirst(game)
   w.state = createWeekendRace(game, { liveQuali: true })
   w.phase = 'quali'
   w.qRadio = []
@@ -171,6 +230,7 @@ export function qualiOutlook(game) {
 export function runSession(game) {
   const w = game.weekend
   if (!w || w.phase !== 'quali') throw new Error('Qualifying is not running')
+  settleFirst(game)
   const st = w.state
   const s = st.qs.session
   runQualiSession(st, { ...w.qChoices, tow: w.tow })
@@ -239,6 +299,7 @@ export function boxCar(game, carId, comp) {
 export function startRace(game) {
   const w = game.weekend
   if (!w || w.phase !== 'grid') throw new Error('The race is not on the grid')
+  settleFirst(game)
   w.phase = 'race'
   w.startSnapshot = JSON.stringify(w.state)
   w.calls = []
@@ -348,18 +409,34 @@ export function computeCalls(game) {
   for (const call of calls) {
     call.estimates = {}
     for (const o of call.options) {
-      const pos = estimate(st, call.carId, (s2) => applyOption(s2, call, o.key), `${call.id}|${o.key}`)
+      const pos = estimate(st, call.carId, (s2) => applyOption(s2, call, o.key), call.id)
       call.estimates[o.key] = pos
     }
     const keys = Object.keys(call.estimates)
-    const best = keys.reduce((b, k) => (call.estimates[k] < call.estimates[b] ? k : b), keys[0])
-    // A capable strategist goes with the numbers when they clearly beat the textbook call.
-    if (!call.recommend || (strategist >= 60 && call.estimates[call.recommend] - call.estimates[best] > 0.7)) call.recommend = best
+    call.recommend = strategistPick(call, keys, strategist, streamRng(st.key, 'judge', call.id))
     call.precision = strategist >= 80 ? 'sharp' : strategist >= 60 ? 'rough' : 'vague'
-    call.estimateText = Object.fromEntries(keys.map((k) => [k, k === call.recommend && strategist < 60 ? 'the textbook call' : estimateText(call.estimates[k], call.estimates[call.recommend], strategist)]))
+    call.estimateText = Object.fromEntries(keys.map((k) => [k, k === call.recommend && strategist < 60 ? "the strategist's pick" : estimateText(call.estimates[k], call.estimates[call.recommend], strategist)]))
   }
   w.calls = calls
   return calls
+}
+
+// How often the strategist's own judgement gets a call right: about two in
+// three for a weak one, nearly always for the best.
+export const judgement = (rating) => clamp(SETTLE.judgeBase + rating * SETTLE.judgePerPoint, 0.4, 0.97)
+export const SETTLE = { judgeBase: 0.25, judgePerPoint: 0.007, clearly: 0.3 }
+
+// The strategist's pick is a judgement call, separate from the simulations
+// behind the estimates. Judged right, it goes with the numbers when they
+// clearly beat the textbook call. Judged wrong, it sticks with the textbook
+// call where the numbers disagree, or takes the next-best option where they
+// agree. A player who reads the numbers can beat a weak strategist.
+function strategistPick(call, keys, strategist, rng) {
+  const ranked = keys.slice().sort((a, b) => call.estimates[a] - call.estimates[b])
+  const best = ranked[0]
+  const textbook = call.recommend ?? best
+  if (rng.chance(judgement(strategist))) return call.estimates[textbook] - call.estimates[best] > SETTLE.clearly ? best : textbook
+  return textbook !== best ? textbook : ranked[1]
 }
 
 function estimateText(pos, recPos, strategist) {
@@ -367,7 +444,7 @@ function estimateText(pos, recPos, strategist) {
   const p = Math.round(pos)
   if (strategist >= 80) return `about P${p}`
   if (strategist >= 60) return `P${Math.max(1, p - 1)}–P${p + 1}`
-  // A weaker strategist only has a feel for it, and sticks with the textbook call.
+  // A weaker strategist only has a feel for it.
   const d = pos - recPos
   return Math.abs(d) < 0.7 ? 'about the same' : d < 0 ? 'might be better' : 'probably worse'
 }
@@ -512,7 +589,12 @@ export function handOver(game) {
 export function quickFinish(game) {
   const w = game.weekend
   if (!w?.live) throw new Error('No race weekend under way')
-  if (['briefing', 'practice', 'quali'].includes(w.phase)) runQualifying(game)
+  const settle = () => { if (incidentDue(game)) resolveIncident(game, teamChoice(game)) }
+  settle()
+  if (w.phase === 'briefing' || w.phase === 'practice') startQualifying(game)
+  settle()
+  if (w.phase === 'quali') runQualifying(game)
+  settle()
   if (w.phase === 'grid') startRace(game)
   if (w.phase === 'race') handOver(game)
   return finishWeekend(game)

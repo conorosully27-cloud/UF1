@@ -114,6 +114,21 @@ export function crashChance(consistency) {
   return 0.010 + (100 - consistency) * 0.0014
 }
 
+// Adds a weekend effect to a car once the weekend's state exists (an
+// incident decided on Saturday or Sunday), as if it had been there from the
+// start: the same rules as building the entries.
+export function addCarMods(c, mods) {
+  for (const [k, v] of Object.entries(mods)) {
+    if (typeof v !== 'number') c.m[k] = v
+    else if (k === 'mechMult' || k === 'errMult' || k === 'stratSd') c.m[k] = (c.m[k] ?? 1) * v
+    else c.m[k] = (c.m[k] ?? 0) + v
+  }
+  if (mods.racePace) c.pace += mods.racePace
+  if (mods.qualiPace) c.qBase += mods.qualiPace
+  c.pMech = mechFailureChance(c.e.car.reliability) * (c.m.mechMult || 1) + (c.m.dnfAdd || 0)
+  c.pCrash = crashChance(c.e.driver.consistency) * c.ap.err * (c.m.errMult || 1)
+}
+
 // The wing level (1 low drag, 5 high downforce) that suits this car here:
 // twisty, aero-heavy tracks want more, power tracks less, and a car strong
 // on Aero wants a little more than one that relies on its engine.

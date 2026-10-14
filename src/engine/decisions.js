@@ -13,8 +13,27 @@ import { DECK } from './data/deck.js'
 import { makeDriver } from './people.js'
 
 export const NO_REPEAT = 32 // rounds before the same decision can come round again
-// Race-weekend cards that a live race covers with its own calls, wing level and orders.
-export const LIVE_CALLS = new Set(['one-stop-split', 'safety-car-plan', 'start-tyres', 'team-orders', 'lap-one', 'showers', 'driver-strategy', 'low-drag', 'max-downforce', 'quali-drying', 'quali-run-plan', 'quali-tow'])
+// Race-weekend cards that a live weekend covers with its own practice, calls and orders.
+export const LIVE_CALLS = new Set([
+  'one-stop-split', 'safety-car-plan', 'start-tyres', 'team-orders', 'lap-one', 'showers', 'driver-strategy', 'low-drag', 'max-downforce',
+  'quali-drying', 'quali-run-plan', 'quali-tow', 'rain-setup', 'experimental-setup', 'practice-focus', 'setup-guess', 'radio-coaching',
+])
+// The rest of the race-weekend cards become incidents in a live weekend
+// (RACE_WEEKEND.md 5.6): drawn as now, but put to the player on the day they
+// would happen, 0 Thursday to 3 Sunday, instead of before the weekend.
+export const INCIDENT_DAY = {
+  'driver-ill': 0, 'junior-outings': 0, 'wing-protest': 0, 'untested-part': 0, 'track-limits': 0,
+  'practice-crash': 1, vibration: 1, actuator: 1, 'spare-chassis': 1, 'pit-crew-injury': 1, suspension: 1, 'ride-height': 1,
+  'quali-engine-mode': 2, 'tyre-allocation': 2, 'gearbox-fault': 2, curfew: 2, 'pu-life': 2,
+  overheat: 3, 'fuel-load': 3, 'launch-maps': 3, 'tyre-pressures': 3, 'power-boost': 3, 'brake-wear': 3,
+}
+export const isIncidentCard = (id) => id in INCIDENT_DAY
+// A weekend card waiting for a live weekend, where it comes up as an
+// incident. Asking for it before then (`reveal`, for a quick sim) shows it now.
+export const deferredIncident = (game) => {
+  const dec = game.decision
+  return !!dec && !dec.resolved && !dec.reveal && isIncidentCard(dec.id) && game.settings.involvement === 'live'
+}
 const BY_ID = Object.fromEntries(DECK.map((d) => [d.id, d]))
 const WEEKEND_TYPES = new Set(['Race weekend', 'Reliability'])
 const SIZE_GAIN = { minor: 1.0, major: 2.5, package: 6.0 }
@@ -68,8 +87,7 @@ export function drawDecision(game) {
 }
 
 // The decision as the player sees it.
-export function describeDecision(game) {
-  const dec = game.decision
+export function describeDecision(game, dec = game.decision) {
   if (!dec) return null
   const d = BY_ID[dec.id]
   const c = decisionContext(game)
@@ -154,13 +172,12 @@ function applyEffects(game, effects, st) {
   for (const e of effects) applyEffect(game, e, st)
 }
 
-export function resolveDecision(game, choice) {
-  const dec = game.decision
+export function resolveDecision(game, choice, dec = game.decision) {
   if (!dec || dec.resolved) throw new Error('There is no decision waiting')
   if (choice !== 'a' && choice !== 'b') throw new Error('Choose A or B')
   const d = BY_ID[dec.id]
   const c = decisionContext(game)
-  const view = describeDecision(game)
+  const view = describeDecision(game, dec)
   const st = { rolls: dec.rolls, i: 0, out: [], title: view.title }
   applyEffects(game, d[choice].fx(game, c, dec.params), st)
   dec.resolved = true
@@ -301,15 +318,14 @@ function effectsValue(game, c, effects, rain = effects.find((e) => 'weather' in 
   return effects.reduce((s, e) => s + effectValue(game, c, e, rain), 0)
 }
 
-export function optionValue(game, choice) {
-  const dec = game.decision
+export function optionValue(game, choice, dec = game.decision) {
   const d = BY_ID[dec.id]
   const c = decisionContext(game)
   return effectsValue(game, c, d[choice].fx(game, c, dec.params))
 }
 
-export function bestChoice(game) {
-  return optionValue(game, 'a') >= optionValue(game, 'b') ? 'a' : 'b'
+export function bestChoice(game, dec = game.decision) {
+  return optionValue(game, 'a', dec) >= optionValue(game, 'b', dec) ? 'a' : 'b'
 }
 
 export { DECK, BY_ID }
