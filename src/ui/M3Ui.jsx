@@ -11,9 +11,11 @@ const fmt = (t, value) => {
   return `${value}`
 }
 
-export function DecisionPanel({ game, act }) {
-  const d = describeDecision(game)
+// The round's decision, or (with `dec`, `heading` and `onChoose`) an incident during a live weekend.
+export function DecisionPanel({ game, act, dec = game.decision, heading = "This round's decision", onChoose, className = '' }) {
+  const d = describeDecision(game, dec)
   if (!d) return null
+  const choose = onChoose ?? ((key) => act((g) => { resolveDecision(g, key) }))
   const precision = d.staffRating >= 80 ? 'exact odds' : d.staffRating >= 60 ? 'odds to the nearest 10%' : 'a rough guess at the odds'
   const option = (key) => {
     const o = d[key]
@@ -22,14 +24,14 @@ export function DecisionPanel({ game, act }) {
       <div className="panel" style={{ flex: '1 1 320px', borderColor: chosen ? 'var(--good)' : undefined, borderWidth: chosen ? 2 : 1 }}>
         <b>{key.toUpperCase()}: {o.label}</b>
         <p>{o.text}</p>
-        {!d.resolved && <button className="primary" onClick={() => act((g) => { resolveDecision(g, key) })}>Choose {key.toUpperCase()}</button>}
+        {!d.resolved && <button className="primary" onClick={() => choose(key)}>Choose {key.toUpperCase()}</button>}
         {chosen && <p className="good">Chosen</p>}
       </div>
     )
   }
   return (
-    <div className="panel">
-      <h2 style={{ marginTop: 0 }}>This round's decision: {d.title}</h2>
+    <div className={`panel ${className}`}>
+      <h2 style={{ marginTop: 0 }}>{heading}: {d.title}</h2>
       <p className="muted">{d.type}</p>
       <p>{d.text}</p>
       <div className="row">{option('a')}{option('b')}</div>

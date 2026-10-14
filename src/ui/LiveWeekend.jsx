@@ -4,9 +4,10 @@ import { TYRES, ORDERS, planRest, lapAt, tyreLife, wearRate, qualiDrop } from '.
 import {
   setWing, runQualifying, setStartTyre, setOrders, startRace, answerCall, followStrategist, nextBlock, playToMoment, setAutoCalls,
   finishWeekend, boxCar, objectivesNow, setQualiPlan, setTow, runSession, qualiOutlook,
-  beginPractice, toQualifying, playsPractice, playsQualifying,
+  beginPractice, toQualifying, playsPractice, playsQualifying, runPractice, incidentDue, resolveIncident,
 } from '../engine/live.js'
-import { practiceRun, setBalance, setRunKind, BALANCE_LABELS, SETUP } from '../engine/practice.js'
+import { DecisionPanel } from './M3Ui.jsx'
+import { seatDriverId, setBalance, setRunKind, BALANCE_LABELS, SETUP } from '../engine/practice.js'
 import { TRACK_BY_ID } from '../engine/data/tracks.js'
 import { TrackLine } from './Weekend.jsx'
 import { TrackMap, usePlayback, frameSnapshot, gridSnapshot, stateSnapshot } from './RaceMap.jsx'
@@ -73,6 +74,24 @@ function Head({ title, chip, right, game, children }) {
   )
 }
 
+// ---- Incidents ----
+
+const DAY_TEXT = ['Thursday', 'Friday practice', 'Saturday morning', 'Sunday morning']
+
+// A race-weekend incident on the day it happens; the weekend waits for an answer.
+function Incident({ game, act }) {
+  const w = game.weekend
+  const inc = w.incident
+  const due = !!incidentDue(game)
+  const ref = useRef(null)
+  useEffect(() => { if (due) ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }) }, [due])
+  if (!inc || !(due || inc.shownIn === w.phase)) return null
+  return (
+    <div ref={ref}><DecisionPanel game={game} act={act} dec={inc} heading={`Incident · ${DAY_TEXT[inc.day]}`} className="incident"
+      onChoose={(k) => act((g) => { g.weekend.incident.shownIn = g.weekend.phase; resolveIncident(g, k) })} /></div>
+  )
+}
+
 // ---- Thursday: the briefing ----
 
 function Briefing({ game, act }) {
@@ -86,6 +105,7 @@ function Briefing({ game, act }) {
   return (
     <div>
       <Head title={track.name} chip={`Round ${game.round + 1} of ${game.calendar.length}`} right="Briefing" />
+      <Incident game={game} act={act} />
       <p><TrackLine track={track} /></p>
       <div className="tiles">
         <div className="tile"><div className="kicker">Rain · qualifying</div><div className="big">{f.quali}%</div></div>
@@ -100,13 +120,13 @@ function Briefing({ game, act }) {
         <ul className="plain">{w.objectives.map((o, i) => <li key={i}>{o.text}</li>)}</ul>
       </div>
       {!practice && <p className="muted small">The engineers set the cars up: practice is off in the settings.</p>}
-      <div className="controls">
+      <fieldset className="controls" disabled={!!incidentDue(game)}>
         {practice ? <>
           <button className="primary" onClick={() => act((g) => beginPractice(g))}>To practice</button>
           <button className="ghost" onClick={() => act((g) => toQualifying(g))}>Engineers run practice</button>
         </> : <button className="primary" onClick={() => act((g) => toQualifying(g))}>{quali ? 'To qualifying' : 'To the grid'}</button>}
         {quali && <button className="ghost" onClick={() => act((g) => toQualifying(g, { skipQuali: true }))}>Straight to the grid</button>}
-      </div>
+      </fieldset>
     </div>
   )
 }
@@ -119,12 +139,13 @@ function Practice({ game, act }) {
   const w = game.weekend
   const track = TRACK_BY_ID[game.calendar[game.round]]
   const p = w.practice
-  const ids = game.teams[PLAYER].drivers
+  const ids = [0, 1].map((slot) => seatDriverId(game, slot))
   const left = Math.max(...p.cars.map((c) => c.left))
   const quali = playsQualifying(game)
   return (
     <div>
       <Head title={track.name} chip={`Round ${game.round + 1} of ${game.calendar.length}`} right="Practice" />
+      <Incident game={game} act={act} />
       <div className="cols">
         {ids.map((id, slot) => {
           const c = p.cars[slot]
@@ -154,11 +175,11 @@ function Practice({ game, act }) {
         })}
       </div>
       <Help>Set the wing and balance, send the cars out and listen to the drivers: their feedback (and the lap time) says which way to go. Low drag is quicker on the straights; high downforce suits twisty tracks, and rain wants more wing. A driver with good Feedback, strong race engineers and a better simulator read the car more clearly. A long run teaches the driver how the tyres go off: a little less wear in the race. The setup is locked once qualifying starts.</Help>
-      <div className="controls">
-        {left > 0 && <button className="primary" onClick={() => act((g) => practiceRun(g))}>Send the cars out</button>}
+      <fieldset className="controls" disabled={!!incidentDue(game)}>
+        {left > 0 && <button className="primary" onClick={() => act((g) => runPractice(g))}>Send the cars out</button>}
         <button className={left > 0 ? '' : 'primary'} onClick={() => act((g) => toQualifying(g))}>{quali ? 'To qualifying' : 'To the grid'}</button>
         {quali && <button className="ghost" onClick={() => act((g) => toQualifying(g, { skipQuali: true }))}>Skip qualifying</button>}
-      </div>
+      </fieldset>
     </div>
   )
 }
@@ -205,6 +226,7 @@ function QualiScreen({ game, act }) {
   return (
     <div>
       <Head title={st.track.name} chip={COND[o.early]} right={`Q${s + 1}`} game={game} />
+      <Incident game={game} act={act} />
       <div className="race-grid">
         <section className="panel flush">
           <h3>{last ? `Q${last.s + 1} result${last.flag ? ` · ${last.flag} flag` : ''}` : 'Qualifying'}</h3>
@@ -258,12 +280,12 @@ function QualiScreen({ game, act }) {
           )}
         </div>
       </div>
-      <div className="controls">
+      <fieldset className="controls" disabled={!!incidentDue(game)}>
         {ids.length ? <>
           <button className="primary" onClick={() => act((g) => runSession(g))}>▶ Run Q{s + 1}</button>
           <button className="ghost" onClick={() => act((g) => runQualifying(g))}>Strategist runs qualifying</button>
         </> : <button className="primary" onClick={() => act((g) => runQualifying(g))}>▶ Finish qualifying</button>}
-      </div>
+      </fieldset>
     </div>
   )
 }
@@ -305,6 +327,7 @@ function GridScreen({ game, act }) {
   return (
     <div>
       <Head title={st.track.name} chip={`Race ${COND[st.cond[0]]}`} right="On the grid" game={game} />
+      <Incident game={game} act={act} />
       <div className="race-grid">
         <section className="panel flush"><h3>Qualifying</h3><QualiTower game={game} st={st} /></section>
         <div className="race-side">
@@ -333,9 +356,9 @@ function GridScreen({ game, act }) {
           </section>
         </div>
       </div>
-      <div className="controls">
+      <fieldset className="controls" disabled={!!incidentDue(game)}>
         <button className="primary" onClick={() => act((g) => startRace(g))}>Lights out</button>
-      </div>
+      </fieldset>
     </div>
   )
 }

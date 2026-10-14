@@ -18,6 +18,7 @@ import { PLAYER_COLORS } from './engine/data/teams.js'
 import { MomentContext, MomentLayer, useMoments } from './ui/Moments.jsx'
 import { resultMoments, deciderMoment, titleFightMoment, ownerMoment, redMoment, crisisMoment, signedMoment, leftMoment, sponsorMoment } from './ui/raceMoments.js'
 import { titleDecider, titleFight } from './engine/highlights.js'
+import { deferredIncident } from './engine/decisions.js'
 import { overall } from './engine/game.js'
 import { seatsReady } from './engine/people.js'
 import { ordinal, money, onColor } from './ui/format.js'
@@ -118,7 +119,9 @@ function Home({ game, act, last, setTab }) {
     )
   }
   if (weekendActive(game)) return <LiveWeekend game={game} act={act} />
-  const waiting = !!game.decision && !game.decision.resolved
+  // A race-weekend card waits for the live weekend, where it comes up as an incident.
+  const deferred = deferredIncident(game)
+  const waiting = !!game.decision && !game.decision.resolved && !deferred
   const live = game.settings.involvement === 'live'
   // Before the weekend: the title decider at the last round, or once a
   // season with a few rounds to go, a title fight.
@@ -131,6 +134,8 @@ function Home({ game, act, last, setTab }) {
     if (fight) moments.show(titleFightMoment(fight))
   }
   const quickSim = () => {
+    // Quick-simming instead: the card is put to the player now, as before.
+    if (deferred) { act((g) => { g.decision.reveal = true }); return }
     if (fight) moments.show(titleFightMoment(fight))
     const res = act((g) => { markFight(g); return simulateRound(g) })
     if (res) for (const m of resultMoments(game, res)) moments.show(m)
@@ -168,7 +173,7 @@ function Home({ game, act, last, setTab }) {
         <div className="row" style={{ gap: 8 }}>{live ? <>{goLive}{goQuick}</> : <>{goQuick}{goLive}</>}</div>
         {waiting && <p className="muted">Make this round's decision first.</p>}
       </div>
-      <DecisionPanel game={game} act={act} />
+      {!deferred && <DecisionPanel game={game} act={act} />}
       <div className="cols">
         <RivalCard game={game} />
         <GapChart game={game} />
@@ -336,7 +341,7 @@ export default function App() {
   const team = game.teams[PLAYER]
   const endCash = forecast(game, plannedSpendPerRound(game))
   const section = sectionOf(tab) ?? SECTIONS[0]
-  const alert = weekendActive(game) || (!!game.decision && !game.decision.resolved)
+  const alert = weekendActive(game) || (!!game.decision && !game.decision.resolved && !deferredIncident(game))
 
   return (
     <MomentContext.Provider value={momentApi}>

@@ -20,9 +20,11 @@ export const BALANCE_LABELS = ['Oversteer', 'Loose', 'Neutral', 'Stable', 'Under
 
 export const balanceLoss = (balance, ideal) => SETUP.balanceCost * (balance - ideal) ** 2
 
-function driverOf(game, slot) {
-  return game.drivers[game.teams[PLAYER].drivers[slot]]
+// Who is in the car this weekend: the reserve when standing in for an unwell driver.
+export function seatDriverId(game, slot) {
+  return game.substitute === slot && game.reserve ? game.reserve : game.teams[PLAYER].drivers[slot]
 }
+const driverOf = (game, slot) => game.drivers[seatDriverId(game, slot)]
 
 // How well the team sets a car up: the setup work (race engineers and
 // simulator) and the driver's Feedback, as in the race engine.
