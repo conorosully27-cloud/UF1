@@ -108,6 +108,7 @@ function Briefing({ game, act }) {
       <Incident game={game} act={act} />
       <p><TrackLine track={track} /></p>
       <div className="tiles">
+        {f.practice != null && <div className="tile"><div className="kicker">Rain · practice</div><div className="big">{f.practice}%</div></div>}
         <div className="tile"><div className="kicker">Rain · qualifying</div><div className="big">{f.quali}%</div></div>
         <div className="tile"><div className="kicker">Rain · race</div><div className="big">{f.race}%</div></div>
         <div className="tile"><div className="kicker">Pit stop costs</div><div className="big">{track.pitLoss} s</div></div>
@@ -142,15 +143,17 @@ function Practice({ game, act }) {
   const ids = [0, 1].map((slot) => seatDriverId(game, slot))
   const left = Math.max(...p.cars.map((c) => c.left))
   const quali = playsQualifying(game)
+  // The track for the next run, as the cars go out: rain is visible from the garage.
+  const next = left > 0 && w.friday ? w.friday[SETUP.runs - left] : null
   return (
     <div>
-      <Head title={track.name} chip={`Round ${game.round + 1} of ${game.calendar.length}`} right="Practice" />
+      <Head title={track.name} chip={next ? COND[next] : `Round ${game.round + 1} of ${game.calendar.length}`} right="Practice" />
       <Incident game={game} act={act} />
       <div className="cols">
         {ids.map((id, slot) => {
           const c = p.cars[slot]
           const a = w.wingAdvice[slot]
-          const best = c.runs.filter((r) => r.kind === 'setup').reduce((m, r) => Math.min(m, r.time), Infinity)
+          const best = c.runs.filter((r) => r.kind === 'setup' && r.time != null).reduce((m, r) => Math.min(m, r.time), Infinity)
           return (
             <section key={id} className="panel practice-car" style={{ '--dc': driverColor(game, id, slot) }}>
               <div className="line"><DriverTag game={game} id={id} slot={slot} /><span className="muted small">{c.left} of {SETUP.runs} runs left</span></div>
@@ -164,7 +167,7 @@ function Practice({ game, act }) {
                 <ol className="runs">
                   {c.runs.slice().reverse().map((r) => (
                     <li key={r.n}>
-                      <div className="rhead"><b>Run {r.n}</b><span className="muted">{r.kind === 'long' ? 'Long run' : `Wing ${r.wing} · ${BALANCE_LABELS[r.balance + 2]}`}</span><span className={`t${r.kind === 'setup' && r.time === best ? ' best' : ''}`}>{r.kind === 'long' ? `avg ${lapTime(r.time)}` : lapTime(r.time)}</span></div>
+                      <div className="rhead"><b>Run {r.n}</b><span className="muted">{r.kind === 'long' ? 'Long run' : `Wing ${r.wing} · ${BALANCE_LABELS[r.balance + 2]}`}{r.wet ? ' · wet' : ''}</span><span className={`t${r.kind === 'setup' && r.time === best ? ' best' : ''}`}>{r.crash ? 'Crashed' : r.kind === 'long' ? `avg ${lapTime(r.time)}` : lapTime(r.time)}</span></div>
                       {r.notes.map((n, i) => <div key={i} className="quote">"{n}"</div>)}
                     </li>
                   ))}
@@ -174,7 +177,7 @@ function Practice({ game, act }) {
           )
         })}
       </div>
-      <Help>Set the wing and balance, send the cars out and listen to the drivers: their feedback (and the lap time) says which way to go. Low drag is quicker on the straights; high downforce suits twisty tracks, and rain wants more wing. A driver with good Feedback, strong race engineers and a better simulator read the car more clearly. A long run teaches the driver how the tyres go off: a little less wear in the race. The setup is locked once qualifying starts.</Help>
+      <Help>Set the wing and balance, send the cars out and listen to the drivers: their feedback (and the lap time) says which way to go. Low drag is quicker on the straights; high downforce suits twisty tracks, and rain wants more wing. A driver with good Feedback, strong race engineers and a better simulator read the car more clearly. A long run teaches the driver how the tyres go off: a little less wear in the race. A wet run says little about the dry setup. The setup is locked once qualifying starts.</Help>
       <fieldset className="controls" disabled={!!incidentDue(game)}>
         {left > 0 && <button className="primary" onClick={() => act((g) => runPractice(g))}>Send the cars out</button>}
         <button className={left > 0 ? '' : 'primary'} onClick={() => act((g) => toQualifying(g))}>{quali ? 'To qualifying' : 'To the grid'}</button>
@@ -377,7 +380,10 @@ function Tower({ game, st, snap, lastOrder }) {
         const c = r.c
         const was = lastOrder ? lastOrder.indexOf(c.idx) : -1
         const moved = was >= 0 ? was - i : 0
-        const g = i === 0 ? 'Leader' : r.gap != null ? `+${Math.max(0, r.gap).toFixed(1)}` : `+${(c.t - leader.t).toFixed(1)}`
+        const secs = r.gap != null ? Math.max(0, r.gap) : c.t - leader.t
+        // A car the leader has lapped shows laps, not seconds.
+        const down = Math.floor(r.d != null ? rows[0].d - r.d : secs / st.track.baseLap)
+        const g = i === 0 ? 'Leader' : down >= 1 ? `+${down} lap${down > 1 ? 's' : ''}` : `+${secs.toFixed(1)}`
         return (
           <React.Fragment key={c.id}>
             <li className={`trow${c.e.isPlayer ? ' me' : ''}${r.retiring ? ' out' : ''}`} style={c.e.isPlayer ? dc(game, c) : undefined}>

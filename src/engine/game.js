@@ -146,12 +146,14 @@ export function buildEntries(game) {
       const id = t.isPlayer && game.substitute === slot && game.reserve ? game.reserve : seatId
       const d = game.drivers[id]
       const mods = {}
+      const timed = []
       if (t.isPlayer) {
         // Driver priority: the favoured car gets the better strategy and first call on the pit box.
         const fav = { driver1: 0, driver2: 1 }[game.settings.priority]
         if (fav !== undefined) Object.assign(mods, slot === fav ? { stratMean: -0.6 } : { stratMean: 0.6, pitTime: 0.4 })
         for (const m of [...game.weekendMods, ...game.buffs]) {
           if (m.car !== 'both' && m.car !== slot) continue
+          if (m.timed) timed.push(m.timed)
           for (const [k, v] of Object.entries(m.mods)) {
             if (typeof v !== 'number') mods[k] = v
             else if (k === 'mechMult' || k === 'errMult' || k === 'stratSd') mods[k] = (mods[k] ?? 1) * v
@@ -165,6 +167,7 @@ export function buildEntries(game) {
         driver: { pace: d.pace, racecraft: d.racecraft, consistency: d.consistency, wet: d.wet, feedback: d.feedback },
         approach: t.isPlayer ? game.settings.approach : 'balanced',
         mods,
+        ...(timed.length ? { timed } : {}),
         ...(t.isPlayer ? playerEntryExtras(game, slot) : {}),
       })
     })
@@ -208,6 +211,12 @@ export function completeRace(game, state) {
   const result = raceResult(state)
   result.round = game.round
   game.results.push(result)
+  // What came of this round's card, now that it has happened.
+  for (const e of result.events) {
+    if (!e.card) continue
+    const entry = game.decisionLog.slice().reverse().find((l) => l.title === e.card && l.season === game.season && l.round === game.round)
+    if (entry && !entry.outcome.includes(e.text)) entry.outcome.push(e.text)
+  }
   game.weekendMods = []
   game.weatherOverride = null
   game.substitute = null

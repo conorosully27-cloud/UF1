@@ -15,6 +15,12 @@ import { overall } from './drivers.js'
 
 const both = (mods) => ({ weekend: { car: 'both', mods } })
 const one = (car, mods) => ({ weekend: { car, mods } })
+// Something that happens on track at a set point: 'grid' (once qualifying is
+// over), 'start', or 'race' (a lap inside `window`, as shares of the race).
+// `mods` apply all weekend, as with `one` and `both`; `extra.mods` only from
+// the moment it happens. `{name}` is the driver. `share` is how much of the
+// race `extra.mods` covers on average, for the scripted managers.
+const timed = (car, at, text, extra = {}, mods = {}) => ({ weekend: { car, mods, timed: { at, text, ...extra } } })
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x))
 const money = (x) => `£${x.toFixed(2)}m`
 const nm = (c, i) => c.drivers[i].name
@@ -80,7 +86,7 @@ const WEEKEND = [
     factors: 'How reliable your car is, and whether a result is realistic here',
     text: (g, c) => `High temperatures are expected at ${c.track.name}. Your car's reliability as raced is ${c.eff.reliability.toFixed(0)}.`,
     a: { label: 'Open up the cooling', text: () => 'Both cars lose 0.1 s a lap in the race.', fx: () => [both({ racePace: 0.1 })] },
-    b: { label: 'Run as normal', text: () => 'Mechanical failure risk triples for this race.', fx: () => [both({ mechMult: 3 })] },
+    b: { label: 'Run as normal', text: () => 'Mechanical failure risk triples for this race.', fx: () => [both({ mechMult: 3, failWhy: 'cooling', failNote: 'the overheating the supplier warned of' })] },
   },
   {
     id: 'pu-life', type: 'Reliability', staff: 'technicalDirector', title: 'A power unit is near the end of its life',
@@ -88,7 +94,7 @@ const WEEKEND = [
     setup: (g, c, rng) => ({ slot: rng.int(0, 1) }),
     text: (g, c, p) => `${nm(c, p.slot)}'s power unit has done its mileage. ${c.track.name} is ${c.track.overtaking >= 0.6 ? 'hard' : c.track.overtaking >= 0.4 ? 'average' : 'easy'} to overtake at.`,
     a: { label: 'Fit a new unit', text: (g, c, p) => `${nm(c, p.slot)} takes a 10-place grid penalty and has a fresh engine.`, fx: (g, c, p) => [one(p.slot, { gridDrop: 10, racePace: -0.03 })] },
-    b: { label: 'Run the old one', text: () => 'That car is 0.08 s a lap slower and its failure risk rises by 80%.', fx: (g, c, p) => [one(p.slot, { racePace: 0.08, mechMult: 1.8 })] },
+    b: { label: 'Run the old one', text: () => 'That car is 0.08 s a lap slower and its failure risk rises by 80%.', fx: (g, c, p) => [one(p.slot, { racePace: 0.08, mechMult: 1.8, failWhy: 'power unit', failNote: 'the old unit' })] },
   },
   {
     id: 'untested-part', type: 'Race weekend', staff: 'headOfAero', title: 'A new part is ready but untested',
@@ -108,7 +114,7 @@ const WEEKEND = [
     setup: (g, c, rng) => ({ slot: rng.int(0, 1) }),
     text: (g, c, p) => `The data from ${nm(c, p.slot)}'s gearbox looks wrong after Friday.`,
     a: { label: 'Change the gearbox', text: (g, c, p) => `${nm(c, p.slot)} takes a 5-place grid penalty.`, fx: (g, c, p) => [one(p.slot, { gridDrop: 5 })] },
-    b: { label: 'Run it', text: () => 'A 6% chance that car retires.', fx: (g, c, p) => [one(p.slot, { dnfAdd: 0.06 })] },
+    b: { label: 'Run it', text: () => 'A 6% chance that car retires.', fx: (g, c, p) => [one(p.slot, { dnfAdd: 0.06, failWhy: 'gearbox', failNote: 'the fault found on Friday' })] },
   },
   {
     id: 'safety-car-plan', type: 'Race weekend', staff: 'chiefStrategist', title: 'Plan around a safety car?',
@@ -192,7 +198,7 @@ const WEEKEND = [
     id: 'quali-engine-mode', type: 'Race weekend', staff: 'technicalDirector', title: 'Turn the engines up for qualifying?',
     factors: 'How hard overtaking is here, and how reliable your car is',
     text: (g, c) => `Your car's reliability as raced is ${c.eff.reliability.toFixed(0)}.`,
-    a: { label: 'Turn them up', text: () => 'Both cars gain 0.1 s in qualifying; mechanical failure risk in the race rises by 60%.', fx: () => [both({ qualiPace: -0.1, mechMult: 1.6 })] },
+    a: { label: 'Turn them up', text: () => 'Both cars gain 0.1 s in qualifying; mechanical failure risk in the race rises by 60%.', fx: () => [both({ qualiPace: -0.1, mechMult: 1.6, failWhy: 'power unit', failNote: 'Saturday\'s turned-up engine' })] },
     b: { label: 'Standard modes', text: () => 'No change.', fx: () => [] },
   },
   {
@@ -202,7 +208,12 @@ const WEEKEND = [
     text: (g, c, p, P) => `Running under-fuelled is quicker unless the drivers have to save fuel. Chance they must: ${P(p.p)}. Safety cars save fuel.`,
     a: {
       label: 'Start light', text: () => 'Both cars gain 0.06 s a lap, or lose 0.15 s a lap if they have to save fuel.',
-      fx: (g, c, p) => [{ chance: p.p, then: [both({ racePace: 0.15 })], else: [both({ racePace: -0.06 })], text: ['Both cars had to save fuel heavily', 'The light fuel load paid off'] }],
+      fx: (g, c, p) => [{
+        chance: p.p,
+        then: [timed('both', 'race', 'Both cars are told to save fuel: lifting and coasting to the flag', { window: [0.15, 0.35], once: true }, { racePace: 0.15 })],
+        else: [timed('both', 'race', 'Fuel is on target: the light start is paying off', { window: [0.3, 0.5], once: true }, { racePace: -0.06 })],
+        wait: 'The cars start light. Whether they have to save fuel will show in the race.',
+      }],
     },
     b: { label: 'Fuel to the finish', text: () => 'No change.', fx: () => [] },
   },
@@ -229,7 +240,7 @@ const WEEKEND = [
     setup: (g, c) => ({ risk: clamp(0.1 - 0.015 * c.fac.factory.level, 0.02, 0.1) }),
     text: (g, c, p, P) => `${c.track.name} is hard on brakes. Chance of a brake failure per car on standard ducts: ${P(p.risk)}.`,
     a: { label: 'Fit bigger brake ducts', text: () => 'Both cars lose 0.07 s a lap.', fx: () => [both({ racePace: 0.07 })] },
-    b: { label: 'Standard ducts', text: () => 'No pace cost, with the failure risk above.', fx: (g, c, p) => [both({ dnfAdd: p.risk })] },
+    b: { label: 'Standard ducts', text: () => 'No pace cost, with the failure risk above.', fx: (g, c, p) => [both({ dnfAdd: p.risk, failWhy: 'brakes', failNote: 'the marginal brake cooling' })] },
   },
   {
     id: 'pit-crew-injury', type: 'Race weekend', staff: 'chiefStrategist', title: 'A pit crew member is injured',
@@ -256,7 +267,7 @@ const WEEKEND = [
     a: { label: 'Raise the ride height', text: () => 'Both cars lose 0.08 s a lap in the race.', fx: () => [both({ racePace: 0.08 })] },
     b: {
       label: 'Risk it', text: () => 'If caught, both cars start from the back.',
-      fx: () => [{ chance: 0.2, then: [both({ gridDrop: 24 })], text: ['Both cars are excluded from qualifying for plank wear and start from the back', 'The cars pass the plank check'] }],
+      fx: () => [{ chance: 0.2, then: [timed('both', 'grid', 'Too much plank wear: both cars are excluded from qualifying and start from the back', { once: true, type: 'penalty' }, { gridDrop: 24 })], wait: '' }],
     },
   },
   {
@@ -266,7 +277,12 @@ const WEEKEND = [
     text: (g, c, p, P) => `The engineers have a more aggressive clutch map. Chance it stalls a car on the grid: ${P(p.p)}.`,
     a: {
       label: 'Use it', text: () => 'Both cars gain about 0.4 s off the line, unless one stalls and loses about 4.5 s.',
-      fx: (g, c, p) => [{ chance: p.p, then: [one(p.slot, { startTime: 4.5 })], else: [both({ startTime: -0.4 })], text: ['The aggressive launch stalls one car on the grid', 'Both cars make strong starts'] }],
+      fx: (g, c, p) => [{
+        chance: p.p,
+        then: [timed(p.slot, 'start', '{name} bogs down on the aggressive launch map and loses places', { type: 'incident' }, { startTime: 4.5 })],
+        else: [timed('both', 'start', '{name} makes a strong start on the aggressive launch map', {}, { startTime: -0.4 })],
+        wait: 'The aggressive map is loaded. The start will tell.',
+      }],
     },
     b: { label: 'Standard launch', text: () => 'No change.', fx: () => [] },
   },
@@ -286,7 +302,7 @@ const WEEKEND = [
     a: { label: 'Leave a margin', text: () => 'Both cars lose 0.02 s a lap; driver error risk falls by 10%.', fx: () => [both({ racePace: 0.02, errMult: 0.9 })] },
     b: {
       label: 'Run at the limit', text: () => 'Both cars gain 0.05 s a lap. A car found under the minimum is given a 60-second penalty.',
-      fx: (g, c, p) => [both({ racePace: -0.05 }), { chance: p.p, then: [one(p.slot, { stratMean: 60 })], text: ['One car is penalised 60 s for low tyre pressures', ''] }],
+      fx: (g, c, p) => [both({ racePace: -0.05 }), { chance: p.p, then: [timed(p.slot, 'race', 'The stewards find {name} under the minimum tyre pressure on the grid: a 60-second penalty', { window: [0.15, 0.4], type: 'penalty', mods: { timePenalty: 60 } })], wait: '' }],
     },
   },
   {
@@ -294,7 +310,7 @@ const WEEKEND = [
     factors: 'How reliable your car is, and how much this track rewards power',
     when: (g, c) => c.track.w.power >= 0.25,
     text: (g, c) => `Your car's reliability as raced is ${c.eff.reliability.toFixed(0)}.`,
-    a: { label: 'Use it', text: () => 'Both cars gain 0.08 s a lap; mechanical failure risk doubles.', fx: () => [both({ racePace: -0.08, mechMult: 2 })] },
+    a: { label: 'Use it', text: () => 'Both cars gain 0.08 s a lap; mechanical failure risk doubles.', fx: () => [both({ racePace: -0.08, mechMult: 2, failWhy: 'power unit', failNote: 'the higher power mode' })] },
     b: { label: 'Decline', text: () => 'No change.', fx: () => [] },
   },
   {
@@ -309,7 +325,7 @@ const WEEKEND = [
     factors: 'How reliable your car is',
     text: (g, c) => `The kerbs and bumps at ${c.track.name} are punishing the suspension.`,
     a: { label: 'Soften the car', text: () => 'Both cars lose 0.05 s a lap; mechanical failure risk falls by 30%.', fx: () => [both({ racePace: 0.05, mechMult: 0.7 })] },
-    b: { label: 'Run it stiff', text: () => 'Both cars gain 0.05 s a lap; mechanical failure risk rises by 60%.', fx: () => [both({ racePace: -0.05, mechMult: 1.6 })] },
+    b: { label: 'Run it stiff', text: () => 'Both cars gain 0.05 s a lap; mechanical failure risk rises by 60%.', fx: () => [both({ racePace: -0.05, mechMult: 1.6, failWhy: 'suspension', failNote: 'the stiff setup over the bumps' })] },
   },
   {
     id: 'vibration', type: 'Reliability', staff: 'technicalDirector', title: 'A vibration in one power unit',
@@ -317,7 +333,7 @@ const WEEKEND = [
     setup: (g, c, rng) => ({ slot: rng.int(0, 1) }),
     text: (g, c, p) => `${nm(c, p.slot)} reports a vibration that the supplier cannot explain.`,
     a: { label: 'Detune it', text: () => 'That car is 0.1 s a lap slower all weekend.', fx: (g, c, p) => [one(p.slot, { racePace: 0.1, qualiPace: 0.1 })] },
-    b: { label: 'Ignore it', text: () => 'A 14% chance that car retires.', fx: (g, c, p) => [one(p.slot, { dnfAdd: 0.14 })] },
+    b: { label: 'Ignore it', text: () => 'A 14% chance that car retires.', fx: (g, c, p) => [one(p.slot, { dnfAdd: 0.14, failWhy: 'power unit', failNote: 'the vibration from Friday' })] },
   },
   {
     id: 'quali-run-plan', type: 'Race weekend', staff: 'chiefStrategist', title: 'When to run in qualifying',
@@ -336,7 +352,7 @@ const WEEKEND = [
     setup: (g, c, rng) => ({ slot: rng.int(0, 1), risk: clamp(0.14 - 0.02 * c.fac.factory.level, 0.03, 0.14) }),
     text: (g, c, p, P) => `Friday checks found a small crack in ${nm(c, p.slot)}'s chassis. Chance a factory repair fails in the race: ${P(p.risk)}.`,
     a: { label: 'Switch to the spare', text: () => 'An unfamiliar car: that driver is 0.08 s a lap slower all weekend.', fx: (g, c, p) => [one(p.slot, { setupSkill: -12, qualiPace: 0.08, racePace: 0.08 })] },
-    b: { label: 'Repair and race it', text: () => 'No pace cost, with the risk above.', fx: (g, c, p) => [one(p.slot, { dnfAdd: p.risk })] },
+    b: { label: 'Repair and race it', text: () => 'No pace cost, with the risk above.', fx: (g, c, p) => [one(p.slot, { dnfAdd: p.risk, failWhy: 'chassis', failNote: 'the repaired crack' })] },
   },
   {
     id: 'tyre-allocation', type: 'Race weekend', staff: 'chiefStrategist', title: 'Save a set of new soft tyres for the race?',
@@ -352,8 +368,8 @@ const WEEKEND = [
     text: (g, c, p, P) => `${nm(c, p.slot)}'s active-aero actuator stuck once in practice. Chance it fails in the race: ${P(0.3)}.`,
     a: { label: 'Replace it', text: () => `Costs ${money(0.15)}.`, fx: () => [{ cash: -0.15 }] },
     b: {
-      label: 'Leave it', text: () => 'If it fails, that car loses 0.5 s a lap in the race.',
-      fx: (g, c, p) => [{ chance: 0.3, then: [one(p.slot, { racePace: 0.5 })], text: ['The actuator fails in the race', ''] }],
+      label: 'Leave it', text: () => 'If it fails, that car is about 0.8 s a lap slower from then on.',
+      fx: (g, c, p) => [{ chance: 0.3, then: [timed(p.slot, 'race', "{name}'s wing actuator fails: about 0.8 s a lap slower from here", { window: [0.1, 0.7], share: 0.6, type: 'incident', mods: { racePace: 0.8 } })], wait: '' }],
     },
   },
   {

@@ -30,6 +30,7 @@ export const SIM = {
   rivalGridPenalty: 0.03, // per rival car per race: new power unit parts
   scDebris: 0.25, // share of a track's safety-car figure not tied to an incident
   scAfterCrash: 0.5, scAfterFailure: 0.18, scAfterContact: 0.5, scAfterLap1: 0.55,
+  stationary: 2.4, // seconds a car sits in the box, which a teammate stacked behind waits out
   scAverage: 0.39, // average of the tracks' safety-car figures
   vscShare: 0.35, // share of neutralisations that are a virtual safety car
   redShare: 0.06, // share that are a red flag, more after a multi-car crash or in heavy rain (one a race at most)
@@ -99,7 +100,7 @@ const MECH_REASONS = ['power unit', 'gearbox', 'hydraulics', 'brakes', 'suspensi
 
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x))
 // Labels for the race's random streams.
-const RNG = { pit: 1, call: 2, car: 3, resolve: 4, neutral: 5, sc: 6, sclap: 7, start: 8, plan: 9, red: 10 }
+const RNG = { pit: 1, call: 2, car: 3, resolve: 4, neutral: 5, sc: 6, sclap: 7, start: 8, plan: 9, red: 10, timed: 15, blame: 16 }
 const carIndex = (state, c) => c.idx
 
 export function carScore(car, w) {
@@ -127,6 +128,22 @@ export function addCarMods(c, mods) {
   if (mods.qualiPace) c.qBase += mods.qualiPace
   c.pMech = mechFailureChance(c.e.car.reliability) * (c.m.mechMult || 1) + (c.m.dnfAdd || 0)
   c.pCrash = crashChance(c.e.driver.consistency) * c.ap.err * (c.m.errMult || 1)
+}
+
+// Something a weekend card set up happens now (see `timed` in data/deck.js):
+// its effect from here on, and a line in the race feed.
+function fireTimed(state, c, t, lap) {
+  t.done = true
+  if (c.status !== 'running') return
+  const { timePenalty = 0, ...mods } = t.mods || {}
+  if (timePenalty) { c.penalty += timePenalty; c.notes.push(`${timePenalty}-second penalty`) }
+  if (Object.keys(mods).length) addCarMods(c, mods)
+  const text = t.text.replace('{name}', c.e.name)
+  if (t.once && state.events.some((e) => e.text === text)) return
+  state.events.push({ lap, type: t.type ?? 'news', ids: [c.id], text, card: t.title })
+}
+const fireAll = (state, at, lap, when = () => true) => {
+  for (const c of state.cars) for (const t of c.timed ?? []) if (!t.done && t.at === at && when(t)) fireTimed(state, c, t, lap)
 }
 
 // The wing level (1 low drag, 5 high downforce) that suits this car here:
@@ -352,6 +369,7 @@ export function createRace(track, entries, rng, opts = {}) {
       errors: 0, passes: 0, dnfSeg: -1, reason: null, notes: [],
       tyre: 'M', wear: 0, used: [], stints: [], stops: 0, lastStop: -9, plan: [], wingDamage: 0, forced: null,
       orders: { ...DEFAULT_ORDERS, ...(e.orders || {}) }, controlled: !!e.controlled,
+      timed: (e.timed || []).map((t) => ({ ...t })),
     }
   })
   const qc = qualiConditions(rng, qualiWet)
@@ -548,6 +566,7 @@ function gridUp(state) {
     return ka - kb
   })
   gridOrder.forEach((c, i) => { c.grid = i + 1 })
+  fireAll(state, 'grid', 0)
   state.quali = order.map((r, i) => ({
     pos: i + 1, id: r.id, teamId: cars[r.idx].e.teamId, time: r.time === null ? null : state.track.baseLap + r.time,
     gap: r.time === null || pole[r.s].time === null ? null : r.time - pole[r.s].time, session: r.s + 1,
@@ -622,6 +641,14 @@ export function strategistCall(state, c, seg, rng = null, neutral = state.neutra
   return null
 }
 
+// A teammate ahead on the road who has just boxed this block, and how long
+// this car would wait behind it in the box.
+const boxMate = (state, c, seg) => state.cars.find((x) => x !== c && x.e.teamId === c.e.teamId && x.status === 'running' && x.lastStop === seg && x.t <= c.t)
+function stackedBehind(state, c, seg) {
+  const mate = boxMate(state, c, seg)
+  return mate ? Math.max(0, SIM.stationary + mate.lastExtra - (c.t - mate.t)) : 0
+}
+
 function pit(state, c, comp, seg, rng, reason) {
   const neutral = state.neutralNow
   if (neutral === 'red') {
@@ -644,6 +671,15 @@ function pit(state, c, comp, seg, rng, reason) {
     state.events.push({ lap: lapAt(state, seg) + 1, type: 'pit', ids: [c.id], text: `Slow stop for ${c.e.name}` })
   }
   if (c.wingDamage > 0) { extra += 6; c.notes.push('New front wing fitted'); c.wingDamage = 0 }
+  // Double-stacked: a teammate just ahead is still in the box, so this car waits behind.
+  const wait = stackedBehind(state, c, seg)
+  if (wait > 0.3) {
+    const mate = boxMate(state, c, seg)
+    extra += wait
+    c.notes.push(`Waited ${wait.toFixed(1)} s behind ${mate.e.name} in the box`)
+    state.events.push({ lap: lapAt(state, seg) + 1, type: 'pit', ids: [c.id, mate.id], text: `Double stack: ${c.e.name} waits ${wait.toFixed(1)} s for ${mate.e.name} in the box` })
+  }
+  c.lastExtra = extra
   c.dt += loss + extra
   c.pitExtra += extra
   c.pitTime += loss + extra
@@ -677,6 +713,16 @@ function lapOf(state, seg, rng) {
 function start(state) {
   const P = SIM
   const rng = mixRng(state.key, RNG.start)
+  fireAll(state, 'start', 1)
+  // The lap on which each thing a card set up for the race happens.
+  for (const c of state.cars) {
+    (c.timed ?? []).forEach((t, k) => {
+      if (t.at !== 'race') return
+      const [lo, hi] = t.window ?? [0.2, 0.6]
+      const u = mixRng(state.key, RNG.timed, c.idx + 1, k).next()
+      t.seg = clamp(Math.floor(state.S * (lo + u * (hi - lo))), 1, state.S - 1)
+    })
+  }
   let order = byOrder(state)
   order.forEach((c, i) => {
     const l1 = ORDERS.lap1[c.orders.lap1] || ORDERS.lap1.normal
@@ -725,6 +771,7 @@ export function stepRace(state, orders = {}) {
     for (const k of ['pace', 'stance', 'engine', 'lap1']) if (o[k] && ORDERS[k][o[k]]) c.orders[k] = o[k]
   }
   if (!state.started) start(state)
+  fireAll(state, 'race', lapAt(state, s) + 1, (t) => t.seg === s)
   state.neutralNow = state.neutral
   state.neutral = null
   const cnd = state.cond[s]
@@ -744,7 +791,16 @@ export function stepRace(state, orders = {}) {
       const o = orders[c.id]
       if (c.forced) call = { comp: bestStop(state, c, s).comp, reason: c.forced }
       else if (o?.box && TYRES[o.box]) call = { comp: o.box, reason: 'call' }
+      // Staying out past a planned stop puts it back a block; it is not forgotten.
+      const planned = !call && c.plan.find((p) => p.seg === s)
+      if (planned && s < S - 1) planned.seg++
     } else call = strategistCall(state, c, s, R('call', c))
+    // A planned stop waits a lap or two rather than queue behind a teammate in the box.
+    if (call?.reason === 'plan' && !c.controlled && stackedBehind(state, c, s) > 0.3 && s < S - 2) {
+      const planned = c.plan.find((p) => p.seg === s)
+      if (planned) planned.seg++
+      call = null
+    }
     if (call) pit(state, c, call.comp, s, rng, call.reason)
   }
 
@@ -764,8 +820,15 @@ export function stepRace(state, orders = {}) {
     c.wear += segLaps * rate
     const pMech = c.pMech * engine.mech
     if (rng.chance(pMech / S)) {
-      const why = rng.pick(MECH_REASONS)
-      retire(state, c, s, why, `${c.e.name} retires: ${why}`, rng)
+      let why = rng.pick(MECH_REASONS)
+      let text = `${c.e.name} retires: ${why}`
+      // A fault the team knew about takes its share of the blame.
+      const known = c.m.failWhy ? 1 - mechFailureChance(c.e.car.reliability) / c.pMech : 0
+      if (known > 0 && mixRng(state.key, RNG.blame, s + 1, c.idx + 1).chance(known)) {
+        why = c.m.failWhy
+        text = `${c.e.name} retires: ${why}${c.m.failNote ? ` (${c.m.failNote})` : ''}`
+      }
+      retire(state, c, s, why, text, rng)
       if (rng.chance(P.scAfterFailure * scF)) sc = true
       continue
     }
