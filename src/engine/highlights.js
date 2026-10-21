@@ -1,4 +1,4 @@
-// Small wins for a team at the back (RACE_WEEKEND.md section 6): weekend
+// Small wins for a team at the back (DESIGN.md 5.10): weekend
 // objectives, driver ratings, the rival head-to-head and the gap to the front
 // over time. They give a backmarker something to fight for every Sunday.
 

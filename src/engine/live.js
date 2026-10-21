@@ -6,7 +6,7 @@
 import { PLAYER, clamp, ordinal, currentTrack } from './core.js'
 import { preRace, postRace, createWeekendRace, completeRace, recommendedWing } from './game.js'
 import {
-  stepRace, runToEnd, advice, neutralGain, bestStop, planRest, TYRES, ORDERS, DEFAULT_ORDERS, tyreLife, wearRate, lapAt, tyreDelta,
+  stepRace, runToEnd, advice, neutralGain, bestStop, planRest, TYRES, ORDERS, DEFAULT_ORDERS, tyreLife, wearRate, tyreDelta,
   beginQualiSession, endQualiSession, qualiPlan, qualiDrop, qualiPace, QUALI, addCarMods,
 } from './weekend.js'
 import { INCIDENT_DAY, isIncidentCard, resolveDecision, bestChoice } from './decisions.js'
@@ -48,7 +48,6 @@ export function beginWeekend(game) {
 // ---- Incidents ----
 
 const PHASE_DAY = { briefing: 0, practice: 1, quali: 2, grid: 3, race: 4, flag: 4 }
-export const DAY_NAMES = ['Thursday', 'Friday', 'Saturday', 'Sunday']
 
 // The weekend's incident, once its day has come: Friday's after the first
 // practice run (or on Saturday when practice is left to the engineers).
@@ -402,7 +401,7 @@ const boxOption = (comp) => ({ key: `box:${comp}`, label: `Box for ${TYRES[comp]
 const STAY = { key: 'stay', label: 'Stay out', box: null }
 
 function callOptions(state, c, preferred) {
-  const cnd = state.cond[state.seg]
+  const cnd = state.cond[state.lap]
   const comps = cnd === 'dry' ? SLICKS : cnd === 'wet' ? ['W', 'I'] : ['I', 'W']
   const list = [preferred, ...comps.filter((x) => x !== preferred)].filter(Boolean).slice(0, 2).map(boxOption)
   return [...list, STAY]
@@ -415,9 +414,7 @@ export function computeCalls(game) {
   const st = w.state
   const calls = []
   if (st.done) return (w.calls = calls)
-  const S = st.S
-  const left = S - st.seg
-  const lapsLeft = Math.round(left * st.segLaps)
+  const left = st.laps - st.lap // laps to go
   const order = st.order.map((i) => st.cars[i])
   const strategist = game.org.keyStaff.chiefStrategist.rating
   for (const c of myCars(st)) {
@@ -428,46 +425,46 @@ export function computeCalls(game) {
     let call = null
     if (st.neutral === 'red') {
       // The race is stopped: a free change of tyres for the restart.
-      const comp = bestStop(st, c, st.seg).comp
+      const comp = bestStop(st, c, st.lap).comp
       const opts = callOptions(st, c, comp).map((o) => (o.box ? { ...o, label: `Fit ${TYRES[o.box].name}s` } : { ...o, label: 'Keep these tyres' }))
-      call = { kind: 'red', title: 'Red flag: tyres for the restart?', text: `${c.e.name}: ${tyreText}, ${lapsLeft} laps left. Every car can change tyres for nothing while the race is stopped.`, options: opts, recommend: adv ? `box:${adv.comp}` : 'stay' }
-    } else if (st.neutral && st.neutralStart === st.seg && left >= 3) {
+      call = { kind: 'red', title: 'Red flag: tyres for the restart?', text: `${c.e.name}: ${tyreText}, ${left} laps left. Every car can change tyres for nothing while the race is stopped.`, options: opts, recommend: adv ? `box:${adv.comp}` : 'stay' }
+    } else if (st.neutral && st.neutralStart === st.lap && left >= 3) {
       // Asked once, on the first lap under the safety car; the Box button stays open after that.
-      const g = neutralGain(st, c, st.seg, st.neutral)
+      const g = neutralGain(st, c, st.lap, st.neutral)
       const what = st.neutral === 'sc' ? 'safety car' : 'virtual safety car'
-      const why = c.lastStop >= st.seg - 8 ? 'The tyres are almost new.' : lapsLeft < 10 ? `Only ${lapsLeft} laps left.` : g.seconds > 1 ? `A stop costs about ${Math.round(st.track.pitLoss * (st.neutral === 'sc' ? 0.5 : 0.6))} s instead of ${st.track.pitLoss} s.` : 'The saving does not beat the current plan.'
+      const why = c.lastStop >= st.lap - 8 ? 'The tyres are almost new.' : left < 10 ? `Only ${left} laps left.` : g.seconds > 1 ? `A stop costs about ${Math.round(st.track.pitLoss * (st.neutral === 'sc' ? 0.5 : 0.6))} s instead of ${st.track.pitLoss} s.` : 'The saving does not beat the current plan.'
       call = { kind: st.neutral, title: `Box under the ${what}?`, text: `${c.e.name}: ${tyreText}. ${why}`, options: callOptions(st, c, g.comp), recommend: adv ? `box:${adv.comp}` : 'stay' }
     } else if (adv?.reason === 'puncture' || adv?.reason === 'sc' || adv?.reason === 'vsc') {
       // Nothing to decide: the car limps in for the best tyre, and the radio
       // says so; or the safety car was already put to the pit wall on its first lap.
     } else if (adv) {
       const titles = { plan: 'The planned stop is due', cliff: 'The tyres are falling off', rain: 'Rain: switch tyres?', drying: 'The track is drying', damage: 'Front-wing damage', 'compound rule': 'A second compound is needed', puncture: 'Puncture' }
-      call = { kind: adv.reason, title: titles[adv.reason] ?? 'Box?', text: `${c.e.name}: ${tyreText}, ${lapsLeft} laps left.`, options: callOptions(st, c, adv.comp), recommend: `box:${adv.comp}` }
+      call = { kind: adv.reason, title: titles[adv.reason] ?? 'Box?', text: `${c.e.name}: ${tyreText}, ${left} laps left.`, options: callOptions(st, c, adv.comp), recommend: `box:${adv.comp}` }
       if (adv.reason === 'compound rule') call.text += ' The rules require two dry compounds: staying out brings a 20-second penalty.'
     } else {
       // The car just behind has stopped: the undercut.
       const i = order.indexOf(c)
       const behind = order[i + 1]
-      if (behind && behind.lastStop === st.seg - 1 && behind.t - c.t < 2.5 + st.track.pitLoss && tyreLife(c) > 0.3 && left >= 5) {
-        const comp = bestStop(st, c, st.seg).comp
+      if (behind && behind.lastStop === st.lap - 1 && behind.t - c.t < 2.5 + st.track.pitLoss && tyreLife(c) > 0.3 && left >= 5) {
+        const comp = bestStop(st, c, st.lap).comp
         call = { kind: 'undercut', title: 'Undercut threat', text: `${behind.e.name} has just stopped for fresh ${TYRES[behind.tyre].name}s. ${c.e.name} is on ${tyreText}.`, options: [{ ...boxOption(comp), label: `Cover: box for ${TYRES[comp].name}s` }, STAY], recommend: null }
       } else if (c.wingDamage > 0 && left >= 5 && w.damageSeen?.[c.id] !== c.wingDamage) {
         // Asked when the damage happens, not every lap after.
         (w.damageSeen ??= {})[c.id] = c.wingDamage
-        call = { kind: 'damage', title: 'Front-wing damage', text: `${c.e.name} is losing about ${c.wingDamage.toFixed(1)} s a lap. A new nose adds about 6 s to a stop.`, options: callOptions(st, c, bestStop(st, c, st.seg).comp), recommend: 'stay' }
+        call = { kind: 'damage', title: 'Front-wing damage', text: `${c.e.name} is losing about ${c.wingDamage.toFixed(1)} s a lap. A new nose adds about 6 s to a stop.`, options: callOptions(st, c, bestStop(st, c, st.lap).comp), recommend: 'stay' }
       }
     }
-    if (call) calls.push({ ...call, id: `${st.seg}-${c.id}-${call.kind}`, carId: c.id, seg: st.seg })
+    if (call) calls.push({ ...call, id: `${st.lap}-${c.id}-${call.kind}`, carId: c.id, lap: st.lap })
   }
   // Team-mates running together, the one behind quicker.
   const mine = myCars(st).filter((c) => c.status === 'running')
-  if (mine.length === 2 && !st.teamHold[PLAYER] && left >= 5 && !(w.lastTeamCall >= st.seg - 10)) {
+  if (mine.length === 2 && !st.teamHold[PLAYER] && left >= 5 && !(w.lastTeamCall >= st.lap - 10)) {
     const [a, b] = mine.slice().sort((x, y) => order.indexOf(x) - order.indexOf(y))
-    const pace = (x) => x.pace + tyreDelta(x, st.cond[st.seg]) + ORDERS.pace[x.orders.pace].pace
+    const pace = (x) => x.pace + tyreDelta(x, st.cond[st.lap]) + ORDERS.pace[x.orders.pace].pace
     if (order.indexOf(b) === order.indexOf(a) + 1 && b.t - a.t < 1.2 && pace(a) - pace(b) > 0.15) {
       const faster = pace(a) - pace(b)
       calls.push({
-        id: `${st.seg}-team`, kind: 'teammates', carId: b.id, seg: st.seg, title: 'Team-mates together',
+        id: `${st.lap}-team`, kind: 'teammates', carId: b.id, lap: st.lap, title: 'Team-mates together',
         text: `${b.e.name} is about ${faster.toFixed(2)} s a lap quicker than ${a.e.name}, ${(b.t - a.t).toFixed(1)} s behind.`,
         options: [{ key: 'swap', label: `Swap: let ${surname(b.e.name)} through` }, { key: 'race', label: 'Let them race' }, { key: 'hold', label: 'Hold positions' }],
         recommend: faster > 0.3 ? 'swap' : 'race',
@@ -550,8 +547,8 @@ export function answerCall(game, callId, key) {
   if (!call) throw new Error('That call has gone')
   if (!call.options.some((o) => o.key === key)) throw new Error('Unknown option')
   w.answered[callId] = key
-  if (key !== call.recommend) w.snapshots.push({ call: { id: call.id, kind: call.kind, title: call.title, carId: call.carId, seg: call.seg, options: call.options }, choice: key, recommend: call.recommend, state: JSON.stringify(w.state) })
-  w.log.push({ lap: lapAt(w.state, w.state.seg), carId: call.carId, title: call.title, choice: call.options.find((o) => o.key === key).label, followed: key === call.recommend })
+  if (key !== call.recommend) w.snapshots.push({ call: { id: call.id, kind: call.kind, title: call.title, carId: call.carId, lap: call.lap, options: call.options }, choice: key, recommend: call.recommend, state: JSON.stringify(w.state) })
+  w.log.push({ lap: w.state.lap, carId: call.carId, title: call.title, choice: call.options.find((o) => o.key === key).label, followed: key === call.recommend })
 }
 
 // Answers every open call the way the strategist recommends.
@@ -574,7 +571,7 @@ export function nextLap(game) {
   for (const call of w.calls) {
     const key = w.answered[call.id]
     if (key === undefined) continue
-    if (call.kind === 'teammates') { w.lastTeamCall = st.seg; applyOption(st, call, key); continue }
+    if (call.kind === 'teammates') { w.lastTeamCall = st.lap; applyOption(st, call, key); continue }
     const o = call.options.find((x) => x.key === key)
     if (o?.box) orders[call.carId].box = o.box
   }
@@ -584,7 +581,7 @@ export function nextLap(game) {
   const before = Object.fromEntries(myCars(st).map((c) => [c.id, { pos: st.order.indexOf(c.idx), passes: c.passes, status: c.status, damage: c.wingDamage, stops: c.stops, forced: c.forced }]))
   const neutralBefore = st.neutral
   const running0 = st.cars.map((c) => c.status === 'running')
-  const frame = { seg: st.seg, t0: st.cars.map((c) => round3(c.t)), stops0: st.cars.map((c) => c.stops), tyre0: st.cars.map((c) => c.tyre), events0: st.events.length }
+  const frame = { lap: st.lap, t0: st.cars.map((c) => round3(c.t)), stops0: st.cars.map((c) => c.stops), tyre0: st.cars.map((c) => c.tyre), events0: st.events.length }
   stepRace(st, orders)
   // What the lap looked like, for the track map to play back: every car's
   // race time at both ends of it, who stopped, who retired, and any
@@ -622,7 +619,7 @@ function keyMoment(w) {
   const st = w.state
   const mine = new Set(myCars(st).map((c) => c.id))
   // A safety car counts on the lap it comes out, not every lap it is out.
-  return (!!st.neutral && st.neutralStart === st.seg) || st.events.slice(f.events0).some((e) => e.type === 'weather' || e.type === 'sc' || e.type === 'vsc' ||
+  return (!!st.neutral && st.neutralStart === st.lap) || st.events.slice(f.events0).some((e) => e.type === 'weather' || e.type === 'sc' || e.type === 'vsc' ||
     (e.ids.some((id) => mine.has(id)) && ['dnf', 'incident', 'error'].includes(e.type)))
 }
 
@@ -633,14 +630,6 @@ export function playToMoment(game) {
   if (openCalls(w).length) throw new Error('Answer the pit wall first')
   do nextLap(game)
   while (w.phase === 'race' && !openCalls(w).length && !keyMoment(w))
-}
-
-// Runs laps until the pit wall has something to decide, or the flag.
-export function playToCall(game) {
-  const w = game.weekend
-  if (openCalls(w).length) throw new Error('Answer the pit wall first')
-  do nextLap(game)
-  while (w.phase === 'race' && !openCalls(w).length)
 }
 
 // The strategist takes over for the rest of the race.
@@ -673,7 +662,7 @@ export function quickFinish(game) {
 
 // Short lines from the drivers about what just happened.
 function radio(w, st, before, neutralBefore) {
-  const lap = lapAt(st, st.seg)
+  const lap = st.lap
   // The same kind of line from the same driver at most once every few laps.
   const said = (w.said ??= {})
   const say = (c, text, kind = null, gap = 6) => {
@@ -694,7 +683,7 @@ function radio(w, st, before, neutralBefore) {
     else if (tyreLife(c) > 0.9 && tyreLife(c) < 1.15) say(c, 'These tyres are about done.', 'tyres', 10)
     // With the strategist on the calls the driver just hears the plan.
     if (st.neutral && !neutralBefore) say(c, { sc: w.autoCalls ? 'Safety car. Copy, following the plan.' : 'Safety car? What do we do?', vsc: 'VSC, VSC.', red: 'Red flag. Coming in to the pit lane.' }[st.neutral])
-    if (st.cond[st.seg] && st.cond[st.seg] !== st.cond[st.seg - 1] && st.cond[st.seg] !== 'dry' && !TYRES[c.tyre].wet) say(c, "It's raining. Slicks won't last.", 'rain')
+    if (st.cond[st.lap] && st.cond[st.lap] !== st.cond[st.lap - 1] && st.cond[st.lap] !== 'dry' && !TYRES[c.tyre].wet) say(c, "It's raining. Slicks won't last.", 'rain')
   }
   if (w.radio.length > 60) w.radio.splice(0, w.radio.length - 60)
 }

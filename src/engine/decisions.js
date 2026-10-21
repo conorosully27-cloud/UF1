@@ -19,7 +19,7 @@ export const LIVE_CALLS = new Set([
   'quali-drying', 'quali-run-plan', 'quali-tow', 'rain-setup', 'experimental-setup', 'practice-focus', 'setup-guess', 'radio-coaching',
 ])
 // The rest of the race-weekend cards become incidents in a live weekend
-// (RACE_WEEKEND.md 5.6): drawn as now, but put to the player on the day they
+// (DESIGN.md 5.10): drawn as now, but put to the player on the day they
 // would happen, 0 Thursday to 3 Sunday, instead of before the weekend.
 export const INCIDENT_DAY = {
   'driver-ill': 0, 'junior-outings': 0, 'wing-protest': 0, 'untested-part': 0, 'track-limits': 0,

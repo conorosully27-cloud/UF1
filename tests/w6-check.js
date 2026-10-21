@@ -6,7 +6,7 @@
 //   the same result as running it in one go, and plays against its clock.
 // Usage: node tests/w6-check.js
 
-import { newGame, startSeason, buildEntries, PLAYER } from '../src/engine/game.js'
+import { newGame, startSeason, buildEntries, migrateSave, PLAYER } from '../src/engine/game.js'
 import {
   beginWeekend, runQualifying, toQualifying, startRace, nextLap, answerCall, handOver,
   startSession, finishSession, setLateRun, doneWatching, runSession,
@@ -35,7 +35,8 @@ function quickRace(i) {
 // ---- The race, lap by lap ----
 {
   const st = quickRace(0)
-  check('a race has one step a lap', st.S === st.laps && st.segLaps === 1)
+  stepRace(st)
+  check('a race steps one lap at a time', st.lap === 1 && st.cond.length === st.laps)
   // Over many races: how long neutral periods last, and that nobody passes under them.
   let periods = 0
   let laps = 0
@@ -96,6 +97,26 @@ function quickRace(i) {
   const b = clone(a)
   for (const g of [a, b]) { beginWeekend(g); runQualifying(g); startRace(g); handOver(g) }
   check('the same save gives the same race', JSON.stringify(a.weekend.state.order) === JSON.stringify(b.weekend.state.order) && JSON.stringify(a.weekend.state.events) === JSON.stringify(b.weekend.state.events))
+}
+
+{
+  // A race saved by an earlier build counted in steps (`seg`, `S`, `segLaps`);
+  // since W6 a step was one lap, so such a save upgrades exactly.
+  const g = setup(480)
+  startSeason(g)
+  beginWeekend(g); runQualifying(g); startRace(g)
+  for (let i = 0; i < 20; i++) {
+    for (const call of g.weekend.calls) if (!(call.id in g.weekend.answered)) answerCall(g, call.id, call.recommend)
+    nextLap(g)
+  }
+  const old = clone(g)
+  const st = old.weekend.state
+  Object.assign(st, { seg: st.lap, S: st.laps, segLaps: 1, scSeg: st.scLap })
+  delete st.lap; delete st.scLap
+  for (const c of st.cars) { c.dnfSeg = c.dnfLap; delete c.dnfLap; c.plan = c.plan.map((x) => ({ seg: x.lap, comp: x.comp })) }
+  migrateSave(old)
+  for (const h of [g, old]) handOver(h)
+  check('a race saved before the move to laps carries on exactly as it would have', JSON.stringify(g.weekend.state.order) === JSON.stringify(old.weekend.state.order) && JSON.stringify(g.weekend.state.events) === JSON.stringify(old.weekend.state.events))
 }
 
 // ---- Qualifying as it happens ----

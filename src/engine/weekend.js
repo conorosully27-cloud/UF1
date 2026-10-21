@@ -4,8 +4,8 @@
 // strategist making every call (Quick mode, the bots and the pre-season
 // projection all do that).
 //
-// The race's steps are still called segments (`seg`, `S`, `segLaps`) in the
-// code; since W6 each one is a single lap.
+// Laps are counted from 0 in the code (`state.lap` is the next lap to run,
+// and so the number of laps done); the race feed shows them from 1.
 //
 // Random numbers in the race come from streams keyed by lap and car, so a
 // choice for one car does not change another car's luck, and the same
@@ -14,7 +14,7 @@
 // This file is the single interface the rest of the game uses for a weekend.
 
 import { POINTS } from './data/tracks.js'
-import { streamRng, hashString, mixRng } from './rng.js'
+import { mixRng } from './rng.js'
 
 export const SIM = {
   secPerPoint: 0.05, // one weighted car rating point, seconds per lap
@@ -51,8 +51,8 @@ export const SIM = {
   neutralSlow: { sc: 0.4, vsc: 0.3, red: 0 }, // share of a lap slower behind the safety car or under the VSC
   neutralWear: 0.5, // tyre wear under a safety car or VSC, against racing
   neutralRisk: 0.2, // crash risk under a safety car or VSC, against racing
-  passTries: 2, // a pass is tried every lap: this many tries make one chance from the old five-lap blocks
-  reactLaps: 2, // a rival pit wall reacting to rain, a drying track or a safety car: its old per-block chance spread over this many laps
+  passTries: 2, // a pass is tried every lap, each try with a share of the full chance: this many tries add up to one
+  reactLaps: 2, // a rival pit wall's chance of reacting to rain or a drying track, spread over this many laps
 }
 
 // `pace` is seconds a lap against a Medium in the dry; `deg` seconds a lap
@@ -219,45 +219,45 @@ export function planRest(state, c, from, comp, age, usedTwo, copy = true) {
   const a = Math.round(age * 2) / 2
   // A stop also costs track position, which matters more where passing is hard.
   const loss = state.track.pitLoss + state.track.overtaking * SIM.trafficPerStop
-  const key = `${state.S}|${state.segLaps}|${loss}|${state.wetRace ? 1 : 0}|${from}|${comp}|${a}|${usedTwo ? 1 : 0}|${rate}`
+  const key = `${state.laps}|${loss}|${state.wetRace ? 1 : 0}|${from}|${comp}|${a}|${usedTwo ? 1 : 0}|${rate}`
   let hit = PLAN_CACHE.get(key)
   if (!hit) {
     if (PLAN_CACHE.size > 50000) PLAN_CACHE.clear()
-    hit = computePlan(state.S, state.segLaps, loss, state.wetRace, from, comp, a, usedTwo, rate)
+    hit = computePlan(state.laps, loss, state.wetRace, from, comp, a, usedTwo, rate)
     PLAN_CACHE.set(key, hit)
   }
   return copy ? { cost: hit.cost, stops: hit.stops.map((x) => ({ ...x })) } : hit
 }
 
-function computePlan(S, L, loss, wetRace, from, comp, age, two, rate) {
-  const lapsLeft = (S - from) * L
+function computePlan(laps, loss, wetRace, from, comp, age, two, rate) {
+  const lapsLeft = laps - from
   let bestCost = Infinity
   let bestStops = []
   if (two || wetRace) { bestCost = stintTime(comp, lapsLeft, rate, age) }
   const lifeA = Math.max(1, TYRES[comp].life - age)
-  const first = (k) => stintTime(comp, (k - from) * L, rate, age)
+  const first = (k) => stintTime(comp, k - from, rate, age)
   for (const c2 of SLICKS) {
     if (!two && c2 === comp && !wetRace) continue
-    const k0 = from + Math.round(((lifeA / (lifeA + TYRES[c2].life)) * lapsLeft) / L)
+    const k0 = from + Math.round((lifeA / (lifeA + TYRES[c2].life)) * lapsLeft)
     for (let k = k0 - 1; k <= k0 + 1; k++) {
-      if (k <= from || k >= S) continue
-      const cost = first(k) + loss + stintTime(c2, (S - k) * L, rate)
-      if (cost < bestCost) { bestCost = cost; bestStops = [{ seg: k, comp: c2 }] }
+      if (k <= from || k >= laps) continue
+      const cost = first(k) + loss + stintTime(c2, laps - k, rate)
+      if (cost < bestCost) { bestCost = cost; bestStops = [{ lap: k, comp: c2 }] }
     }
   }
   for (const c2 of SLICKS) for (const c3 of SLICKS) {
     if (!two && !wetRace && c2 === comp && c3 === comp) continue
     const total = lifeA + TYRES[c2].life + TYRES[c3].life
-    const k1c = from + Math.round(((lifeA / total) * lapsLeft) / L)
-    const k2c = from + Math.round((((lifeA + TYRES[c2].life) / total) * lapsLeft) / L)
+    const k1c = from + Math.round((lifeA / total) * lapsLeft)
+    const k2c = from + Math.round(((lifeA + TYRES[c2].life) / total) * lapsLeft)
     for (let k1 = k1c - 1; k1 <= k1c + 1; k1++) {
       if (k1 <= from) continue
       const head = first(k1) + loss
       if (head >= bestCost) continue
       for (let k2 = k2c - 1; k2 <= k2c + 1; k2++) {
-        if (k2 <= k1 || k2 >= S) continue
-        const cost = head + stintTime(c2, (k2 - k1) * L, rate) + loss + stintTime(c3, (S - k2) * L, rate)
-        if (cost < bestCost) { bestCost = cost; bestStops = [{ seg: k1, comp: c2 }, { seg: k2, comp: c3 }] }
+        if (k2 <= k1 || k2 >= laps) continue
+        const cost = head + stintTime(c2, k2 - k1, rate) + loss + stintTime(c3, laps - k2, rate)
+        if (cost < bestCost) { bestCost = cost; bestStops = [{ lap: k1, comp: c2 }, { lap: k2, comp: c3 }] }
       }
     }
   }
@@ -269,21 +269,21 @@ const hasTwo = (c) => (c.two ??= usedTwo(c))
 
 // Seconds saved by stopping now under a safety car or virtual safety car,
 // against carrying on with the current tyres and plan.
-export function neutralGain(state, c, seg, neutral) {
-  const stay = planRest(state, c, seg, c.tyre, c.wear, hasTwo(c), false).cost
-  const box = bestStop(state, c, seg)
+export function neutralGain(state, c, lap, neutral) {
+  const stay = planRest(state, c, lap, c.tyre, c.wear, hasTwo(c), false).cost
+  const box = bestStop(state, c, lap)
   if (box.cost === undefined) return { seconds: 0, comp: box.comp }
   return { seconds: stay - (box.cost + (state.track.pitLoss + state.track.overtaking * SIM.trafficPerStop) * NEUTRAL_PIT[neutral]), comp: box.comp }
 }
 
-// The best tyre to fit if the car stops on lap `seg`, and the plan after it.
-export function bestStop(state, c, seg) {
-  if (state.cond[seg] === 'wet') return { comp: 'W', plan: [] }
-  if (state.cond[seg] === 'damp') return { comp: 'I', plan: [] }
+// The best tyre to fit if the car stops on lap `lap`, and the plan after it.
+export function bestStop(state, c, lap) {
+  if (state.cond[lap] === 'wet') return { comp: 'W', plan: [] }
+  if (state.cond[lap] === 'damp') return { comp: 'I', plan: [] }
   let best = null
   for (const comp of SLICKS) {
     const two = usedTwo({ used: [...c.used, comp] })
-    const p = planRest(state, c, seg, comp, 0, two, false)
+    const p = planRest(state, c, lap, comp, 0, two, false)
     if (!best || p.cost < best.cost) best = { comp, plan: p.stops, cost: p.cost }
   }
   return best
@@ -291,7 +291,7 @@ export function bestStop(state, c, seg) {
 
 // ---- Weekend set-up and qualifying ----
 
-// Qualifying (RACE_WEEKEND.md 4.3): three knockout sessions. In each one a
+// Qualifying (DESIGN.md 5.10): three knockout sessions. In each one a
 // car runs once, late, or twice: an early banker lap and a late attempt. Each
 // run takes a new set of Softs while there is one left. The track gets
 // quicker, a flag can spoil the late laps, and rain or a drying track decides
@@ -378,7 +378,7 @@ export function createRace(track, entries, rng, opts = {}) {
       id: e.id, idx, e, m, ap, wing, idealWing: ideal, carDelta, setupLoss,
       qBase: carDelta + (100 - e.driver.pace) * P.secPerPace + setupLoss + (m.qualiPace || 0), sets: QUALI.sets, qOut: false,
       status: 'running', t: 0, dt: 0, traffic: 0, penalty: 0, damage: 0, pitExtra: 0, pitTime: 0, strat: 0,
-      errors: 0, passes: 0, dnfSeg: -1, reason: null, notes: [],
+      errors: 0, passes: 0, dnfLap: -1, reason: null, notes: [],
       tyre: 'M', wear: 0, used: [], stints: [], stops: 0, lastStop: -9, plan: [], wingDamage: 0, forced: null,
       orders: { ...DEFAULT_ORDERS, ...(e.orders || {}) }, controlled: !!e.controlled,
       timed: (e.timed || []).map((t) => ({ ...t })),
@@ -388,21 +388,19 @@ export function createRace(track, entries, rng, opts = {}) {
 
   // ---- The race's weather and luck ----
   const laps = track.laps
-  const S = laps
-  const segLaps = 1
   // Track conditions lap by lap: dry, damp (intermediates) or wet (full wets).
-  const cond = new Array(S).fill('dry')
+  const cond = new Array(laps).fill('dry')
   if (raceWeather === 'wet') {
-    const until = rng.int(Math.floor(S / 2), S)
-    for (let s = 0; s < S; s++) cond[s] = s < until ? 'wet' : 'damp'
+    const until = rng.int(Math.floor(laps / 2), laps)
+    for (let s = 0; s < laps; s++) cond[s] = s < until ? 'wet' : 'damp'
   } else if (raceWeather === 'mixed') {
-    const len = rng.int(Math.floor(S / 3), Math.floor((2 * S) / 3))
-    const start = rng.chance(0.5) ? 0 : S - len
+    const len = rng.int(Math.floor(laps / 3), Math.floor((2 * laps) / 3))
+    const start = rng.chance(0.5) ? 0 : laps - len
     for (let s = start; s < start + len; s++) cond[s] = 'damp'
     // Sometimes a heavier spell in the middle of the shower.
     if (len >= 4 && rng.chance(0.3)) for (let s = start + Math.floor(len / 3); s < start + Math.ceil((2 * len) / 3); s++) cond[s] = 'wet'
   }
-  const wetShare = cond.filter((x) => x !== 'dry').length / S
+  const wetShare = cond.filter((x) => x !== 'dry').length / laps
   for (const c of cars) {
     const dr = c.e.driver
     c.pace = c.carDelta + (100 - (0.6 * dr.pace + 0.4 * dr.racecraft)) * P.secPerPace + c.setupLoss + (c.m.racePace || 0) + rng.normal(0, P.dayFormSd)
@@ -415,9 +413,9 @@ export function createRace(track, entries, rng, opts = {}) {
   const state = {
     v: 2, trackId: track.id,
     track: { id: track.id, name: track.name, laps, baseLap: track.baseLap, w: track.w, overtaking: track.overtaking, sc: track.sc, lap1: track.lap1, pitLoss: track.pitLoss ?? 21, wear: track.wear ?? 1 },
-    laps, S, segLaps, seg: 0, started: false, done: false,
+    laps, lap: 0, started: false, done: false,
     key: Math.floor(rng.next() * 4294967296), cond, wetRace: raceWeather === 'wet', qualiWet, raceWeather,
-    scSeg: rng.chance(track.sc * P.scDebris) ? rng.int(1, S - 2) : -1,
+    scLap: rng.chance(track.sc * P.scDebris) ? rng.int(1, laps - 2) : -1,
     // Most races are calm; the odd one is carnage.
     // Rain makes it more likely still.
     chaos: clamp(Math.exp(rng.normal(0, P.chaosSd) - (P.chaosSd * P.chaosSd) / 2), 0.25, 4) * (raceWeather === 'dry' ? 1 : P.wetChaos),
@@ -660,28 +658,26 @@ function gridUp(state) {
 }
 
 const byOrder = (state) => state.order.map((i) => state.cars[i])
-export const lapAt = (state, seg) => Math.round(seg * state.segLaps)
 
 // ---- Strategist ----
 
-// What the strategist would do with this car at the start of lap `seg`:
+// What the strategist would do with this car at the start of lap `lap`:
 // { comp, reason } to box, or null to stay out. `rng` decides timing for a
 // rival pit wall (or a function making it, called only if needed); without it
 // the answer is the strategist's advice.
-export function strategistCall(state, c, seg, rngOrMake = null, neutral = state.neutralNow) {
+export function strategistCall(state, c, lap, rngOrMake = null, neutral = state.neutralNow) {
   if (c.status !== 'running') return null
   let made = null
   const rng = rngOrMake && { chance: (p) => (made ??= typeof rngOrMake === 'function' ? rngOrMake() : rngOrMake).chance(p) }
-  const S = state.S
-  const left = S - seg
-  const cnd = state.cond[seg]
+  const left = state.laps - lap
+  const cnd = state.cond[lap]
   const T = TYRES[c.tyre]
   const strategy = c.e.ops.strategy
   // A rival pit wall reacts within a lap or two, a better one sooner.
   const timely = (p) => (rng ? rng.chance(1 - (1 - p) ** (1 / SIM.reactLaps)) : true)
-  if (c.forced) return { comp: bestStop(state, c, seg).comp, reason: c.forced }
+  if (c.forced) return { comp: bestStop(state, c, lap).comp, reason: c.forced }
   // Under a red flag every car may change tyres for nothing.
-  if (neutral === 'red') { const comp = bestStop(state, c, seg).comp; return comp === c.tyre && c.wear < 3 ? null : { comp, reason: 'red' } }
+  if (neutral === 'red') { const comp = bestStop(state, c, lap).comp; return comp === c.tyre && c.wear < 3 ? null : { comp, reason: 'red' } }
   if (cnd !== 'dry' && !T.wet) {
     if (timely(0.45 + strategy / 180)) return { comp: cnd === 'wet' ? 'W' : 'I', reason: 'rain' }
     return null
@@ -689,50 +685,50 @@ export function strategistCall(state, c, seg, rngOrMake = null, neutral = state.
   if (cnd === 'damp' && c.tyre === 'W' && left >= 2 && timely(0.4 + strategy / 200)) return { comp: 'I', reason: 'drying' }
   if (cnd === 'wet' && c.tyre === 'I' && left >= 2 && timely(0.4 + strategy / 200)) return { comp: 'W', reason: 'rain' }
   if (cnd === 'dry' && T.wet) {
-    if (left >= 1 && timely(0.45 + strategy / 180)) return { comp: bestStop(state, c, seg).comp, reason: 'drying' }
+    if (left >= 1 && timely(0.45 + strategy / 180)) return { comp: bestStop(state, c, lap).comp, reason: 'drying' }
     return null
   }
   const ratio = tyreLife(c)
   const two = hasTwo(c)
   if (left <= 3 && !two && !state.wetRace && cnd === 'dry') return { comp: SLICKS.find((x) => !c.used.includes(x)), reason: 'compound rule' }
   if (left <= 1) return null
-  const planned = c.plan.find((p) => p.seg === seg)
+  const planned = c.plan.find((p) => p.lap === lap)
   // The call is made as the safety car comes out, in its first lap or two.
-  if (neutral && neutral !== 'red' && left >= 3 && seg > c.lastStop + 3 && seg - state.neutralStart < 2) {
+  if (neutral && neutral !== 'red' && left >= 3 && lap > c.lastStop + 3 && lap - state.neutralStart < 2) {
     // Box only if the cheaper stop beats the plan the car is on: fresh tyres
     // or few laps left mean staying out.
-    const gain = neutralGain(state, c, seg, neutral)
+    const gain = neutralGain(state, c, lap, neutral)
     if (gain.seconds > 1 && timely(0.65 + strategy / 300)) return { comp: gain.comp, reason: neutral, gain: gain.seconds }
   }
   if (planned) {
     // A weaker pit wall is sometimes a lap or two late.
-    if (rng && strategy < 85 && rng.chance((85 - strategy) / 150)) { planned.seg++; return null }
-    return { comp: bestStop(state, c, seg).comp, reason: 'plan' }
+    if (rng && strategy < 85 && rng.chance((85 - strategy) / 150)) { planned.lap++; return null }
+    return { comp: bestStop(state, c, lap).comp, reason: 'plan' }
   }
-  if (ratio > 1.05 && left >= 5) return { comp: bestStop(state, c, seg).comp, reason: 'cliff' }
-  if (c.wingDamage >= 0.3 && left >= 8) return { comp: bestStop(state, c, seg).comp, reason: 'damage' }
+  if (ratio > 1.05 && left >= 5) return { comp: bestStop(state, c, lap).comp, reason: 'cliff' }
+  if (c.wingDamage >= 0.3 && left >= 8) return { comp: bestStop(state, c, lap).comp, reason: 'damage' }
   return null
 }
 
 // A teammate ahead on the road who has just boxed this lap, and how long
 // this car would wait behind it in the box.
-const boxMate = (state, c, seg) => state.cars.find((x) => x !== c && x.e.teamId === c.e.teamId && x.status === 'running' && x.lastStop === seg && x.t <= c.t)
-function stackedBehind(state, c, seg) {
-  const mate = boxMate(state, c, seg)
+const boxMate = (state, c, lap) => state.cars.find((x) => x !== c && x.e.teamId === c.e.teamId && x.status === 'running' && x.lastStop === lap && x.t <= c.t)
+function stackedBehind(state, c, lap) {
+  const mate = boxMate(state, c, lap)
   return mate ? Math.max(0, SIM.stationary + mate.lastExtra - (c.t - mate.t)) : 0
 }
 
-function pit(state, c, comp, seg, rng, reason) {
+function pit(state, c, comp, lap, rng, reason) {
   const neutral = state.neutralNow
   if (neutral === 'red') {
     // A change of tyres while the race is stopped: no time lost, and not a pit stop.
     c.tyre = comp
     c.wear = 0
     c.used.push(comp)
-    c.stints.push({ comp, lap: lapAt(state, seg) })
+    c.stints.push({ comp, lap: lap })
     c.forced = null
     c.two = usedTwo(c)
-    c.plan = TYRES[comp].wet || state.cond[seg] !== 'dry' ? [] : planRest(state, c, seg, comp, 0, c.two).stops.filter((p) => p.seg > seg)
+    c.plan = TYRES[comp].wet || state.cond[lap] !== 'dry' ? [] : planRest(state, c, lap, comp, 0, c.two).stops.filter((p) => p.lap > lap)
     return
   }
   const loss = state.track.pitLoss * (neutral ? NEUTRAL_PIT[neutral] : 1)
@@ -741,16 +737,16 @@ function pit(state, c, comp, seg, rng, reason) {
     const botch = rng.range(4, 14)
     extra += botch
     c.notes.push(`Slow pit stop cost ${botch.toFixed(1)} s`)
-    state.events.push({ lap: lapAt(state, seg) + 1, type: 'pit', ids: [c.id], text: `Slow stop for ${c.e.name}` })
+    state.events.push({ lap: lap + 1, type: 'pit', ids: [c.id], text: `Slow stop for ${c.e.name}` })
   }
   if (c.wingDamage > 0) { extra += 6; c.notes.push('New front wing fitted'); c.wingDamage = 0 }
   // Double-stacked: a teammate just ahead is still in the box, so this car waits behind.
-  const wait = stackedBehind(state, c, seg)
+  const wait = stackedBehind(state, c, lap)
   if (wait > 0.3) {
-    const mate = boxMate(state, c, seg)
+    const mate = boxMate(state, c, lap)
     extra += wait
     c.notes.push(`Waited ${wait.toFixed(1)} s behind ${mate.e.name} in the box`)
-    state.events.push({ lap: lapAt(state, seg) + 1, type: 'pit', ids: [c.id, mate.id], text: `Double stack: ${c.e.name} waits ${wait.toFixed(1)} s for ${mate.e.name} in the box` })
+    state.events.push({ lap: lap + 1, type: 'pit', ids: [c.id, mate.id], text: `Double stack: ${c.e.name} waits ${wait.toFixed(1)} s for ${mate.e.name} in the box` })
   }
   c.lastExtra = extra
   c.dt += loss + extra
@@ -759,28 +755,28 @@ function pit(state, c, comp, seg, rng, reason) {
   c.tyre = comp
   c.wear = 0
   c.used.push(comp)
-  c.stints.push({ comp, lap: lapAt(state, seg) })
+  c.stints.push({ comp, lap: lap })
   c.stops++
-  c.lastStop = seg
+  c.lastStop = lap
   c.pitNow = true
   c.forced = null
   const two = c.two = usedTwo(c)
-  c.plan = TYRES[comp].wet || state.cond[seg] !== 'dry' ? [] : planRest(state, c, seg, comp, 0, two).stops.filter((p) => p.seg > seg)
+  c.plan = TYRES[comp].wet || state.cond[lap] !== 'dry' ? [] : planRest(state, c, lap, comp, 0, two).stops.filter((p) => p.lap > lap)
   const why = { plan: '', rain: ' for the rain', drying: ' as the track dries', sc: ' under the safety car', vsc: ' under the virtual safety car', cliff: ': tyres gone', damage: ' with damage', puncture: ' with a puncture', 'compound rule': ' to use a second compound' }[reason] ?? ''
-  state.events.push({ lap: lapAt(state, seg) + 1, type: 'pit', ids: [c.id], text: `${c.e.name} pits${why}: ${TYRES[comp].name}s` })
+  state.events.push({ lap: lap + 1, type: 'pit', ids: [c.id], text: `${c.e.name} pits${why}: ${TYRES[comp].name}s` })
 }
 
 // ---- The race ----
 
-function retire(state, c, seg, reason, text, rng) {
+function retire(state, c, lap, reason, text) {
   c.status = 'dnf'
-  c.dnfSeg = seg
+  c.dnfLap = lap
   c.reason = reason
-  state.events.push({ lap: seg < 0 ? 1 : lapOf(state, seg, rng), type: 'dnf', ids: [c.id], text })
+  state.events.push({ lap: lap < 0 ? 1 : lapNo(state, lap), type: 'dnf', ids: [c.id], text })
 }
 
-// The lap something in step `seg` happens on: each step is one lap.
-const lapOf = (state, seg) => clamp(seg + 1, 1, state.laps)
+// The lap number the feed shows for something on lap `lap` (counted from 0).
+const lapNo = (state, lap) => clamp(lap + 1, 1, state.laps)
 
 function start(state) {
   const P = SIM
@@ -792,7 +788,7 @@ function start(state) {
       if (t.at !== 'race') return
       const [lo, hi] = t.window ?? [0.2, 0.6]
       const u = mixRng(state.key, RNG.timed, c.idx + 1, k).next()
-      t.seg = clamp(Math.floor(state.S * (lo + u * (hi - lo))), 1, state.S - 1)
+      t.lap = clamp(Math.floor(state.laps * (lo + u * (hi - lo))), 1, state.laps - 1)
     })
   }
   let order = byOrder(state)
@@ -810,7 +806,7 @@ function start(state) {
       const risk = (ORDERS.lap1[c.orders.lap1] || ORDERS.lap1.normal).risk
       if (rng.chance(0.35 * risk)) {
         c.damage += rng.range(0.4, 1.0)
-        retire(state, c, -1, 'collision', `${c.e.name} is out in a first-lap collision`, rng)
+        retire(state, c, -1, 'collision', `${c.e.name} is out in a first-lap collision`)
         anyOut = true
       } else if (rng.chance(Math.min(1, risk))) {
         c.t += rng.range(12, 35)
@@ -835,29 +831,28 @@ const CAN_WAIT = new Set(['plan', 'cliff', 'compound rule', 'damage'])
 export function stepRace(state, orders = {}) {
   if (state.done) return state
   const P = SIM
-  const s = state.seg
-  const S = state.S
-  const segLaps = state.segLaps
+  const lap = state.lap
+  const laps = state.laps
   const track = state.track
-  const R = (label, c) => mixRng(state.key, s + 1, RNG[label], c ? carIndex(state, c) + 1 : 0)
+  const R = (label, c) => mixRng(state.key, lap + 1, RNG[label], c ? carIndex(state, c) + 1 : 0)
   for (const [id, o] of Object.entries(orders)) {
     const c = state.cars.find((x) => x.id === id)
     if (!c) continue
     for (const k of ['pace', 'stance', 'engine', 'lap1']) if (o[k] && ORDERS[k][o[k]]) c.orders[k] = o[k]
   }
   if (!state.started) start(state)
-  fireAll(state, 'race', lapAt(state, s) + 1, (t) => t.seg === s)
+  fireAll(state, 'race', lap + 1, (t) => t.lap === lap)
   // A safety car or VSC stays out for a few laps.
   state.neutralNow = state.neutral
   if (state.neutralLeft > 1) state.neutralLeft--
   else { state.neutral = null; state.neutralLeft = 0 }
   const under = state.neutralNow === 'sc' || state.neutralNow === 'vsc'
-  const cnd = state.cond[s]
-  const wetSeg = cnd !== 'dry'
+  const cnd = state.cond[lap]
+  const wet = cnd !== 'dry'
   const scF = track.sc / P.scAverage
-  let sc = s === state.scSeg || !!state.pendingSc
+  let sc = lap === state.scLap || !!state.pendingSc
   state.pendingSc = false
-  const sMid = Math.floor(S / 2)
+  const midLap = Math.floor(laps / 2)
 
   // Pit calls first: the stop happens on this lap.
   for (const c of byOrder(state)) {
@@ -866,19 +861,19 @@ export function stepRace(state, orders = {}) {
     let call = null
     if (c.controlled) {
       const o = orders[c.id]
-      if (c.forced) call = { comp: bestStop(state, c, s).comp, reason: c.forced }
+      if (c.forced) call = { comp: bestStop(state, c, lap).comp, reason: c.forced }
       else if (o?.box && TYRES[o.box]) call = { comp: o.box, reason: 'call' }
       // Staying out past a planned stop puts it back a few laps; it is not forgotten.
-      const planned = !call && c.plan.find((p) => p.seg === s)
-      if (planned) planned.seg = Math.min(s + 3, S - 2)
-    } else call = strategistCall(state, c, s, () => R('call', c))
+      const planned = !call && c.plan.find((p) => p.lap === lap)
+      if (planned) planned.lap = Math.min(lap + 3, laps - 2)
+    } else call = strategistCall(state, c, lap, () => R('call', c))
     // A stop that can wait a lap does, rather than queue behind a teammate in the box.
-    if (call && CAN_WAIT.has(call.reason) && !c.controlled && stackedBehind(state, c, s) > 0.3 && s < S - 2) {
-      const planned = c.plan.find((p) => p.seg === s)
-      if (planned) planned.seg++
+    if (call && CAN_WAIT.has(call.reason) && !c.controlled && stackedBehind(state, c, lap) > 0.3 && lap < laps - 2) {
+      const planned = c.plan.find((p) => p.lap === lap)
+      if (planned) planned.lap++
       call = null
     }
-    if (call) pit(state, c, call.comp, s, R('pit', c), call.reason)
+    if (call) pit(state, c, call.comp, lap, R('pit', c), call.reason)
   }
 
   let order = byOrder(state)
@@ -890,33 +885,33 @@ export function stepRace(state, orders = {}) {
     const stance = ORDERS.stance[c.orders.stance]
     const engine = ORDERS.engine[c.orders.engine]
     const rate = wearRate(state, c)
-    const wingNow = wetSeg ? wingLoss(c.wing, idealWing(track, c.e.car, true)) - wingLoss(c.wing, c.idealWing) : 0
-    const lapPace = c.pace + tyreDelta(c, cnd, segLaps, rate) + pace.pace + (stance.pace || 0) - engine.power * track.w.power * P.secPerPoint +
-      c.wingDamage + wingNow + (wetSeg ? (100 - dr.wet) * P.wetPerPoint * (cnd === 'wet' ? 1 : 0.6) : 0) + wetSetupEffect(c.m, wetSeg)
+    const wingNow = wet ? wingLoss(c.wing, idealWing(track, c.e.car, true)) - wingLoss(c.wing, c.idealWing) : 0
+    const lapPace = c.pace + tyreDelta(c, cnd, 1, rate) + pace.pace + (stance.pace || 0) - engine.power * track.w.power * P.secPerPoint +
+      c.wingDamage + wingNow + (wet ? (100 - dr.wet) * P.wetPerPoint * (cnd === 'wet' ? 1 : 0.6) : 0) + wetSetupEffect(c.m, wet)
     // Behind the safety car or under the VSC every car runs the same slow lap: no gaps open or close.
-    let dt = under ? P.neutralSlow[state.neutralNow] * track.baseLap : segLaps * lapPace + rng.normal(0, P.lapNoise * Math.sqrt(segLaps) * (wetSeg ? 2.2 : 1))
+    let dt = under ? P.neutralSlow[state.neutralNow] * track.baseLap : lapPace + rng.normal(0, P.lapNoise * (wet ? 2.2 : 1))
     c.lapPace = lapPace
-    c.wear += segLaps * rate * (under ? P.neutralWear : 1)
+    c.wear += rate * (under ? P.neutralWear : 1)
     const pMech = c.pMech * engine.mech
-    if (rng.chance(pMech / S)) {
+    if (rng.chance(pMech / laps)) {
       let why = rng.pick(MECH_REASONS)
       let text = `${c.e.name} retires: ${why}`
       // A fault the team knew about takes its share of the blame.
       const known = c.m.failWhy ? 1 - mechFailureChance(c.e.car.reliability) / c.pMech : 0
-      if (known > 0 && mixRng(state.key, RNG.blame, s + 1, c.idx + 1).chance(known)) {
+      if (known > 0 && mixRng(state.key, RNG.blame, lap + 1, c.idx + 1).chance(known)) {
         why = c.m.failWhy
         text = `${c.e.name} retires: ${why}${c.m.failNote ? ` (${c.m.failNote})` : ''}`
       }
-      retire(state, c, s, why, text, rng)
+      retire(state, c, lap, why, text)
       if (rng.chance(P.scAfterFailure * scF)) sc = true
       continue
     }
     // Slicks on a wet track, and a wet track itself, multiply the risk of a crash.
-    const mismatch = !TYRES[c.tyre].wet && wetSeg ? (cnd === 'wet' ? 4 : 2) : 1
-    const pc = (c.pCrash / S) * (wetSeg ? P.wetCrashMult : 1) * mismatch * pace.err * state.chaos * P.crashScale * (under ? P.neutralRisk : 1)
+    const mismatch = !TYRES[c.tyre].wet && wet ? (cnd === 'wet' ? 4 : 2) : 1
+    const pc = (c.pCrash / laps) * (wet ? P.wetCrashMult : 1) * mismatch * pace.err * state.chaos * P.crashScale * (under ? P.neutralRisk : 1)
     if (rng.chance(pc)) {
       c.damage += rng.range(0.4, 1.2)
-      retire(state, c, s, 'crash', `${c.e.name} crashes out`, rng)
+      retire(state, c, lap, 'crash', `${c.e.name} crashes out`)
       if (rng.chance(P.scAfterCrash * scF)) sc = true
       continue
     }
@@ -925,19 +920,19 @@ export function stepRace(state, orders = {}) {
       dt += loss
       c.errors++
       c.notes.push(`Driver error cost ${loss.toFixed(1)} s`)
-      state.events.push({ lap: lapOf(state, s, rng), type: 'error', ids: [c.id], text: `${c.e.name} runs wide and loses time` })
+      state.events.push({ lap: lapNo(state, lap), type: 'error', ids: [c.id], text: `${c.e.name} runs wide and loses time` })
     }
-    if (rng.chance((P.incidentChance / S) * Math.sqrt(state.chaos) * (under ? P.neutralRisk : 1))) {
+    if (rng.chance((P.incidentChance / laps) * Math.sqrt(state.chaos) * (under ? P.neutralRisk : 1))) {
       // A puncture or debris damage: the car limps to the pits for new tyres next lap.
       const loss = rng.range(8, 16)
       dt += loss
       c.damage += rng.range(0.05, 0.3)
       c.forced = 'puncture'
       c.notes.push(`Puncture cost ${loss.toFixed(0)} s and a stop`)
-      state.events.push({ lap: lapOf(state, s, rng), type: 'incident', ids: [c.id], text: `${c.e.name} picks up a puncture and limps to the pits` })
+      state.events.push({ lap: lapNo(state, lap), type: 'incident', ids: [c.id], text: `${c.e.name} picks up a puncture and limps to the pits` })
     }
-    if (s === sMid) {
-      const sd = P.strategySd * c.ap.sd * (c.m.stratSd || 1) * (wetSeg ? 1.8 : 1)
+    if (lap === midLap) {
+      const sd = P.strategySd * c.ap.sd * (c.m.stratSd || 1) * (wet ? 1.8 : 1)
       // A pit wall committed to an early or late call on rain gains or loses with the weather.
       const rainCall = c.m.rainPlan === 'early' ? (state.raceWeather === 'dry' ? 2.5 : -2.5) : c.m.rainPlan === 'late' ? (state.raceWeather === 'dry' ? -0.5 : 1.5) : 0
       const swing = rng.normal((75 - c.e.ops.strategy) * 0.06 + c.ap.mean + (c.m.stratMean || 0) + rainCall, sd)
@@ -949,45 +944,44 @@ export function stepRace(state, orders = {}) {
     c.lastDt = c.dt
     c.dt = 0
   }
-  if (s > 0 && state.cond[s] !== state.cond[s - 1]) {
-    const text = state.cond[s] === 'dry' ? 'The track is drying: time for slicks' : state.cond[s - 1] === 'dry' ? 'Rain is falling' : state.cond[s] === 'wet' ? 'The rain gets heavier' : 'The rain eases'
-    state.events.push({ lap: lapAt(state, s) + 1, type: 'weather', ids: [], text })
+  if (lap > 0 && state.cond[lap] !== state.cond[lap - 1]) {
+    const text = state.cond[lap] === 'dry' ? 'The track is drying: time for slicks' : state.cond[lap - 1] === 'dry' ? 'Rain is falling' : state.cond[lap] === 'wet' ? 'The rain gets heavier' : 'The rain eases'
+    state.events.push({ lap: lap + 1, type: 'weather', ids: [], text })
   }
-  order = under ? order.filter((c) => c.status === 'running').sort((a, b) => a.t - b.t) : resolve(state, order.filter((c) => c.status === 'running'), wetSeg, s)
-  if (sc && !state.neutral && order.length > 1 && s < S - 2 && state.safetyCars + state.vscs < 3) {
-    const crashes = state.cars.filter((c) => c.dnfSeg === s && (c.reason === 'crash' || c.reason === 'collision')).length
+  order = under ? order.filter((c) => c.status === 'running').sort((a, b) => a.t - b.t) : resolve(state, order.filter((c) => c.status === 'running'), wet, lap)
+  if (sc && !state.neutral && order.length > 1 && lap < laps - 2 && state.safetyCars + state.vscs < 3) {
+    const crashes = state.cars.filter((c) => c.dnfLap === lap && (c.reason === 'crash' || c.reason === 'collision')).length
     const pRed = P.redShare + (crashes >= 2 ? 0.3 : 0) + (cnd === 'wet' ? 0.15 : 0)
     const len = R('sclap')
     if (!state.reds && R('red').chance(pRed)) {
-      order = redFlag(state, order, s, len)
+      order = redFlag(state, order, lap)
       state.neutral = 'red'
       state.neutralLeft = 1
     } else if (R('neutral').chance(P.vscShare)) {
       state.vscs++
       state.neutral = 'vsc'
       state.neutralLeft = len.int(...P.vscLaps)
-      state.events.push({ lap: lapOf(state, s), type: 'vsc', ids: [], text: 'Virtual safety car' })
+      state.events.push({ lap: lapNo(state, lap), type: 'vsc', ids: [], text: 'Virtual safety car' })
     } else {
-      order = safetyCar(state, order, s, R('sc'))
+      order = safetyCar(state, order, lap, R('sc'))
       state.neutral = 'sc'
       state.neutralLeft = len.int(...P.scLaps)
     }
-    state.neutralStart = s + 1
+    state.neutralStart = lap + 1
   }
   state.order = order.map((c) => state.cars.indexOf(c))
-  state.seg++
-  if (state.seg >= S) state.done = true
+  state.lap++
+  if (state.lap >= laps) state.done = true
   return state
 }
 
-function resolve(state, list, wetSeg, curSeg) {
-  const segLaps = state.segLaps
+function resolve(state, list, wet, lap) {
   const res = []
   const requeue = []
   const D = state.track.overtaking
   const thr = 0.1 + Math.pow(D, 1.5) * 1.2
   const scale = 0.08 + D * 0.14
-  const lapNow = () => lapOf(state, curSeg)
+  const lapNow = () => lapNo(state, lap)
   for (const c of list) {
     if (c.status !== 'running') continue
     let idx = res.length
@@ -997,7 +991,7 @@ function resolve(state, list, wetSeg, curSeg) {
       if (c.t >= a.t) break
       // Each pair of cars has its own luck, so a change elsewhere in the field
       // (a stop called a lap earlier) leaves this fight as it was.
-      const rng = mixRng(state.key, curSeg + 1, RNG.resolve, c.idx + 1, a.idx + 1)
+      const rng = mixRng(state.key, lap + 1, RNG.resolve, c.idx + 1, a.idx + 1)
       const cs = ORDERS.stance[c.orders.stance]
       const as = ORDERS.stance[a.orders.stance]
       const teamHold = c.e.teamId === a.e.teamId && state.teamHold[c.e.teamId]
@@ -1010,30 +1004,30 @@ function resolve(state, list, wetSeg, curSeg) {
       }
       // How much quicker the car behind is a lap, and how much it gained this lap
       // (a mistake or a stop ahead settles it outright).
-      const gained = (a.lastDt - c.lastDt) / segLaps
+      const gained = a.lastDt - c.lastDt
       const delta = (a.lapPace ?? a.lastDt) - (c.lapPace ?? c.lastDt)
       if (gained < 1.5) {
-        const pContact = (0.005 + (200 - c.e.driver.consistency - a.e.driver.consistency) * 0.0003) * (wetSeg ? 1.5 : 1) * c.ap.err *
+        const pContact = (0.005 + (200 - c.e.driver.consistency - a.e.driver.consistency) * 0.0003) * (wet ? 1.5 : 1) * c.ap.err *
           cs.contact * as.contact * Math.sqrt(state.chaos) / SIM.passTries
         if (rng.chance(pContact)) {
           const r = rng.next()
-          const lap = lapNow()
+          const at = lapNow()
           if (rng.chance(0.5)) {
             const pen = rng.chance(0.75) ? 5 : 10
             c.penalty += pen
             c.notes.push(`${pen}-second penalty for causing a collision`)
-            state.events.push({ lap, type: 'penalty', ids: [c.id], text: `${c.e.name} gets a ${pen}-second penalty for contact with ${a.e.name}` })
+            state.events.push({ lap: at, type: 'penalty', ids: [c.id], text: `${c.e.name} gets a ${pen}-second penalty for contact with ${a.e.name}` })
           }
           if (r < 0.35) {
             c.t += rng.range(1, 2)
             a.t += rng.range(1, 2)
-            state.events.push({ lap, type: 'incident', ids: [c.id, a.id], text: `${c.e.name} and ${a.e.name} touch; both continue` })
+            state.events.push({ lap: at, type: 'incident', ids: [c.id, a.id], text: `${c.e.name} and ${a.e.name} touch; both continue` })
           } else if (r < 0.65) {
             const victim = rng.chance(0.5) ? c : a
             victim.damage += rng.range(0.15, 0.5)
             victim.wingDamage = Math.max(victim.wingDamage, rng.range(0.15, 0.6))
             victim.notes.push('Front wing damaged in contact')
-            state.events.push({ lap, type: 'incident', ids: [c.id, a.id], text: `${c.e.name} and ${a.e.name} collide; ${victim.e.name} damages the front wing` })
+            state.events.push({ lap: at, type: 'incident', ids: [c.id, a.id], text: `${c.e.name} and ${a.e.name} collide; ${victim.e.name} damages the front wing` })
             if (victim === a) {
               res.splice(idx - 1, 1)
               idx--
@@ -1051,7 +1045,7 @@ function resolve(state, list, wetSeg, curSeg) {
             const out = both ? [c, a] : [victim]
             for (const v of out) {
               v.damage += rng.range(0.4, 1.0)
-              retire(state, v, curSeg, 'collision', `${v.e.name} is out after contact`, rng)
+              retire(state, v, lap, 'collision', `${v.e.name} is out after contact`)
             }
             if (rng.chance(SIM.scAfterContact * (state.track.sc / SIM.scAverage))) state.pendingSc = true
             if (out.includes(a)) { res.splice(idx - 1, 1); idx-- }
@@ -1063,7 +1057,7 @@ function resolve(state, list, wetSeg, curSeg) {
       // Low drag helps the attacker and the defender on the straights.
       let p = 1 / (1 + Math.exp(-(delta - thr) / scale)) + (c.e.driver.racecraft - a.e.driver.racecraft) * 0.004 +
         (cs.pass || 0) - (as.defend || 0) + (a.wing - c.wing) * 0.02
-      // Tried every lap, so each try has a share of the old five-lap chance.
+      // Tried every lap, so each try has a share of the full chance (SIM.passTries).
       // In a pit phase the order is settled on time: the undercut and overcut.
       p = gained > 2 || c.pitNow || a.pitNow ? 1 : 1 - (1 - clamp(p, 0.02, 0.98)) ** (1 / SIM.passTries)
       if (rng.chance(p)) {
@@ -1094,17 +1088,17 @@ function resolve(state, list, wetSeg, curSeg) {
 
 // The race is stopped: the cars line up in order for a standing restart,
 // and every car gets a change of tyres for nothing.
-function redFlag(state, list, seg, rng) {
+function redFlag(state, list, lap) {
   state.reds = 1
-  state.events.push({ lap: lapOf(state, seg, rng), type: 'red', ids: [], text: 'Red flag: the race is stopped' })
+  state.events.push({ lap: lapNo(state, lap), type: 'red', ids: [], text: 'Red flag: the race is stopped' })
   const lead = list[0].t
   list.forEach((c, k) => { c.t = lead + k * 0.6 })
   return list
 }
 
-function safetyCar(state, list, seg, rng) {
+function safetyCar(state, list, lap, rng) {
   state.safetyCars++
-  state.events.push({ lap: lapOf(state, seg, rng), type: 'sc', ids: [], text: 'Safety car: the field bunches up' })
+  state.events.push({ lap: lapNo(state, lap), type: 'sc', ids: [], text: 'Safety car: the field bunches up' })
   let prevOld = list[0].t
   let prevNew = list[0].t
   for (let k = 1; k < list.length; k++) {
@@ -1114,7 +1108,7 @@ function safetyCar(state, list, seg, rng) {
     prevNew = list[k].t
   }
   for (const c of list) {
-    const luck = mixRng(state.key, seg + 1, RNG.sc, c.idx + 1)
+    const luck = mixRng(state.key, lap + 1, RNG.sc, c.idx + 1)
     let swing = luck.normal((75 - c.e.ops.strategy) * 0.02, SIM.scLotterySd * c.ap.sd * (c.m.stratSd || 1))
     if (luck.chance(SIM.scCaughtOut)) {
       swing += luck.range(4, 10)
@@ -1126,10 +1120,33 @@ function safetyCar(state, list, seg, rng) {
   return list.sort((a, b) => a.t - b.t)
 }
 
+// A race saved by an earlier build, which counted the race in steps
+// (`seg`, `S` steps of `segLaps` laps: blocks of about five laps before W6,
+// single laps after): converted to laps, so it carries on lap by lap.
+export function upgradeRaceState(st) {
+  if (!st || !('seg' in st)) return st
+  const k = st.segLaps ?? 1
+  const toLap = (x) => (x == null || x < 0 ? x ?? -1 : Math.round(x * k))
+  st.lap = toLap(st.seg)
+  if (k !== 1) st.cond = Array.from({ length: st.laps }, (_, l) => st.cond[Math.min(st.S - 1, Math.floor(l / k))])
+  st.scLap = toLap(st.scSeg)
+  st.neutralStart = toLap(st.neutralStart)
+  if (st.neutral && !st.neutralLeft) st.neutralLeft = st.neutral === 'red' ? 1 : 3
+  for (const c of st.cars) {
+    c.dnfLap = toLap(c.dnfSeg)
+    c.lastStop = toLap(c.lastStop)
+    c.plan = (c.plan ?? []).map((p) => ({ lap: toLap(p.seg ?? p.lap), comp: p.comp }))
+    for (const t of c.timed ?? []) if ('seg' in t) { t.lap = toLap(t.seg); delete t.seg }
+    delete c.dnfSeg
+  }
+  delete st.seg; delete st.S; delete st.segLaps; delete st.scSeg
+  return st
+}
+
 // The strategist's advice for a car before the next lap is run.
 export function advice(state, c) {
   if (state.done) return null
-  return strategistCall(state, c, state.seg, null, state.neutral)
+  return strategistCall(state, c, state.lap, null, state.neutral)
 }
 
 // Runs the rest of the race with the strategist making every call.
@@ -1154,7 +1171,7 @@ export function raceResult(state) {
     c.final = c.t + c.penalty
   }
   finishers.sort((a, b) => a.final - b.final)
-  const retired = cars.filter((c) => c.status === 'dnf').sort((a, b) => b.dnfSeg - a.dnfSeg || a.t - b.t)
+  const retired = cars.filter((c) => c.status === 'dnf').sort((a, b) => b.dnfLap - a.dnfLap || a.t - b.t)
   const lead = finishers.length ? finishers[0].final : 0
   const race = []
   finishers.forEach((c, i) => {
@@ -1188,12 +1205,3 @@ export function raceResult(state) {
     stats: { safetyCars: state.safetyCars + state.vscs, vsc: state.vscs, redFlags: state.reds ?? 0, retirements: retired.length, starters: cars.length, chaos: state.chaos },
   }
 }
-
-// The whole weekend with the strategist making every call.
-export function simulateWeekend(track, entries, rng) {
-  const state = createRace(track, entries, rng)
-  runToEnd(state)
-  return raceResult(state)
-}
-
-export const raceKey = (...k) => hashString(k.join('|'))

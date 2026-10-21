@@ -1,4 +1,4 @@
-/* The pit-wall look (RACE_WEEKEND.md section 8): dark by default, with a light
+/* The pit-wall look (RACE_WEEKEND.md, W2): dark by default, with a light
    option. The accent is the player's team colour, set by App.jsx. */
 :root {
   --bg: #0d0f14; --panel: #161a22; --panel-2: #1d222c; --line: #2a303c; --text: #e9ecf2; --muted: #8b93a3; --ink-2: #cfd5df;

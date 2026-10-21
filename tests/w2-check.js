@@ -119,11 +119,11 @@ function seasonGame(seed, extra) {
   }
   check('the key-moment skip stops only at a call, a safety car, the weather, trouble or the flag', !bad, bad ?? '')
   const frames = g.weekend.frames
-  check('every lap is recorded for playback, in order', frames.length === st.S && frames.every((f, i) => f.seg === i))
+  check('every lap is recorded for playback, in order', frames.length === st.laps && frames.every((f, i) => f.lap === i))
   check('each record has every car\'s race time at both ends of the lap', frames.every((f) => f.t0.length === 24 && f.t1.length === 24 && f.t1.every(Number.isFinite)))
   const outs = frames.reduce((n, f) => n + f.out.length, 0)
   check('retirements are recorded on the lap they happen', outs === g.weekend.state.cars.filter((c) => c.status !== 'running').length, `${outs} recorded`)
-  check('the key-moment skip pauses a few times a race, not every lap', stops >= 2 && stops < st.S / 2, `${stops} stops in ${st.S} laps`)
+  check('the key-moment skip pauses a few times a race, not every lap', stops >= 2 && stops < st.laps / 2, `${stops} stops in ${st.laps} laps`)
 }
 
 // ---- Same choices, same race; a mid-race save carries on ----

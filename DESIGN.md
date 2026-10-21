@@ -1,6 +1,6 @@
 # Ultimate F1 Manager — game mechanics plan (v4)
 
-Status: milestones 1 to 5 are built and checked (section 10). Numbers changed by the milestone 5 balance pass are marked "tuned"; section 9 gives the measured results against the targets.
+Status: milestones 1 to 5 are built and checked (section 10), and the race weekend played live (W1 to W7, section 5.10 and RACE_WEEKEND.md). Numbers changed by the milestone 5 balance pass are marked "tuned"; section 9 gives the measured results against the targets.
 
 To play: `npm run dev` in this folder. To check: `npm test`. To measure balance: `npm run test:m5` (section 9).
 
@@ -424,7 +424,7 @@ Each pre-season the game offers six objectives built from the team's current sta
 - Meeting all three adds 3 reputation.
 - Levels are locked once the season starts.
 
-**How the marks are set.** Before the season the game runs 150 quick simulations of the year from the team's current car, drivers, cash and facilities, under average management: designers kept busy, a little banked from mid-season, empty sponsor slots filled, nothing built and nobody hired.
+**How the marks are set.** Before the season the game runs 100 quick simulations of the year from the team's current car, drivers, cash and facilities, under average management: designers kept busy, a little banked from mid-season, empty sponsor slots filled, nothing built and nobody hired.
 
 - **Results targets** (position, points, best finish, races ahead of a rival, podiums, wins, both cars classified) are placed where that average team reaches them in about 80%, 50% and 20% of runs. Measured over 120 seasons of average management the rates were 79%, 45% and 22%.
 - **Management targets** (cash, sponsor fees, rating gained, facility levels) depend mostly on the player's own choices, so they are set against what the average manager achieves. Rating gained: 70%, 100% and 135% of what the average manager manages. Cash: 30%, 65% and 105% of the cash the average manager, who neither builds nor hires, would be left with. Sponsor fees are mostly fixed by the deals already signed, so Safe is 95% of the projection, Standard adds one more partner deal and Stretch a principal deal on top (tuned: a percentage over the projection could not be reached without new slots).

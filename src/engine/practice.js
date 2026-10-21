@@ -1,4 +1,4 @@
-// Friday practice (RACE_WEEKEND.md 4.2): two dials for each car, a few runs,
+// Friday practice (DESIGN.md 5.10): two dials for each car, a few runs,
 // and the driver's word on how the car feels. Kept deliberately simple.
 //
 // - Wing level, 1 (low drag) to 5 (high downforce), as in the race engine.
