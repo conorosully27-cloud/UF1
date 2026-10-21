@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { TRACK_MAPS, MAP_BOX } from './data/trackMaps.js'
 import { teamColor, driverColor, carCode } from './format.js'
+import { getProfile, speedPieces, speedColor, SPEED_RANGE } from './speedProfile.js'
 
 // The race is simulated lap by lap. Through each lap every car moves at its
-// own average pace for that lap, so the playback shows
+// own average pace for that lap in time, and is drawn where that share of
+// its lap puts it on the circuit's speed profile (speedProfile.js): quick on
+// the straights, slow in the corners. The playback shows
 // the gaps opening and closing, the order changing and the field bunching up
 // behind a safety car, on the real outline of the circuit.
 
-export const LAP_SECONDS = 1.1 // seconds of playback per lap at 1x
+export const LAP_SECONDS = 5 // seconds of playback per lap at 1x
 const lapAtSeg = (st, seg) => Math.round(seg * st.segLaps)
 
 // Where every car is, `p` (0 to 1) of the way through the lap in `frame`.
@@ -31,6 +34,8 @@ export function frameSnapshot(st, frame, p) {
   const leadPace = (leaderEnd - tau0) / span
   const rows = []
   const laneExit = getOutline(st.track.id)?.laneExit ?? 0.03
+  // The pit exit as a share of the lap in time, so a car rejoins where it left the lane.
+  const exitT = getProfile(st.track.id)?.unwarp(laneExit) ?? laneExit
   // The time a stop costs, spent crawling down the pit lane: about half under a safety car.
   const pitLoss = st.track.pitLoss * (frame.under === 'sc' ? 0.5 : frame.under === 'vsc' ? 0.6 : 1)
   for (const c of runningAtStart) {
@@ -39,6 +44,7 @@ export function frameSnapshot(st, frame, p) {
     let d
     let pace
     let inPit = false
+    let laneF = null
     if (out.has(i)) {
       // A car that retires on this lap runs to the middle of it and stops there.
       pace = leadPace
@@ -47,21 +53,21 @@ export function frameSnapshot(st, frame, p) {
       // Stops come at the start of a lap: down the pit lane from the line
       // to its exit, slowly, then back up to racing speed.
       pace = Math.max(base * 0.8, (T1[i] - T0[i] - pitLoss) / span)
-      const lane = laneExit * pace + pitLoss
+      const lane = exitT * pace + pitLoss
       const dt = tau - T0[i]
       if (dt <= 0) d = L0 + dt / pace
-      else if (dt < lane) { d = L0 + (laneExit * dt) / lane; inPit = true }
-      else d = L0 + laneExit + (dt - lane) / pace
+      else if (dt < lane) { d = L0 + (exitT * dt) / lane; inPit = true; laneF = (laneExit * dt) / lane }
+      else d = L0 + exitT + (dt - lane) / pace
     } else {
       pace = (T1[i] - T0[i]) / span
       d = L0 + (tau - T0[i]) / pace
     }
-    rows.push({ c, d, pace, out: out.has(i) && p >= 0.5, retiring: out.has(i), pit: inPit, laneF: inPit ? d - L0 : null, tyre: stopping && (inPit ? d - L0 < laneExit * 0.5 : d < L0) ? frame.tyre0?.[i] ?? c.tyre : c.tyre })
+    rows.push({ c, d, pace, out: out.has(i) && p >= 0.5, retiring: out.has(i), pit: inPit, laneF, tyre: stopping && (inPit ? laneF < laneExit * 0.5 : d < L0) ? frame.tyre0?.[i] ?? c.tyre : c.tyre })
   }
   const running = rows.filter((r) => !r.out).sort((a, b) => b.d - a.d)
   const lead = running[0]
   for (const r of running) r.gap = (lead.d - r.d) * r.pace
-  return { order: running, gone: rows.filter((r) => r.out), leaderD: lead?.d ?? L0, lap: Math.min(st.laps, Math.max(1, Math.floor((lead?.d ?? L0) + 1))), under: frame.under }
+  return { order: running, gone: rows.filter((r) => r.out), leaderD: lead?.d ?? L0, lap: Math.min(st.laps, Math.max(1, Math.floor((lead?.d ?? L0) + 1))), under: frame.under, timed: true }
 }
 
 // The race as it stands at the end of the last lap run.
@@ -72,7 +78,7 @@ export function stateSnapshot(st) {
   const base = st.track.baseLap
   return {
     order: order.map((c) => ({ c, d: L - (c.t - lead.t) / base, gap: c.t - lead.t, pace: base, tyre: c.tyre })),
-    gone: [], leaderD: L, lap: Math.max(1, L), under: null,
+    gone: [], leaderD: L, lap: Math.max(1, L), under: null, timed: true,
   }
 }
 
@@ -191,14 +197,33 @@ export function getOutline(trackId) {
   return out
 }
 
+// The track coloured by speed: a faint tint always, in full when asked for.
+// Drawn once per circuit and mode, not on every frame of the playback.
+const SpeedLayer = React.memo(function SpeedLayer({ trackId, full }) {
+  return <g className={`tm-speed${full ? ' full' : ''}`}>{speedPieces(trackId).map((x, i) => <path key={i} d={x.d} stroke={x.color} />)}</g>
+})
+
+const SPEED_KEY = 'uf1-map-speed'
+function useSpeedView() {
+  const [full, setFull] = useState(() => { try { return localStorage.getItem(SPEED_KEY) === '1' } catch { return false } })
+  const toggle = () => setFull((v) => { try { localStorage.setItem(SPEED_KEY, v ? '0' : '1') } catch { /* no storage: just this page */ } return !v })
+  return [full, toggle]
+}
+
 export function TrackMap({ game, st, snap }) {
   const outline = getOutline(st.track.id)
+  const [full, toggleSpeed] = useSpeedView()
   if (!outline) return null
-  const place = (r) => (r.pit ? outline.lanePoint(r.laneF) : outline.at(r.d))
+  // From a share of the lap in time to a place on the track. Behind the safety
+  // car or under the VSC the field crawls, so the profile counts for less.
+  const profile = getProfile(st.track.id)
+  const k = snap.under === 'sc' || snap.under === 'vsc' ? 0.3 : 1
+  const where = (d) => (snap.timed && profile ? d + (profile.warp(d) - d) * k : d)
+  const place = (r) => (r.pit ? outline.lanePoint(r.laneF) : outline.at(where(r.d)))
   const dots = snap.order.slice().reverse()
   // Cars on the lower level of a crossing are drawn first, so the bridge hides them.
-  const hidden = (r) => !r.pit && outline.underBridge(r.d)
-  const scD = snap.under === 'sc' ? snap.leaderD + 0.025 : null
+  const hidden = (r) => !r.pit && outline.underBridge(where(r.d))
+  const scD = snap.under === 'sc' ? where(snap.leaderD) + 0.025 : null
   const rival = (r) => { const [x, y] = place(r); return <circle key={r.c.id} cx={x} cy={y} r={r.pit ? 3.4 : 4.2} fill={teamColor(game, r.c.e.teamId)} className="tm-car" /> }
   const mine = (r) => {
     const [x, y] = place(r)
@@ -211,13 +236,15 @@ export function TrackMap({ game, st, snap }) {
     )
   }
   return (
+    <div className="tm-wrap">
     <svg className="trackmap" viewBox={`0 0 ${MAP_BOX.w} ${MAP_BOX.h}`} role="img" aria-label={`${st.track.name}: where every car is on the track`}>
       <path d={outline.lane} className="tm-lane" />
       <text x={outline.laneLabel[0]} y={outline.laneLabel[1]} className="tm-lanetext" textAnchor="middle" dy="3">PIT</text>
       <path d={outline.d} className="tm-track" />
-      <path d={outline.d} className="tm-line" />
+      <SpeedLayer trackId={st.track.id} full={full} />
+      {!full && <path d={outline.d} className="tm-line" />}
       <line x1={outline.start[0]} y1={outline.start[1]} x2={outline.start[2]} y2={outline.start[3]} className="tm-start" />
-      {snap.gone.map((r) => { const [x, y] = outline.at(r.d); return <text key={r.c.id} x={x} y={y + 4} className="tm-out" textAnchor="middle">✕</text> })}
+      {snap.gone.map((r) => { const [x, y] = outline.at(where(r.d)); return <text key={r.c.id} x={x} y={y + 4} className="tm-out" textAnchor="middle">✕</text> })}
       {dots.filter((r) => hidden(r) && !r.c.e.isPlayer).map(rival)}
       {outline.bridge && <g><path d={outline.bridge.d} className="tm-deck-gap" /><path d={outline.bridge.d} className="tm-deck-edge" /><path d={outline.bridge.d} className="tm-deck" /><path d={outline.bridge.d} className="tm-line" /></g>}
       {scD !== null && (() => { const [x, y] = outline.at(scD); return <g><rect x={x - 11} y={y - 7} width="22" height="14" rx="3" className="tm-sc" /><text x={x} y={y + 4} textAnchor="middle" className="tm-sctext">SC</text></g> })()}
@@ -225,6 +252,15 @@ export function TrackMap({ game, st, snap }) {
       {dots.filter((r) => r.c.e.isPlayer).map(mine)}
       {snap.order[0] && !snap.order[0].c.e.isPlayer && (() => { const [x, y] = place(snap.order[0]); return <text x={x} y={y - 9} textAnchor="middle" className="tm-lead">P1</text> })()}
     </svg>
+    <button className={`tm-toggle${full ? ' on' : ''}`} aria-pressed={full} onClick={toggleSpeed} title="Colour the track by speed">Speed</button>
+    {full && (
+      <div className="tm-legend" aria-hidden="true">
+        <span>{SPEED_RANGE[0]} km/h</span>
+        <span className="tm-ramp" style={{ background: `linear-gradient(90deg, ${[0, 0.25, 0.5, 0.75, 1].map((x) => speedColor(SPEED_RANGE[0] + x * (SPEED_RANGE[1] - SPEED_RANGE[0]))).join(', ')})` }} />
+        <span>{SPEED_RANGE[1]}</span>
+      </div>
+    )}
+    </div>
   )
 }
 
