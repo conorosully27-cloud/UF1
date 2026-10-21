@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { TRACK_MAPS, MAP_BOX } from './data/trackMaps.js'
 import { teamColor, driverColor, carCode } from './format.js'
-import { getProfile } from './speedProfile.js'
+import { getProfile, speedPieces, speedColor, SPEED_RANGE } from './speedProfile.js'
 
 // The race is simulated lap by lap. Through each lap every car moves at its
 // own average pace for that lap in time, and is drawn where that share of
@@ -197,8 +197,22 @@ export function getOutline(trackId) {
   return out
 }
 
+// The track coloured by speed: a faint tint always, in full when asked for.
+// Drawn once per circuit and mode, not on every frame of the playback.
+const SpeedLayer = React.memo(function SpeedLayer({ trackId, full }) {
+  return <g className={`tm-speed${full ? ' full' : ''}`}>{speedPieces(trackId).map((x, i) => <path key={i} d={x.d} stroke={x.color} />)}</g>
+})
+
+const SPEED_KEY = 'uf1-map-speed'
+function useSpeedView() {
+  const [full, setFull] = useState(() => { try { return localStorage.getItem(SPEED_KEY) === '1' } catch { return false } })
+  const toggle = () => setFull((v) => { try { localStorage.setItem(SPEED_KEY, v ? '0' : '1') } catch { /* no storage: just this page */ } return !v })
+  return [full, toggle]
+}
+
 export function TrackMap({ game, st, snap }) {
   const outline = getOutline(st.track.id)
+  const [full, toggleSpeed] = useSpeedView()
   if (!outline) return null
   // From a share of the lap in time to a place on the track. Behind the safety
   // car or under the VSC the field crawls, so the profile counts for less.
@@ -222,11 +236,13 @@ export function TrackMap({ game, st, snap }) {
     )
   }
   return (
+    <div className="tm-wrap">
     <svg className="trackmap" viewBox={`0 0 ${MAP_BOX.w} ${MAP_BOX.h}`} role="img" aria-label={`${st.track.name}: where every car is on the track`}>
       <path d={outline.lane} className="tm-lane" />
       <text x={outline.laneLabel[0]} y={outline.laneLabel[1]} className="tm-lanetext" textAnchor="middle" dy="3">PIT</text>
       <path d={outline.d} className="tm-track" />
-      <path d={outline.d} className="tm-line" />
+      <SpeedLayer trackId={st.track.id} full={full} />
+      {!full && <path d={outline.d} className="tm-line" />}
       <line x1={outline.start[0]} y1={outline.start[1]} x2={outline.start[2]} y2={outline.start[3]} className="tm-start" />
       {snap.gone.map((r) => { const [x, y] = outline.at(where(r.d)); return <text key={r.c.id} x={x} y={y + 4} className="tm-out" textAnchor="middle">✕</text> })}
       {dots.filter((r) => hidden(r) && !r.c.e.isPlayer).map(rival)}
@@ -236,6 +252,15 @@ export function TrackMap({ game, st, snap }) {
       {dots.filter((r) => r.c.e.isPlayer).map(mine)}
       {snap.order[0] && !snap.order[0].c.e.isPlayer && (() => { const [x, y] = place(snap.order[0]); return <text x={x} y={y - 9} textAnchor="middle" className="tm-lead">P1</text> })()}
     </svg>
+    <button className={`tm-toggle${full ? ' on' : ''}`} aria-pressed={full} onClick={toggleSpeed} title="Colour the track by speed">Speed</button>
+    {full && (
+      <div className="tm-legend" aria-hidden="true">
+        <span>{SPEED_RANGE[0]} km/h</span>
+        <span className="tm-ramp" style={{ background: `linear-gradient(90deg, ${[0, 0.25, 0.5, 0.75, 1].map((x) => speedColor(SPEED_RANGE[0] + x * (SPEED_RANGE[1] - SPEED_RANGE[0]))).join(', ')})` }} />
+        <span>{SPEED_RANGE[1]}</span>
+      </div>
+    )}
+    </div>
   )
 }
 

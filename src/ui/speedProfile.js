@@ -120,3 +120,29 @@ export function getProfile(trackId) {
   if (!PROFILES.has(trackId)) PROFILES.set(trackId, buildProfile(trackId))
   return PROFILES.get(trackId)
 }
+
+// Speed as a colour: red for the slowest corners through yellow and green to
+// blue on the fastest straights.
+export const SPEED_RANGE = [60, 330]
+export function speedColor(kmh) {
+  const x = Math.max(0, Math.min(1, (kmh - SPEED_RANGE[0]) / (SPEED_RANGE[1] - SPEED_RANGE[0])))
+  return `hsl(${Math.round(x * 220)} 85% 52%)`
+}
+
+// The lap in short coloured pieces, for drawing the profile on the map.
+export function speedPieces(trackId, pieces = 144) {
+  const p = getProfile(trackId)
+  if (!p) return []
+  const n = p.points.length
+  const step = n / pieces
+  const out = []
+  for (let k = 0; k < pieces; k++) {
+    const a = Math.round(k * step)
+    const b = Math.round((k + 1) * step)
+    const pts = []
+    for (let i = a; i <= b; i++) pts.push(p.points[i % n])
+    const d = `M${pts.map((q) => `${q[0].toFixed(1)},${q[1].toFixed(1)}`).join('L')}`
+    out.push({ d, color: speedColor(p.speedAt((a + b) / 2 / n)) })
+  }
+  return out
+}
