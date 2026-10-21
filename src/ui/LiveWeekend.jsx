@@ -19,7 +19,7 @@ const SLICKS = ['S', 'M', 'H']
 const WING_LABELS = ['Low drag', 'Low', 'Medium', 'High', 'High downforce']
 const CALL_KINDS = { red: 'red flag', sc: 'safety car', vsc: 'virtual safety car', plan: 'pit window', cliff: 'tyres', rain: 'weather', drying: 'weather', damage: 'damage', 'compound rule': 'tyre rules', undercut: 'undercut', teammates: 'team orders' }
 const COND = { dry: '☀ Dry', damp: '🌦 Damp', wet: '🌧 Wet' }
-const SPEEDS = [1, 2, 4]
+const SPEEDS = [1, 2, 4, 8, 16] // at 1x a lap takes LAP_SECONDS (5 s)
 const LIGHTS_OUT_MS = 2600 // when the start lights go out (see .lights in styles.css)
 
 export function Tyre({ comp, age, lg }) {
