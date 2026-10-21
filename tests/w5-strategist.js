@@ -12,7 +12,9 @@
 import { newGame, startSeason, PLAYER } from '../src/engine/game.js'
 import { beginWeekend, runQualifying, startRace, nextLap, answerCall } from '../src/engine/live.js'
 
-const RACES = Number(process.argv[2] || 120)
+// 240 races: the random player's loss and the expert's gain are each about
+// 0.65 places, and 120 races leave too much noise to tell them from the band.
+const RACES = Number(process.argv[2] || 240)
 const RATING = Number(process.env.RATING || 60)
 const clone = (x) => JSON.parse(JSON.stringify(x))
 

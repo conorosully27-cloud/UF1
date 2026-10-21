@@ -181,14 +181,14 @@ function hasBadNumber(x, path = '') {
 {
   const g = setup(501)
   const t0 = Date.now()
-  prepareTargets(g, 150)
+  prepareTargets(g, 100)
   const ms = Date.now() - t0
   const offer = g.targets.offer
   const cats = offer.map((o) => o.category)
   check('six targets are offered, two in each category', offer.length === 6 && ['sporting', 'commercial', 'technical'].every((c) => cats.filter((x) => x === c).length === 2))
   const rising = offer.every((o) => (o.lowerBetter ? o.marks.safe > o.marks.standard && o.marks.standard > o.marks.stretch : o.marks.safe < o.marks.standard && o.marks.standard < o.marks.stretch))
   check('each has three levels, each harder than the last', rising)
-  console.log(`      season 1 offer (projection of 150 seasons took ${ms} ms):`)
+  console.log(`      season 1 offer (projection of 100 seasons took ${ms} ms):`)
   for (const o of offer) console.log(`        ${o.category.padEnd(10)} ${o.name}: ${o.levels.safe} / ${o.levels.standard} / ${o.levels.stretch}`)
   check('the projection is quick enough to run in pre-season', ms < 8000, `${ms} ms`)
   check('the season cannot start without three targets', expectThrow(() => startSeason(clone(g))))

@@ -7,7 +7,7 @@ import { PLAYER, clamp, ordinal, currentTrack } from './core.js'
 import { preRace, postRace, createWeekendRace, completeRace, recommendedWing } from './game.js'
 import {
   stepRace, runToEnd, advice, neutralGain, bestStop, planRest, TYRES, ORDERS, DEFAULT_ORDERS, tyreLife, wearRate, lapAt, tyreDelta,
-  runQualiSession, qualiPlan, qualiDrop, qualiPace, QUALI, addCarMods,
+  beginQualiSession, endQualiSession, qualiPlan, qualiDrop, qualiPace, QUALI, addCarMods,
 } from './weekend.js'
 import { INCIDENT_DAY, isIncidentCard, resolveDecision, bestChoice } from './decisions.js'
 import { weekendObjectives, objectiveStatus } from './highlights.js'
@@ -233,14 +233,62 @@ export function qualiOutlook(game) {
   return { session: s, n: qs.left.length, drop: qualiDrop(qs.left.length, s), early, late: lateText, cars, towGain }
 }
 
-// Runs the next session with your plans; after Q3, on to the grid.
-export function runSession(game) {
+// A session as it happens: `startSession` sends the cars out for their first
+// runs; with those laps on the board the pit wall makes the call on each of
+// your cars' final runs (`setLateRun`); `finishSession` runs the final laps,
+// any late flag and the knockouts. `runSession` does all three on the plan.
+export function startSession(game) {
   const w = game.weekend
   if (!w || w.phase !== 'quali') throw new Error('Qualifying is not running')
   settleFirst(game)
   const st = w.state
+  if (st.qs.current) return
+  beginQualiSession(st, { ...w.qChoices, tow: w.tow })
+  w.lateChoices = {}
+  for (const row of st.qs.current.rows) {
+    const c = st.cars[row.idx]
+    if (c.e.isPlayer && !c.qCrash && !row.note) w.lateChoices[c.id] = { ...lateAdvice(game, c, row) }
+  }
+}
+
+// The strategist's word on a car's final run, once its first lap is in. It
+// sticks to the plan (as the quick sim and every rival do) and says when
+// staying in the garage to save a set of Softs would be safe.
+export function lateAdvice(game, c, row) {
+  const st = game.weekend.state
   const s = st.qs.session
-  runQualiSession(st, { ...w.qChoices, tow: w.tow })
+  const p = qualiPlan(st, c, strategistRating(game) >= 60)
+  const banked = row.laps.some((l) => l.time !== null && !l.error)
+  const safe = banked && s < 2 && p.margin !== null && p.margin > (s === 0 ? 1.0 : 0.6)
+  const why = !row.laps.length ? 'One run, at the end, when the track is quickest.'
+    : safe ? 'That lap should be safely through: you could stay in and save a set.'
+      : s === 2 ? 'Pole is decided now: everything on the last lap.'
+        : row.laps.some((l) => l.crash) ? 'Car damaged.' : 'One more run to make sure.'
+  return { go: true, push: row.push, why, safe }
+}
+
+export function setLateRun(game, carId, choice) {
+  const w = game.weekend
+  const ch = w?.lateChoices?.[carId]
+  if (!ch) throw new Error('That car has no final run to decide')
+  const row = w.state.qs.current.rows.find((r) => r.id === carId)
+  if (choice.go === false && !row.laps.some((l) => l.time !== null)) throw new Error('No time on the board: the car has to run')
+  if (typeof choice.go === 'boolean') ch.go = choice.go
+  if (choice.push === 'normal' || choice.push === 'big') ch.push = choice.push
+}
+
+// `watch` keeps the session on screen (`w.qReplay`) while its final runs
+// play out, even after Q3 has set the grid; `doneWatching` moves on.
+export function finishSession(game, { watch = false } = {}) {
+  const w = game.weekend
+  if (!w || w.phase !== 'quali') throw new Error('Qualifying is not running')
+  settleFirst(game)
+  const st = w.state
+  if (!st.qs.current) startSession(game)
+  const s = st.qs.session
+  endQualiSession(st, w.lateChoices ?? {})
+  w.lateChoices = null
+  w.qReplay = watch ? s : null
   const ses = st.qs.sessions[s]
   const say = (c, text) => w.qRadio.push({ session: s + 1, id: c.id, text: `${surname(c.e.name)}: "${text}"` })
   for (const row of ses.rows) {
@@ -258,6 +306,16 @@ export function runSession(game) {
     w.qChoices = {}
     w.tow = null
   } else adviseSession(game)
+}
+
+export function doneWatching(game) {
+  if (game.weekend) game.weekend.qReplay = null
+}
+
+// Runs the next session in one go with your plans; after Q3, on to the grid.
+export function runSession(game) {
+  startSession(game)
+  finishSession(game)
 }
 
 // Qualifying with the strategist's plans, from the briefing or part-way through.
@@ -379,8 +437,9 @@ export function computeCalls(game) {
       const what = st.neutral === 'sc' ? 'safety car' : 'virtual safety car'
       const why = c.lastStop >= st.seg - 8 ? 'The tyres are almost new.' : lapsLeft < 10 ? `Only ${lapsLeft} laps left.` : g.seconds > 1 ? `A stop costs about ${Math.round(st.track.pitLoss * (st.neutral === 'sc' ? 0.5 : 0.6))} s instead of ${st.track.pitLoss} s.` : 'The saving does not beat the current plan.'
       call = { kind: st.neutral, title: `Box under the ${what}?`, text: `${c.e.name}: ${tyreText}. ${why}`, options: callOptions(st, c, g.comp), recommend: adv ? `box:${adv.comp}` : 'stay' }
-    } else if (adv?.reason === 'puncture') {
-      // Nothing to decide: the car limps in for the best tyre, and the radio says so.
+    } else if (adv?.reason === 'puncture' || adv?.reason === 'sc' || adv?.reason === 'vsc') {
+      // Nothing to decide: the car limps in for the best tyre, and the radio
+      // says so; or the safety car was already put to the pit wall on its first lap.
     } else if (adv) {
       const titles = { plan: 'The planned stop is due', cliff: 'The tyres are falling off', rain: 'Rain: switch tyres?', drying: 'The track is drying', damage: 'Front-wing damage', 'compound rule': 'A second compound is needed', puncture: 'Puncture' }
       call = { kind: adv.reason, title: titles[adv.reason] ?? 'Box?', text: `${c.e.name}: ${tyreText}, ${lapsLeft} laps left.`, options: callOptions(st, c, adv.comp), recommend: `box:${adv.comp}` }
@@ -434,7 +493,7 @@ export function computeCalls(game) {
 // How often the strategist's own judgement gets a call right: under half the
 // time for a weak one, a little over half at 60, nearly always for the best.
 export const judgement = (rating) => clamp(SETTLE.judgeBase + rating * SETTLE.judgePerPoint, 0.4, 0.97)
-export const SETTLE = { judgeBase: -0.05, judgePerPoint: 0.0103, clearly: 0.3 }
+export const SETTLE = { judgeBase: -0.02, judgePerPoint: 0.0103, clearly: 0.3 }
 
 // The strategist's pick is a judgement call, separate from the simulations
 // behind the estimates. Judged right, it goes with the numbers when they
