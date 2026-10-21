@@ -1,4 +1,4 @@
-// Race weekend W5 check: what the pit wall is worth (RACE_WEEKEND.md 2 and 7).
+// Race weekend W5 check: what the pit wall is worth (RACE_WEEKEND.md, principle 1).
 // The same races, with the same luck, run four ways from the grid:
 //   average: every call as the team's strategist (rated 60) recommends
 //   expert:  every call to the option the numbers say is best

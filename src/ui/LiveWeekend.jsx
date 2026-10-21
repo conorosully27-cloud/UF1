@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { PLAYER } from '../engine/game.js'
-import { TYRES, ORDERS, planRest, lapAt, tyreLife, wearRate, qualiDrop, QUALI_MINUTES } from '../engine/weekend.js'
+import { TYRES, ORDERS, planRest, tyreLife, wearRate, qualiDrop, QUALI_MINUTES } from '../engine/weekend.js'
 import {
   setWing, runQualifying, setStartTyre, setOrders, startRace, answerCall, followStrategist, nextLap, playToMoment, setAutoCalls,
   finishWeekend, boxCar, objectivesNow, setQualiPlan, setTow, qualiOutlook, startSession, finishSession, setLateRun, doneWatching,
@@ -47,7 +47,7 @@ export function DriverTag({ game, id, slot, name, code }) {
 }
 
 const myCars = (st) => st.cars.filter((c) => c.e.isPlayer)
-const stintAge = (st, c) => lapAt(st, st.seg) - c.stints[c.stints.length - 1].lap
+const stintAge = (st, c) => st.lap - c.stints[c.stints.length - 1].lap
 const surname = (name) => name.split(' ').slice(-1)[0]
 const dc = (game, c) => ({ '--dc': driverColor(game, c.id, c.e.slot) })
 
@@ -440,7 +440,7 @@ function FinalRuns({ game, act, cur, s }) {
 function planText(st, c, comp) {
   const p = planRest(st, c, 0, comp, 0, false)
   if (!p.stops.length) return { text: 'no stop', cost: p.cost }
-  return { text: [comp, ...p.stops.map((s) => s.comp)].join(' → ') + ` · stop${p.stops.length > 1 ? 's' : ''} lap ${p.stops.map((s) => lapAt(st, s.seg)).join(' and ')}`, cost: p.cost }
+  return { text: [comp, ...p.stops.map((s) => s.comp)].join(' → ') + ` · stop${p.stops.length > 1 ? 's' : ''} lap ${p.stops.map((s) => s.lap).join(' and ')}`, cost: p.cost }
 }
 
 function QualiTower({ game, st }) {
@@ -514,7 +514,7 @@ function GridScreen({ game, act }) {
 // playback; otherwise from the race as it stands.
 function Tower({ game, st, snap, lastOrder }) {
   const rows = snap ? snap.order : st.order.map((i) => ({ c: st.cars[i], gap: null, tyre: st.cars[i].tyre }))
-  const out = st.cars.filter((c) => c.status !== 'running' && !(snap && snap.order.some((r) => r.c === c))).sort((a, b) => b.dnfSeg - a.dnfSeg)
+  const out = st.cars.filter((c) => c.status !== 'running' && !(snap && snap.order.some((r) => r.c === c))).sort((a, b) => b.dnfLap - a.dnfLap)
   const leader = rows[0]?.c
   return (
     <ol className="tower">
@@ -581,7 +581,7 @@ function CarCard({ game, act, st, c, w, row }) {
   const life = tyreLife(c)
   const rate = wearRate(st, c)
   const lapsToCliff = Math.round((TYRES[c.tyre].life - c.wear) / rate)
-  const cnd = st.cond[Math.min(st.seg, st.S - 1)]
+  const cnd = st.cond[Math.min(st.lap, st.laps - 1)]
   const comps = cnd === 'dry' ? SLICKS : ['I', 'W']
   const box = w.boxes?.[c.id]
   const last = [...w.radio].reverse().find((r) => r.id === c.id)
@@ -650,8 +650,8 @@ function RaceScreen({ game, act }) {
   // The picture on screen: a lap being played back, or the race as it stands.
   const snap = pb.frame ? frameSnapshot(st, pb.frame, pb.p) : st.started ? stateSnapshot(st) : gridSnapshot(st)
   const playingBack = !!pb.frame
-  const lap = playingBack ? snap.lap : w.phase === 'flag' ? st.laps : lapAt(st, st.seg)
-  const cnd = st.cond[Math.min(playingBack ? pb.frame.seg : st.seg, st.S - 1)]
+  const lap = playingBack ? snap.lap : w.phase === 'flag' ? st.laps : st.lap
+  const cnd = st.cond[Math.min(playingBack ? pb.frame.lap : st.lap, st.laps - 1)]
   const neutral = playingBack ? pb.frame.under : st.neutral
   const rowsById = snap ? Object.fromEntries(snap.order.map((r, i) => [r.c.id, { ...r, pos: i + 1 }])) : {}
   const waiting = pb.caughtUp && open.length > 0
@@ -662,7 +662,7 @@ function RaceScreen({ game, act }) {
   // changes while the screen is open count, so leaving and coming back does
   // not replay them; podium places once a car a race.
   const mine = myCars(st)
-  const outNow = mine.filter((c) => (playingBack ? (c.status !== 'running' && c.dnfSeg < pb.frame.seg && !pb.frame.out.includes(c.idx)) || snap.gone.some((r) => r.c === c) : c.status !== 'running')).map((c) => c.id)
+  const outNow = mine.filter((c) => (playingBack ? (c.status !== 'running' && c.dnfLap < pb.frame.lap && !pb.frame.out.includes(c.idx)) || snap.gone.some((r) => r.c === c) : c.status !== 'running')).map((c) => c.id)
   const order = (snap?.order ?? []).map((r) => r.c)
   const revealed = playingBack ? st.events.slice(0, pb.frame.events1).filter((e, i) => i < pb.frame.events0 || e.lap <= snap.lap).length : st.events.length
   const facts = {

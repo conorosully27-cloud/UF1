@@ -251,7 +251,7 @@ function SaveTab({ game, setGame }) {
   )
 }
 
-// Five sections, each with its own tabs (RACE_WEEKEND.md section 8). Save and settings sit behind the menu.
+// Five sections, each with its own tabs (RACE_WEEKEND.md, W2). Save and settings sit behind the menu.
 const SECTIONS = [
   { id: 'race', label: 'Race', ico: '🏁', tabs: [['home', 'Pit wall'], ['decisions', 'Decisions']] },
   { id: 'car', label: 'Car', ico: '🔧', tabs: [['car', 'Car']] },
