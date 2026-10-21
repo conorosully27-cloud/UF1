@@ -17,10 +17,12 @@ The game saves in the browser's local storage.
 ## Checking it
 
 ```
-npm test         # every check: about 15 minutes
+npm run test:fast     # everyday: smaller samples, about a minute
+npm test              # everything, full samples: about 4 minutes; run before merging
+npm run test:weekend  # just the race-weekend checks
 ```
 
-`npm test` runs these, in order; each can also be run on its own with `node tests/<name>.js`:
+The checks run side by side, one per processor core (`tests/run.js`); `node tests/run.js w6-check m2-check` runs only those, and each can also be run on its own with `node tests/<name>.js`. The fast run uses smaller samples (`FAST=1`) and leaves out the pit-wall measure, so its calibration numbers are only a rough guide.
 
 | Check | What it covers |
 |---|---|

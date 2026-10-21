@@ -6,7 +6,8 @@ import { newGame, startSeason, simulateRound, raceRound, endSeason, getStandings
 import { carScore, SIM } from '../src/engine/weekend.js'
 import { TRACK_BY_ID } from '../src/engine/data/tracks.js'
 
-const SEASONS = Number(process.argv[2] || 1000)
+// FAST=1 (npm run test:fast) runs 200 seasons: the calibration is then only a rough guide.
+const SEASONS = Number(process.argv[2] || (process.env.FAST ? 200 : 1000))
 // For tuning: SIM_OVERRIDE='{"dayFormSd":0.04}' node tests/m1-check.js 200
 if (process.env.SIM_OVERRIDE) Object.assign(SIM, JSON.parse(process.env.SIM_OVERRIDE))
 const setup = (seed) => newGame({ seed, teamName: 'Test GP', supplier: 'ferrari', driverIds: ['herta', 'doohan'], options: { decisions: false, targets: false } })

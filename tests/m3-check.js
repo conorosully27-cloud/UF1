@@ -9,7 +9,10 @@ import { startProject } from '../src/engine/development.js'
 import { autoDrivers } from '../src/engine/people.js'
 import { steady, decide, pickTargets, playFullSeason } from './bot.js'
 
-const TARGET_SEASONS = Number(process.argv[2] || 120)
+// FAST=1 (npm run test:fast) runs smaller samples: the same checks, less precise.
+const FAST = !!process.env.FAST
+const TARGET_SEASONS = Number(process.argv[2] || (FAST ? 10 : 60))
+const LONG_SEASONS = FAST ? 3 : 8
 const clone = (x) => JSON.parse(JSON.stringify(x))
 const setup = (seed, extra = {}) => newGame({ seed, teamName: 'Test GP', supplier: 'ferrari', driverIds: ['zhou', 'herta'], reserveId: 'crawford', ...extra })
 
@@ -163,9 +166,12 @@ function hasBadNumber(x, path = '') {
   }
   const verdicts = {}
   for (const d of DECK) verdicts[d.id] = { a: 0, b: 0 }
-  for (const base of stages) for (const d of DECK) {
-    const g = clone(base)
-    if (forceDecision(g, d.id)) verdicts[d.id][bestChoice(g)]++
+  // Valuing an option changes nothing, so each card is put to the same saved
+  // game in turn (copying the game 80 times a situation was most of the cost).
+  for (const g of stages) {
+    const held = g.decision
+    for (const d of DECK) if (forceDecision(g, d.id)) verdicts[d.id][bestChoice(g)]++
+    g.decision = held
   }
   const never = Object.entries(verdicts).filter(([, v]) => v.a + v.b === 0).map(([id]) => id)
   const oneSided = Object.entries(verdicts).filter(([, v]) => v.a + v.b > 0 && (v.a === 0 || v.b === 0)).map(([id, v]) => `${id} (always ${v.a ? 'A' : 'B'})`)
@@ -254,15 +260,15 @@ function hasBadNumber(x, path = '') {
   const run = (choose) => {
     const g = setup(701)
     const rows = []
-    for (let s = 0; s < 8; s++) { const { summary } = playFullSeason(g, steady, { choose, level: 'standard', runs: 30 }); rows.push(summary.playerPos) }
+    for (let s = 0; s < LONG_SEASONS; s++) { const { summary } = playFullSeason(g, steady, { choose, level: 'standard', runs: 30 }); rows.push(summary.playerPos) }
     return { g, rows }
   }
   const best = run('best')
-  check('eight seasons with decisions and targets leave no broken numbers', !hasBadNumber(best.g), hasBadNumber(best.g) || '')
-  check('targets are reviewed every season', best.g.targets.history.length === 8)
-  check('the log holds a decision for every round', best.g.decisionLog.length === 128)
+  check(`${LONG_SEASONS} seasons with decisions and targets leave no broken numbers`, !hasBadNumber(best.g), hasBadNumber(best.g) || '')
+  check('targets are reviewed every season', best.g.targets.history.length === LONG_SEASONS)
+  check('the log holds a decision for every round', best.g.decisionLog.length === 16 * LONG_SEASONS)
   const met = best.g.targets.history.reduce((s, h) => s + h.report.filter((r) => r.met).length, 0)
-  console.log(`\nSteady manager, 8 seasons, Standard targets, bot's preferred A/B option: positions ${best.rows.join(', ')}; ${met} of 24 targets met; owner confidence ${best.g.confidence.toFixed(0)}; crises ${best.g.finance.crises}`)
+  console.log(`\nSteady manager, ${LONG_SEASONS} seasons, Standard targets, bot's preferred A/B option: positions ${best.rows.join(', ')}; ${met} of ${3 * LONG_SEASONS} targets met; owner confidence ${best.g.confidence.toFixed(0)}; crises ${best.g.finance.crises}`)
   const worst = run('worst')
   console.log(`Same save taking the other option every time: positions ${worst.rows.join(', ')}; owner confidence ${worst.g.confidence.toFixed(0)}; crises ${worst.g.finance.crises}`)
 }
