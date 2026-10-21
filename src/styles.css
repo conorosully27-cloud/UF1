@@ -133,6 +133,9 @@ ul.plain { margin: 4px 0; padding-left: 18px; }
 .trow.me { background: linear-gradient(90deg, color-mix(in srgb, var(--dc, var(--accent)) 26%, transparent), color-mix(in srgb, var(--dc, var(--accent)) 4%, transparent)); }
 .trow.me .bar { width: 6px; }
 .trow.me .p, .trow.me .code { color: var(--text); }
+/* Live qualifying: a lap just set, and cars in the knockout zone. */
+.trow.fresh .g { color: var(--good); font-weight: 700; }
+.trow.danger .p { color: var(--bad); }
 .trow.out { opacity: .45; }
 .trow .tyre { justify-content: flex-end; }
 .up { color: var(--good); font-size: 11px; margin-left: 3px; }

@@ -308,8 +308,9 @@ export function postRace(game, result, objectives = []) {
   return result
 }
 
-// A few hundred quick runs of the coming season under average management.
-export function projectSeason(game, runs = 150) {
+// A hundred quick runs of the coming season under average management (150
+// before W6, when a race took about half as long to simulate).
+export function projectSeason(game, runs = 100) {
   const out = []
   for (let i = 0; i < runs; i++) {
     const g = clone(game)
@@ -324,7 +325,7 @@ export function projectSeason(game, runs = 150) {
 }
 
 // Pre-season, step two: project the year and offer six targets to choose from.
-export function prepareTargets(game, runs = 150) {
+export function prepareTargets(game, runs = 100) {
   if (game.phase !== 'preseason') throw new Error('Not in pre-season')
   if (!seatsReady(game)) throw new Error('Sign two race drivers first. A driver who is out of contract leaves when the market closes')
   closeMarket(game)

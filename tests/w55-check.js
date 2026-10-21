@@ -58,7 +58,12 @@ function play(id, choice, roll, seed = 3) {
   check('and the card in the log says what happened, after the race', a.log.outcome.some((l) => /bogs down/.test(l)))
 }
 {
-  const hit = play('actuator', 'b', 0)
+  // A seed where the car lasts long enough for the actuator to fail.
+  let hit
+  for (let seed = 3; seed < 20; seed++) {
+    hit = play('actuator', 'b', 0, seed)
+    if (hit.events.length) break
+  }
   const miss = play('actuator', 'b', 0.99)
   const ev = hit.events[0]
   const laps = hit.st.laps

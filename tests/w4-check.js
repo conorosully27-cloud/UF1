@@ -7,7 +7,7 @@
 
 import { newGame, startSeason, createWeekendRace, PLAYER } from '../src/engine/game.js'
 import {
-  beginWeekend, beginPractice, toQualifying, setWing, startRace, nextBlock, setAutoCalls, finishWeekend, playsPractice, playsQualifying,
+  beginWeekend, beginPractice, toQualifying, setWing, startRace, nextLap, setAutoCalls, finishWeekend, playsPractice, playsQualifying,
 } from '../src/engine/live.js'
 import { practiceRun, setBalance, setRunKind, idealBalance, engineersBalance, balanceLoss, SETUP } from '../src/engine/practice.js'
 import { teamOps } from '../src/engine/core.js'
@@ -143,7 +143,7 @@ function weekend(seed) {
   startRace(g)
   setAutoCalls(g, true)
   let blocks = 0
-  while (g.weekend.phase === 'race' && blocks < 100) { nextBlock(g); blocks++ }
+  while (g.weekend.phase === 'race' && blocks < 100) { nextLap(g); blocks++ }
   check('with the strategist on the calls the race plays to the flag without stopping', g.weekend.phase === 'flag')
   const res = finishWeekend(g)
   check('and the result is filed', res.race.length === 24 && !g.weekend)
