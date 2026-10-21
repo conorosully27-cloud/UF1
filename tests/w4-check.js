@@ -76,6 +76,7 @@ function weekend(seed) {
 }
 {
   const g = weekend(5)
+  g.weekend.friday = ['dry', 'dry', 'dry'] // a wet long run teaches nothing (w55-check)
   beginPractice(g)
   setRunKind(g, 1, 'long')
   practiceRun(g)

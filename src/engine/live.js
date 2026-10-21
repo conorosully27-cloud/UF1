@@ -12,7 +12,7 @@ import {
 import { INCIDENT_DAY, isIncidentCard, resolveDecision, bestChoice } from './decisions.js'
 import { weekendObjectives, objectiveStatus } from './highlights.js'
 import { hashString, streamRng } from './rng.js'
-import { startPractice, engineersBalance, practiceRun } from './practice.js'
+import { startPractice, engineersBalance, practiceRun, fridayWeather, SETUP } from './practice.js'
 
 const ROLLOUTS = 4
 const SLICKS = ['S', 'M', 'H']
@@ -34,11 +34,12 @@ export function beginWeekend(game) {
   if (incident) game.decision = null
   preRace(game)
   const wingAdvice = [0, 1].map((s) => recommendedWing(game, s))
+  const friday = fridayWeather(game)
   game.weekend = {
     live: true, season: game.season, round: game.round, phase: 'briefing',
     wing: wingAdvice.map((a) => a.level), wingAdvice, balance: [0, 1].map((s) => engineersBalance(game, s)), orders: [{ ...DEFAULT_ORDERS }, { ...DEFAULT_ORDERS }],
     objectives: weekendObjectives(game), calls: [], answered: {}, boxes: {}, log: [], radio: [], snapshots: [], state: null,
-    forecast: forecast(game),
+    friday, forecast: forecast(game, friday),
     incident: incident ? { ...incident, day: INCIDENT_DAY[incident.id] } : null,
   }
   return game.weekend
@@ -72,12 +73,18 @@ export function resolveIncident(game, choice) {
   if (!inc) throw new Error('There is no incident waiting')
   const n = { mods: game.weekendMods.length, buffs: game.buffs.length, later: game.delayed.length }
   resolveDecision(game, choice, inc)
-  const added = game.weekendMods.slice(n.mods).map((x) => ({ car: x.car, mods: x.mods }))
+  const added = game.weekendMods.slice(n.mods).map((x) => ({ car: x.car, mods: x.mods, timed: x.timed }))
   // Decided after the round's own countdown, so it lasts as long as it would have before the weekend.
   for (const b of game.buffs.slice(n.buffs)) { b.roundsLeft--; added.push({ car: b.car, mods: b.mods }) }
   for (const d of game.delayed.slice(n.later)) d.roundsLeft--
   if (w.state) {
-    for (const x of added) for (const c of myCars(w.state)) if (x.car === 'both' || x.car === c.e.slot) addCarMods(c, x.mods)
+    for (const x of added) {
+      for (const c of myCars(w.state)) {
+        if (x.car !== 'both' && x.car !== c.e.slot) continue
+        addCarMods(c, x.mods)
+        if (x.timed) (c.timed ??= []).push({ ...x.timed })
+      }
+    }
   }
   if (w.skipQuali && w.phase === 'quali' && !incidentDue(game)) { w.skipQuali = false; runQualifying(game) }
   return inc
@@ -89,14 +96,14 @@ const teamChoice = (game) => bestChoice(game, game.weekend.incident)
 // The weather forecast at the strategist's precision: a strong Chief
 // Strategist's numbers lean towards what will really happen, a weak one's
 // stay close to the track's usual odds.
-function forecast(game) {
+function forecast(game, friday = []) {
   const track = game.weatherOverride == null ? currentTrack(game) : { ...currentTrack(game), rain: game.weatherOverride }
   const peek = createWeekendRace(game, { liveQuali: true })
   const r = game.org.keyStaff.chiefStrategist.rating
   const k = clamp((r - 30) / 70, 0.1, 0.9)
   const lean = (base, truth) => Math.round(100 * clamp(base + ((truth ? 1 : 0) - base) * k, 0.02, 0.98))
   const race = lean(track.rain, peek.raceWeather !== 'dry')
-  const out = { quali: lean(track.rain * 0.8, peek.qualiWet), race, hint: null, sure: r >= 75 }
+  const out = { practice: lean(track.rain * SETUP.fridayRain, friday.includes('wet')), quali: lean(track.rain * 0.8, peek.qualiWet), race, hint: null, sure: r >= 75 }
   // A good strategist can say roughly when the rain comes or goes.
   if (r >= 70 && peek.raceWeather === 'mixed') out.hint = peek.cond[0] === 'dry' ? 'Rain is more likely late in the race' : 'A wet start that should dry out'
   else if (r >= 70 && peek.raceWeather === 'wet') out.hint = 'Rain for most of the race'

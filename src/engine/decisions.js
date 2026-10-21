@@ -115,7 +115,9 @@ function applyEffect(game, e, st) {
   const o = game.org
   if ('chance' in e) {
     const hit = st.rolls[st.i++ % st.rolls.length] < e.chance
-    const line = e.text?.[hit ? 0 : 1]
+    // A chance that plays out on track (`wait`) is rolled now but kept back:
+    // the race feed tells what happened, when it happens.
+    const line = 'wait' in e ? e.wait : e.text?.[hit ? 0 : 1]
     if (line) st.out.push(line)
     applyEffects(game, hit ? e.then : e.else || [], st)
     return
@@ -125,7 +127,7 @@ function applyEffect(game, e, st) {
     const [area, x] = e.rating
     car[area] = clamp(car[area] + x, 20, area === 'chassis' ? Math.max(car[area], chassisCap(game)) : 99)
   }
-  if ('weekend' in e) game.weekendMods.push(e.weekend)
+  if ('weekend' in e) game.weekendMods.push(e.weekend.timed ? { ...e.weekend, timed: { ...e.weekend.timed, title: st.title } } : e.weekend)
   if ('buff' in e) game.buffs.push({ roundsLeft: e.buff.rounds, car: e.buff.car ?? 'both', mods: e.buff.mods })
   if ('weather' in e) game.weatherOverride = e.weather
   if ('skill' in e) o.staff[e.skill[0]].skill = clamp(o.staff[e.skill[0]].skill + e.skill[1], 20, 99)
@@ -210,8 +212,21 @@ export function progressDelayed(game) {
 const stakes = (game) => 1 + game.reputation / 40 // results are worth more to a bigger team
 const yearPoints = (c, pool) => (c.cap[pool] * ROUNDS) / 10 // rating points of work a year
 
+// A timed effect counts for the share of the race it covers; a time penalty
+// counts as time lost on strategy.
+function timedMods(w) {
+  const t = w.timed
+  if (!t?.mods) return w.mods
+  const m = { ...w.mods }
+  for (const [k, v] of Object.entries(t.mods)) {
+    const key = k === 'timePenalty' ? 'stratMean' : k
+    m[key] = (m[key] ?? 0) + v * (t.share ?? 1)
+  }
+  return m
+}
+
 function weekendValue(game, c, w, rainOverride) {
-  const m = w.mods
+  const m = timedMods(w)
   const n = w.car === 'both' ? 2 : 1
   const t = c.track
   const second = 0.4 * stakes(game) // one car a second a lap quicker for one race

@@ -6,6 +6,9 @@
 //   for this track and driver; every step away costs SETUP.balanceCost² a lap.
 // The engineers start from their own guess, as good as the team's setup work.
 // Practice that is skipped keeps the engineers' setup.
+// Friday can be wet: a wet run says little about the dry setup, and a long
+// run in the wet teaches nothing about the race tyres. A practice crash (the
+// weekend's incident) ends that car's Friday.
 
 import { clamp, currentTrack, effectiveCar, teamOps, PLAYER } from './core.js'
 import { idealWing, wingLoss, carScore, SIM } from './weekend.js'
@@ -15,6 +18,9 @@ export const SETUP = {
   runs: 3, // runs for each car
   balanceCost: 0.1, // seconds a lap per balance step², away from the ideal
   longRunWear: 0.95, // tyre wear in the race after a long run
+  fridayRain: 0.7, // chance of rain on Friday, against the track's chance in the race
+  wetLap: 8, // seconds a lap slower on a wet track
+  wetRead: 1.2, // extra error, in balance steps, in what a wet run says about the dry setup
 }
 export const BALANCE_LABELS = ['Oversteer', 'Loose', 'Neutral', 'Stable', 'Understeer']
 
@@ -50,6 +56,18 @@ export function setupLossFor(game, slot, balance) {
   return balanceLoss(balance, idealBalance(game, slot))
 }
 
+// Friday's conditions, run by run: dry, all wet, or rain for the first or
+// the last run. Keyed to the round, so it is the same whatever is decided.
+export function fridayWeather(game) {
+  const track = currentTrack(game)
+  const rain = game.weatherOverride ?? track.rain
+  const rng = streamRng(game.seed, 'friday', game.season, game.round)
+  const dry = Array(SETUP.runs).fill('dry')
+  if (!rng.chance(rain * SETUP.fridayRain)) return dry
+  const kind = rng.pick(['wet', 'early', 'late'])
+  return dry.map((x, i) => (kind === 'wet' || (kind === 'early' && i === 0) || (kind === 'late' && i === SETUP.runs - 1) ? 'wet' : 'dry'))
+}
+
 export function startPractice(w, game) {
   w.practice = {
     cars: [0, 1].map((slot) => ({ balance: w.balance[slot], kind: 'setup', runs: [], left: SETUP.runs, longRun: false })),
@@ -83,17 +101,35 @@ export function practiceRun(game) {
   const track = currentTrack(game)
   const car = effectiveCar(game, PLAYER)
   const ideal = idealWing(track, car)
+  const inc = w.incident
   for (const [slot, p] of w.practice.cars.entries()) {
     if (p.left <= 0) continue
     const n = SETUP.runs - p.left
+    const wet = (w.friday?.[n] ?? 'dry') === 'wet'
+    // The practice crash the weekend's incident is about: that car's Friday ends in the barrier.
+    if (inc?.id === 'practice-crash' && !inc.resolved && inc.params.slot === slot && n === 0) {
+      p.runs.push({ n: 1, kind: p.kind, wing: w.wing[slot], balance: p.balance, wet, time: null, crash: true, notes: ['Into the barrier on the out-lap. Our Friday is over.'] })
+      p.left = 0
+      continue
+    }
     const rng = streamRng(game.seed, 'practice', game.season, game.round, slot, n)
     const d = driverOf(game, slot)
     const wing = w.wing[slot]
     const loss = wingLoss(wing, ideal) + balanceLoss(p.balance, idealBalance(game, slot))
     const lap = track.baseLap + (100 - carScore(car, track.w)) * SIM.secPerPoint + (100 - d.pace) * SIM.secPerPace + loss + rng.normal(0, 0.04)
     const sd = readSd(game, slot)
-    const run = { n: n + 1, kind: p.kind, wing, balance: p.balance }
-    if (p.kind === 'long') {
+    const run = { n: n + 1, kind: p.kind, wing, balance: p.balance, wet }
+    if (wet) {
+      const time = lap + SETUP.wetLap + Math.abs(rng.normal(0, 0.6))
+      if (p.kind === 'long') {
+        run.time = time + 1.4
+        run.notes = ['Long run on a wet track: it tells us nothing about the race tyres.']
+      } else {
+        run.time = time
+        const blur = sd + SETUP.wetRead
+        run.notes = ['Wet track: hard to read the dry setup from this.', balanceWords(p.balance - idealBalance(game, slot) + rng.normal(0, blur))]
+      }
+    } else if (p.kind === 'long') {
       p.longRun = true
       run.time = lap + 1.4 + Math.abs(rng.normal(0, 0.1))
       run.notes = ['Long run done: I know how these tyres go off now.']
