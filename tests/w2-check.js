@@ -6,7 +6,7 @@
 
 import { newGame, startSeason, simulateRound, endSeason, PLAYER } from '../src/engine/game.js'
 import {
-  beginWeekend, setWing, runQualifying, setStartTyre, setOrders, startRace, answerCall, nextBlock, handOver, finishWeekend, boxCar,
+  beginWeekend, setWing, runQualifying, setStartTyre, setOrders, startRace, answerCall, nextLap, handOver, finishWeekend, boxCar,
   objectivesNow, quickFinish, weekendActive, playToMoment,
 } from '../src/engine/live.js'
 import { LIVE_CALLS } from '../src/engine/decisions.js'
@@ -26,23 +26,23 @@ const expectThrow = (fn) => { try { fn(); return false } catch { return true } }
 const mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0)
 const finish = (res) => res.race.filter((r) => r.teamId === PLAYER).map((r) => (r.status === 'dnf' ? 23 : r.pos))
 
-// Plays one live weekend: `policy(call, game)` picks each option, `beforeBlock` can change orders.
-function playLive(g, policy, { beforeBlock, roundTrip } = {}) {
+// Plays one live weekend: `policy(call, game)` picks each option, `beforeLap` can change orders.
+function playLive(g, policy, { beforeLap, roundTrip } = {}) {
   beginWeekend(g)
   runQualifying(g)
   startRace(g)
   let calls = 0
-  let blocks = 0
+  let laps = 0
   while (g.weekend.phase === 'race') {
     for (const call of g.weekend.calls) {
       if (call.id in g.weekend.answered) continue
       calls++
       answerCall(g, call.id, policy(call, g))
     }
-    if (beforeBlock) beforeBlock(g, blocks)
-    nextBlock(g)
-    blocks++
-    if (roundTrip === blocks) g = Object.assign(g, clone(g))
+    if (beforeLap) beforeLap(g, laps)
+    nextLap(g)
+    laps++
+    if (roundTrip === laps) g = Object.assign(g, clone(g))
   }
   const result = finishWeekend(g)
   return { result, calls }
@@ -86,9 +86,9 @@ function seasonGame(seed, extra) {
   boxCar(g, mine[0].id, 'H')
   const stops = mine[0].stops
   while (g.weekend.calls.some((c) => !(c.id in g.weekend.answered))) answerCall(g, g.weekend.calls.find((c) => !(c.id in g.weekend.answered)).id, 'stay')
-  nextBlock(g)
+  nextLap(g)
   const after = g.weekend.state.cars.find((c) => c.id === mine[0].id)
-  check('a stop called from the car controls happens in the next block', after.stops === stops + 1 && after.tyre === 'H')
+  check('a stop called from the car controls happens on the next lap', after.stops === stops + 1 && after.tyre === 'H')
   handOver(g)
   check('handing over runs the race to the flag', g.weekend.phase === 'flag' && g.weekend.state.done)
   const round = g.round
@@ -119,11 +119,11 @@ function seasonGame(seed, extra) {
   }
   check('the key-moment skip stops only at a call, a safety car, the weather, trouble or the flag', !bad, bad ?? '')
   const frames = g.weekend.frames
-  check('every block is recorded for playback, in order', frames.length === st.S && frames.every((f, i) => f.seg === i))
-  check('each record has every car\'s race time at both ends of the block', frames.every((f) => f.t0.length === 24 && f.t1.length === 24 && f.t1.every(Number.isFinite)))
+  check('every lap is recorded for playback, in order', frames.length === st.S && frames.every((f, i) => f.seg === i))
+  check('each record has every car\'s race time at both ends of the lap', frames.every((f) => f.t0.length === 24 && f.t1.length === 24 && f.t1.every(Number.isFinite)))
   const outs = frames.reduce((n, f) => n + f.out.length, 0)
-  check('retirements are recorded in the block they happen', outs === g.weekend.state.cars.filter((c) => c.status !== 'running').length, `${outs} recorded`)
-  check('the key-moment skip pauses a few times a race, not every block', stops >= 2 && stops < st.S, `${stops} stops in ${st.S} blocks`)
+  check('retirements are recorded on the lap they happen', outs === g.weekend.state.cars.filter((c) => c.status !== 'running').length, `${outs} recorded`)
+  check('the key-moment skip pauses a few times a race, not every lap', stops >= 2 && stops < st.S / 2, `${stops} stops in ${st.S} laps`)
 }
 
 // ---- Same choices, same race; a mid-race save carries on ----
@@ -134,10 +134,10 @@ function seasonGame(seed, extra) {
   const ra = playLive(a, follow).result
   const rb = playLive(b, follow).result
   check('the same choices on the same save give the same race', JSON.stringify(ra.race) === JSON.stringify(rb.race) && JSON.stringify(ra.events) === JSON.stringify(rb.events))
-  const rc = playLive(c, follow, { roundTrip: 3 }).result
+  const rc = playLive(c, follow, { roundTrip: 15 }).result
   check('a save written mid-race and loaded again finishes the same way', JSON.stringify(ra.race) === JSON.stringify(rc.race))
   const d = seasonGame(21)
-  const rd = playLive(d, follow, { beforeBlock: (g, n) => { if (n === 2) for (const car of g.weekend.state.cars.filter((x) => x.e.isPlayer)) setOrders(g, car.id, { pace: 'push' }) } }).result
+  const rd = playLive(d, follow, { beforeLap: (g, n) => { if (n === 10) for (const car of g.weekend.state.cars.filter((x) => x.e.isPlayer)) setOrders(g, car.id, { pace: 'push' }) } }).result
   const rivals = (r) => JSON.stringify(r.race.filter((x) => x.teamId !== PLAYER && x.status === 'dnf').map((x) => [x.id, x.reason]))
   check('a different order for your cars does not change rivals\' breakdowns', rivals(ra) === rivals(rd), `${rivals(ra)} vs ${rivals(rd)}`)
 }

@@ -10,7 +10,7 @@
 // Usage: node tests/w5-strategist.js [races]   (RATING=80 for another strategist)
 
 import { newGame, startSeason, PLAYER } from '../src/engine/game.js'
-import { beginWeekend, runQualifying, startRace, nextBlock, answerCall } from '../src/engine/live.js'
+import { beginWeekend, runQualifying, startRace, nextLap, answerCall } from '../src/engine/live.js'
 
 const RACES = Number(process.argv[2] || 120)
 const RATING = Number(process.env.RATING || 60)
@@ -45,7 +45,7 @@ function run(game, policy) {
       if (key !== call.recommend) differ++
       answerCall(g, call.id, key)
     }
-    nextBlock(g)
+    nextLap(g)
   }
   const st = w.state
   const places = st.cars.filter((c) => c.e.isPlayer).map((c) => (c.status === 'running' ? st.order.indexOf(c.idx) + 1 : 24))

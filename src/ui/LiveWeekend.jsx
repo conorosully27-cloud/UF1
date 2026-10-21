@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { PLAYER } from '../engine/game.js'
 import { TYRES, ORDERS, planRest, lapAt, tyreLife, wearRate, qualiDrop } from '../engine/weekend.js'
 import {
-  setWing, runQualifying, setStartTyre, setOrders, startRace, answerCall, followStrategist, nextBlock, playToMoment, setAutoCalls,
+  setWing, runQualifying, setStartTyre, setOrders, startRace, answerCall, followStrategist, nextLap, playToMoment, setAutoCalls,
   finishWeekend, boxCar, objectivesNow, setQualiPlan, setTow, runSession, qualiOutlook,
   beginPractice, toQualifying, playsPractice, playsQualifying, runPractice, incidentDue, resolveIncident,
 } from '../engine/live.js'
@@ -368,7 +368,7 @@ function GridScreen({ game, act }) {
 
 // ---- Sunday ----
 
-// The timing tower. While a block plays back the order and gaps come from the
+// The timing tower. While a lap plays back the order and gaps come from the
 // playback; otherwise from the race as it stands.
 function Tower({ game, st, snap, lastOrder }) {
   const rows = snap ? snap.order : st.order.map((i) => ({ c: st.cars[i], gap: null, tyre: st.cars[i].tyre }))
@@ -498,14 +498,14 @@ function Feed({ game, st, w, upto }) {
 function RaceScreen({ game, act }) {
   const w = game.weekend
   const st = w.state
-  const step = useCallback((g) => nextBlock(g), [])
+  const step = useCallback((g) => nextLap(g), [])
   const moments = useMoments()
   // The race waits for the start lights, and goes when they go out.
   const [holding, setHolding] = useState(false)
   const pb = usePlayback(game, act, step, holding)
   const open = w.calls.filter((c) => !(c.id in w.answered))
   const flag = w.phase === 'flag' && pb.caughtUp
-  // The picture on screen: a block being played back, or the race as it stands.
+  // The picture on screen: a lap being played back, or the race as it stands.
   const snap = pb.frame ? frameSnapshot(st, pb.frame, pb.p) : st.started ? stateSnapshot(st) : gridSnapshot(st)
   const playingBack = !!pb.frame
   const lap = playingBack ? snap.lap : w.phase === 'flag' ? st.laps : lapAt(st, st.seg)

@@ -2,27 +2,27 @@ import React, { useEffect, useRef, useState } from 'react'
 import { TRACK_MAPS, MAP_BOX } from './data/trackMaps.js'
 import { teamColor, driverColor, carCode } from './format.js'
 
-// The race is simulated in blocks of a few laps. Between the ends of a block
-// each car moves at its own average pace for that block, so the playback shows
+// The race is simulated lap by lap. Through each lap every car moves at its
+// own average pace for that lap, so the playback shows
 // the gaps opening and closing, the order changing and the field bunching up
 // behind a safety car, on the real outline of the circuit.
 
 export const LAP_SECONDS = 1.1 // seconds of playback per lap at 1x
 const lapAtSeg = (st, seg) => Math.round(seg * st.segLaps)
 
-// Where every car is, `p` (0 to 1) of the way through the block in `frame`.
+// Where every car is, `p` (0 to 1) of the way through the lap in `frame`.
 // Returns the running order with each car's distance in laps, its gap to the
-// leader in seconds, and whether it is stopping or retiring in this block.
+// leader in seconds, and whether it is stopping or retiring on this lap.
 export function frameSnapshot(st, frame, p) {
   const base = st.track.baseLap
   const L0 = lapAtSeg(st, frame.seg)
   const L1 = lapAtSeg(st, frame.seg + 1)
   const span = L1 - L0
   const out = new Set(frame.out)
-  // On the first block the cars leave from their grid slots, not all from the line.
+  // On the first lap the cars leave from their grid slots, not all from the line.
   const T0 = frame.t0.map((t, i) => L0 * base + t + (frame.seg === 0 ? (st.cars[i].grid - 1) * 0.3 : 0))
   const T1 = frame.t1.map((t) => L1 * base + t)
-  // Cars running when the block began: still running, retiring in it, or retiring later on.
+  // Cars running when the lap began: still running, retiring on it, or retiring later on.
   const runningAtStart = st.cars.filter((c) => c.status === 'running' || out.has(c.idx) || c.dnfSeg > frame.seg)
   const live = runningAtStart.filter((c) => !out.has(c.idx))
   const tau0 = Math.min(...runningAtStart.map((c) => T0[c.idx]))
@@ -40,11 +40,11 @@ export function frameSnapshot(st, frame, p) {
     let pace
     let inPit = false
     if (out.has(i)) {
-      // A car that retires in this block runs to the middle of it and stops there.
+      // A car that retires on this lap runs to the middle of it and stops there.
       pace = leadPace
       d = L0 + (Math.min(tau, tau0 + 0.5 * (leaderEnd - tau0)) - T0[i]) / pace
     } else if (stopping) {
-      // Stops come at the start of a block: down the pit lane from the line
+      // Stops come at the start of a lap: down the pit lane from the line
       // to its exit, slowly, then back up to racing speed.
       pace = Math.max(base * 0.8, (T1[i] - T0[i] - pitLoss) / span)
       const lane = laneExit * pace + pitLoss
@@ -64,7 +64,7 @@ export function frameSnapshot(st, frame, p) {
   return { order: running, gone: rows.filter((r) => r.out), leaderD: lead?.d ?? L0, lap: Math.min(st.laps, Math.max(1, Math.floor((lead?.d ?? L0) + 1))), under: frame.under }
 }
 
-// The race as it stands at the end of the last block run.
+// The race as it stands at the end of the last lap run.
 export function stateSnapshot(st) {
   const order = st.order.map((i) => st.cars[i])
   const L = st.done ? st.laps : lapAtSeg(st, st.seg)
@@ -228,9 +228,9 @@ export function TrackMap({ game, st, snap }) {
   )
 }
 
-// Playback of the race. `view.seg` is the block being shown and `view.p` how
+// Playback of the race. `view.seg` is the lap being shown and `view.p` how
 // far through it; once it catches up with the race the screen shows the race
-// as it stands. While playing, the next block is simulated as soon as the
+// as it stands. While playing, the next lap is simulated as soon as the
 // playback catches up, unless the pit wall has a call waiting.
 export function usePlayback(game, act, step, hold = false) {
   const w = game.weekend
@@ -279,7 +279,7 @@ export function usePlayback(game, act, step, hold = false) {
     return () => cancelAnimationFrame(raf)
   }, [playing, st])
 
-  // Caught up and playing: run the next block, or stop at the flag.
+  // Caught up and playing: run the next lap, or stop at the flag.
   useEffect(() => {
     if (!playing || !caughtUp) return
     if (w.phase !== 'race') { setPlaying(false); return }
