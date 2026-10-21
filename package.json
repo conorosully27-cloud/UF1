@@ -10,13 +10,14 @@
     "test:m1": "node tests/m1-check.js",
     "test:m2": "node tests/m2-check.js",
     "test:m3": "node tests/m3-check.js",
-    "test": "node tests/m1-check.js && node tests/m2-check.js && node tests/m3-check.js && node tests/m4-check.js && node tests/w2-check.js && node tests/w3-check.js && node tests/w4-check.js && node tests/w5-check.js && node tests/w55-check.js && node tests/w6-check.js && node tests/w5-strategist.js",
+    "test": "node tests/run.js",
+    "test:fast": "node tests/run.js --fast",
     "test:m4": "node tests/m4-check.js",
     "test:m5": "node tests/m5-balance.js 200 15",
     "test:w55": "node tests/w55-check.js",
     "test:w6": "node tests/w6-check.js",
     "test:w2": "node tests/w2-check.js",
-    "test:w3": "node tests/w3-check.js && node tests/w4-check.js && node tests/w5-check.js && node tests/w55-check.js && node tests/w6-check.js && node tests/w5-strategist.js"
+    "test:weekend": "node tests/run.js w2-check w3-check w4-check w5-check w55-check w6-check w5-strategist"
   },
   "dependencies": {
     "react": "^18.3.1",
