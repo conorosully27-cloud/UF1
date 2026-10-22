@@ -4,7 +4,7 @@
 // estimate what an option is worth for the scripted managers.
 
 import { PLAYER, ROUNDS, clamp, clock, currentTrack, effectiveCar, playerPosition, playerDrivers } from './core.js'
-import { earn, spend, forecast, perRound, OVERDRAFT } from './economy.js'
+import { earn, spend, forecast, OVERDRAFT } from './economy.js'
 import { capacity, diminishing, chassisCap, rushFirstBuild, plannedSpendPerRound } from './development.js'
 import { headcountCap, engineerCount } from './org.js'
 import { mechFailureChance, crashChance } from './weekend.js'

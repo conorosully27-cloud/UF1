@@ -10,7 +10,7 @@
 // playing any more. Results from an older version of the engine, the bots or
 // this harness are ignored automatically; --fresh clears the file.
 
-import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads'
+import { Worker, isMainThread, parentPort } from 'node:worker_threads'
 import { cpus } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'

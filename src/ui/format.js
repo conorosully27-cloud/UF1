@@ -1,4 +1,4 @@
-export const money = (m, digits = 1) => `${m < 0 ? '−' : ''}£${Math.abs(m).toFixed(digits)}m`
+export { money, ordinal } from '../engine/util.js'
 
 export function lapTime(sec) {
   if (sec == null) return 'No time'
@@ -16,11 +16,6 @@ export function raceGap(r) {
   return `+${r.gap.toFixed(1)} s`
 }
 
-export const ordinal = (n) => {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return n + (s[(v - 20) % 10] || s[v] || s[0])
-}
 
 export const pct = (x) => `${Math.round(x * 100)}%`
 

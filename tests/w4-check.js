@@ -5,7 +5,7 @@
 // race is always run.
 // Usage: node tests/w4-check.js [weekends]
 
-import { newGame, startSeason, createWeekendRace, PLAYER } from '../src/engine/game.js'
+import { newGame, startSeason, PLAYER } from '../src/engine/game.js'
 import {
   beginWeekend, beginPractice, toQualifying, setWing, startRace, nextLap, setAutoCalls, finishWeekend, playsPractice, playsQualifying,
 } from '../src/engine/live.js'

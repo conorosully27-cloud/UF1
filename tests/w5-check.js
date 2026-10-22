@@ -4,7 +4,7 @@
 // and do to the cars exactly what they do before a quick-simmed weekend.
 // Usage: node tests/w5-check.js
 
-import { newGame, startSeason, simulateRound, createWeekendRace, PLAYER } from '../src/engine/game.js'
+import { newGame, startSeason, simulateRound, createWeekendRace } from '../src/engine/game.js'
 import {
   beginWeekend, beginPractice, runPractice, toQualifying, runSession, startRace, quickFinish, incidentDue, resolveIncident,
 } from '../src/engine/live.js'

@@ -44,8 +44,8 @@ The checks run side by side, one per processor core (`tests/run.js`); `node test
 
 - `DESIGN.md`: how the game works, and the numbers behind it.
 - `RACE_WEEKEND.md`: how the race weekend was built, step by step, and what is still to do.
-- `src/engine/`: the game itself, with no UI. `weekend.js` is the race simulation, `live.js` the race weekend played live, `game.js` the season.
-- `src/ui/`: the React screens. `RaceMap.jsx` and `speedProfile.js` draw the live track map.
+- `src/engine/`: the game itself, with no UI. `weekend.js` is the race simulation (with `qualifying.js`), `live.js` the race weekend played live, `game.js` the season, `util.js` small shared helpers.
+- `src/ui/`: the React screens. The race weekend is `LiveWeekend.jsx`, which shows `BriefingScreen.jsx`, `PracticeScreen.jsx`, `QualiScreen.jsx`, `GridScreen.jsx` or `RaceScreen.jsx` (shared pieces in `weekendParts.jsx`); `RaceMap.jsx` and `speedProfile.js` draw the live track map.
 - `tests/`: the checks above.
 
 Circuit outlines are from [bacinger/f1-circuits](https://github.com/bacinger/f1-circuits), used under the MIT licence.

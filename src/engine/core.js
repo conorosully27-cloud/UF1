@@ -4,6 +4,7 @@ import { TRACK_BY_ID } from './data/tracks.js'
 import { overall } from './data/drivers.js'
 import { carScore } from './weekend.js'
 import { playerOps } from './org.js'
+import { clone, clamp, ordinal } from './util.js'
 
 export const SAVE_VERSION = 5
 export const START_YEAR = 2027
@@ -11,8 +12,7 @@ export const PLAYER = 'player'
 export const START_REPUTATION = 10
 export const ROUNDS = 16
 
-export const clone = (x) => JSON.parse(JSON.stringify(x))
-export const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x))
+export { clone, clamp, ordinal }
 
 export function year(game) {
   return START_YEAR + game.season - 1
@@ -132,11 +132,6 @@ export function seasonMetrics(game) {
   }
 }
 
-export function ordinal(n) {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return n + (s[(v - 20) % 10] || s[v] || s[0])
-}
 
 export function playerDrivers(game) {
   return game.teams[PLAYER].drivers.map((id) => game.drivers[id])
