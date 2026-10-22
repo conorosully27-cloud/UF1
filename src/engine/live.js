@@ -13,11 +13,10 @@ import { INCIDENT_DAY, isIncidentCard, resolveDecision, bestChoice } from './dec
 import { weekendObjectives, objectiveStatus } from './highlights.js'
 import { hashString, streamRng } from './rng.js'
 import { startPractice, engineersBalance, practiceRun, fridayWeather, SETUP } from './practice.js'
+import { clone, surname } from './util.js'
 
 const ROLLOUTS = 4
 const SLICKS = ['S', 'M', 'H']
-const clone = (x) => JSON.parse(JSON.stringify(x))
-const surname = (name) => name.split(' ').slice(-1)[0]
 
 export const weekendActive = (game) => !!game.weekend?.live
 

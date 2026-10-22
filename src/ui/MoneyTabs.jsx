@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { PLAYER, clock } from '../engine/core.js'
 import { TIERS, SHAPES, slotTiers, freeSlots, acceptOffer, endDeal } from '../engine/sponsors.js'
 import {

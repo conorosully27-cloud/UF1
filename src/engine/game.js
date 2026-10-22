@@ -6,15 +6,15 @@ import { RACE_DRIVERS, POOL_DRIVERS } from './data/drivers.js'
 import { SUPPLIERS } from './data/suppliers.js'
 import { TRACKS } from './data/tracks.js'
 import { makeRng, streamRng, hashString } from './rng.js'
-import { createRace, runToEnd, raceResult, idealWing, upgradeRaceState } from './weekend.js'
+import { createRace, runToEnd, raceResult, idealWing, upgradeRaceState, oldRaceState } from './weekend.js'
 import { initialOrg } from './org.js'
-import { signingTerms, backingRoll } from './contracts.js'
+import { signingTerms } from './contracts.js'
 import {
   SAVE_VERSION, START_YEAR, PLAYER, START_REPUTATION, ROUNDS, clone, clamp, year, currentTrack, effectiveCar, teamOps,
   getStandings, playerPosition, paceTable, atrFor, overall, seasonMetrics,
 } from './core.js'
 import { setupLossFor, SETUP } from './practice.js'
-import { initialFinance, applyRoundFinance, checkCrisis, triggerCrisis, closeSeasonBooks, canSpend, spend, perRound, settleOldBorrowing } from './economy.js'
+import { initialFinance, applyRoundFinance, checkCrisis, triggerCrisis, closeSeasonBooks, perRound, settleOldBorrowing } from './economy.js'
 import { initialDev, progressDevelopment, tighteningPlan, playerWinter } from './development.js'
 import { progressOrg, refreshStaffMarket } from './hq.js'
 import { initRivals, rivalRound, rivalWinter, scheduleRivalUpgrades } from './rivals.js'
@@ -197,7 +197,7 @@ export function migrateSave(game) {
   if (f && !f.q3 && f.podium) f.q3 = { legacy: true }
   // A weekend saved part-way by an earlier build: its race counted in steps, now in laps.
   const w = game.weekend
-  if (w?.state && 'seg' in w.state) {
+  if (oldRaceState(w?.state)) {
     upgradeRaceState(w.state)
     for (const snap of w.snapshots ?? []) {
       // Each snapshot was taken on the lap of its call.

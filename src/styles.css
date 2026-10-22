@@ -190,7 +190,6 @@ ul.plain { margin: 4px 0; padding-left: 18px; }
 .feed li.mine { border-left: 3px solid var(--dc); padding-left: 6px; }
 .dtile { border-left: 4px solid var(--dc); }
 .dtile .rating { font-size: 13px; font-weight: 600; margin-left: 8px; padding: 1px 6px; border-radius: 6px; background: var(--bg); color: var(--muted); vertical-align: middle; }
-.wingpick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border-left: 4px solid var(--dc); padding-left: 10px; }
 .callhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .callhead .small { margin-left: auto; }
 .calls { display: grid; gap: 4px; margin: 8px 0; }

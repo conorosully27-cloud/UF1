@@ -27,10 +27,10 @@ A season is 16 rounds on real circuits. Seasons continue indefinitely.
 | Pre-season | Once | Change drivers and supply deals, line up upgrades, staff and sponsors; then set three season targets (section 5.12), which fixes drivers and power unit for the year |
 | HQ turn | Before each round | Start upgrades and builds, hire and fire, handle sponsor offers, check the cash forecast |
 | Round decision | Every round | One A/B call (section 5.9) |
-| Race weekend | Every round | Simulated. The player reads qualifying, the race result and the report |
+| Race weekend | Every round | On the pit wall: briefing, practice, qualifying and the race, played live (section 5.10); or quick-simmed, when the player reads qualifying, the race result and the report |
 | Off-season | Once | Rules tighten, prize position locks in, drivers' ratings change, contracts expire, the driver market runs in three stages, rivals evolve |
 
-A typical round takes one to two minutes; a season about half an hour.
+A quick-simmed round takes one to two minutes and a season about half an hour. A weekend played live takes longer: about 5 minutes for the race alone at normal speed, less at the faster playback speeds or with practice and qualifying left to the team.
 
 ## 4. Goals, the owner and crises
 
@@ -289,7 +289,7 @@ Targets are scaled to the team's level, for example "both cars finish 12 races" 
 
 ### 5.9 The round decision
 
-Every round brings exactly one A/B decision. Both options cost something.
+Every round brings exactly one A/B decision. Both options cost something. When the weekend is played live, a race-weekend card is put to the player during the weekend instead, as an incident (section 5.10), and cards the live weekend covers itself are not drawn.
 
 **Rules:**
 
@@ -297,7 +297,7 @@ Every round brings exactly one A/B decision. Both options cost something.
 - The better option depends on context: cash, the next track, car strengths, driver ratings and morale. No option is always right.
 - Effects are small: one to three rating points, £0.5m–£3m, a morale shift, or a one-race modifier.
 - Information quality depends on staff. A weak Chief Strategist reports "rain possible"; a strong one reports "rain 60%".
-- Outcomes are fixed when the round starts, so reloading does not change them. The result of any chance is shown as soon as the choice is made.
+- Outcomes are fixed when the round starts, so reloading does not change them. The result of a chance is shown as soon as the choice is made, except one that plays out on track (a stalled launch, a failed part, a stewards' penalty), which is told in the race when it happens.
 - A decision log shows what was chosen and what happened, including results that land several rounds later.
 
 **Size target:** always choosing the better option should be worth about 10% faster progress over a season than choosing at random. No single decision can wreck a season.
@@ -658,6 +658,7 @@ World health with no player (30 seasons, six saves): the front-to-back gap stays
 | M3 Decisions and targets (built) | The A/B deck (80 decisions), staff-dependent information, decision log; season targets with the pre-season projection | A decision every round and three targets a season |
 | M4 People and world (built) | Driver market in three stages, the hidden personal factor, loans and recalls, academy, ageing and regression, rival driver reviews, new drivers, rival form events, poaching, supplier drift, honours board | An endless save |
 | M5 Balance (built) | Bot managers and harness, tuning to sections 6 and 9 | A save that hits the target curve |
+| W1–W7 Race weekend (built) | The race weekend played live: a lap-by-lap race, knockout qualifying as it happens, practice, incidents, the live track map. Step by step in RACE_WEEKEND.md | The player runs every weekend from the pit wall |
 
 ## 11. Flaws checked
 
@@ -682,9 +683,9 @@ World health with no player (30 seasons, six saves): the front-to-back gap stays
 | If targets only had rewards, Stretch would always be the right pick | A reward is paid only at the chosen level, and every miss costs owner confidence |
 | Rivals judging drivers perfectly would leave no bargains | Rivals judge on noisy results; the player sees true current ratings |
 | The real grid already has 11 teams | The player is the 12th. 24 cars, points still to the top ten, prize and aero tables extended to 12 places |
-| The real field is more spread out than v1 assumed | One rating point is now 0.05 s. The player starts 1.7 s off the front and 0.4 s behind Cadillac |
-| Removing race control removed the player's only way to take or avoid risk on race day | The race approach setting, plus race-weekend calls in the A/B deck |
-| Practice, qualifying and component choices depended on live control | Cut. Component and setup choices appear as A/B decisions |
+| The real field is more spread out than v1 assumed | One rating point is now 0.05 s. The player starts about 1.5 s off the front and 0.2 s behind Cadillac (1.7 s and 0.4 s until the race-weekend changes) |
+| Removing race control removed the player's only way to take or avoid risk on race day | At first, the race approach setting and race-weekend calls in the A/B deck. Since the race-weekend build, race control is back: the player makes the pit-wall calls live |
+| Practice, qualifying and component choices depended on live control | At first cut, with component and setup choices as A/B decisions. Practice and qualifying are now played live |
 | Without a rules reset nothing would reshuffle the order | Percentage-based annual loss, diminishing returns, supplier drift and rival form events |
 | An endless save needs a world that renews | Driver ageing, retirement and new drivers; rivals whose resources follow results; an honours board and objectives that continue after a title |
 | "No definite end" conflicts with game over on bankruptcy or sacking | Replaced by the crisis in section 4 |
@@ -697,4 +698,4 @@ World health with no player (30 seasons, six saves): the front-to-back gap stays
 
 ## 12. Left out of v1
 
-Live race control, a lap-by-lap race model, sprint weekends, becoming an engine manufacturer, real engineers and team principals, equity sales, the full 24-race calendar and all visual polish.
+Sprint weekends, becoming an engine manufacturer, real engineers and team principals, equity sales, and the full 24-race calendar. (Live race control and a lap-by-lap race model, also left out of v1, have since been built: section 5.10.)

@@ -4,8 +4,8 @@
 // Usage: node tests/m2-check.js [seasons]
 
 import { newGame, startSeason, simulateRound, endSeason, effectiveCar, paceTable, PLAYER } from '../src/engine/game.js'
-import { forecast, perRound, prizeThisSeason, COST_CAP, OVERDRAFT, canSpend, inOverdraft, settleOldBorrowing } from '../src/engine/economy.js'
-import { startProject, capacity, expectedGain, tighteningPlan, chassisCap } from '../src/engine/development.js'
+import { perRound, prizeThisSeason, COST_CAP, OVERDRAFT, canSpend, inOverdraft, settleOldBorrowing } from '../src/engine/economy.js'
+import { startProject, capacity, expectedGain, tighteningPlan } from '../src/engine/development.js'
 import { buildFacility, hire, fire, hireKeyStaff, setPay } from '../src/engine/hq.js'
 import { acceptOffer, endDeal, freeSlots, slotTiers } from '../src/engine/sponsors.js'
 import { passive, steady, reckless } from './bot.js'

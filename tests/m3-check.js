@@ -1,19 +1,19 @@
 // Milestone 3 check: the A/B decision deck and season targets.
 // Usage: node tests/m3-check.js [target-seasons]
 
-import { newGame, startSeason, simulateRound, endSeason, prepareTargets, projectSeason, PLAYER } from '../src/engine/game.js'
+import { newGame, startSeason, simulateRound, endSeason, prepareTargets, PLAYER } from '../src/engine/game.js'
 import { DECK, NO_REPEAT, describeDecision, resolveDecision, forceDecision, bestChoice, optionValue, oddsText } from '../src/engine/decisions.js'
 import { LEVELS, averageManager, chooseTargets, targetProgress } from '../src/engine/targets.js'
 import { ROLES } from '../src/engine/org.js'
 import { startProject } from '../src/engine/development.js'
 import { autoDrivers } from '../src/engine/people.js'
 import { steady, decide, pickTargets, playFullSeason } from './bot.js'
+import { clone } from '../src/engine/util.js'
 
 // FAST=1 (npm run test:fast) runs smaller samples: the same checks, less precise.
 const FAST = !!process.env.FAST
 const TARGET_SEASONS = Number(process.argv[2] || (FAST ? 10 : 60))
 const LONG_SEASONS = FAST ? 3 : 8
-const clone = (x) => JSON.parse(JSON.stringify(x))
 const setup = (seed, extra = {}) => newGame({ seed, teamName: 'Test GP', supplier: 'ferrari', driverIds: ['zhou', 'herta'], reserveId: 'crawford', ...extra })
 
 let failures = 0

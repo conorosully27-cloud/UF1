@@ -11,12 +11,12 @@ import {
   beginWeekend, runQualifying, toQualifying, startRace, nextLap, answerCall, handOver,
   startSession, finishSession, setLateRun, doneWatching, runSession,
 } from '../src/engine/live.js'
-import { createRace, stepRace, runToEnd, QUALI_MINUTES } from '../src/engine/weekend.js'
+import { createRace, stepRace, QUALI_MINUTES } from '../src/engine/weekend.js'
 import { currentTrack } from '../src/engine/core.js'
 import { streamRng } from '../src/engine/rng.js'
+import { clone } from '../src/engine/util.js'
 
 const setup = (seed, extra = {}) => newGame({ seed, teamName: 'Test GP', supplier: 'ferrari', driverIds: ['herta', 'doohan'], options: { decisions: false, targets: false }, involvement: 'live', ...extra })
-const clone = (x) => JSON.parse(JSON.stringify(x))
 
 let failures = 0
 const check = (name, ok, detail = '') => {
@@ -111,7 +111,7 @@ function quickRace(i) {
   }
   const old = clone(g)
   const st = old.weekend.state
-  Object.assign(st, { seg: st.lap, S: st.laps, segLaps: 1, scSeg: st.scLap })
+  Object.assign(st, { v: 2, seg: st.lap, S: st.laps, segLaps: 1, scSeg: st.scLap })
   delete st.lap; delete st.scLap
   for (const c of st.cars) { c.dnfSeg = c.dnfLap; delete c.dnfLap; c.plan = c.plan.map((x) => ({ seg: x.lap, comp: x.comp })) }
   migrateSave(old)

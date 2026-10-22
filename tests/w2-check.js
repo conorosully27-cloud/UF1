@@ -12,9 +12,9 @@ import {
 import { LIVE_CALLS } from '../src/engine/decisions.js'
 import { OBJECTIVE_REWARD } from '../src/engine/highlights.js'
 import { steady } from './bot.js'
+import { clone, mean } from '../src/engine/util.js'
 
 const WEEKENDS = Number(process.argv[2] || 32)
-const clone = (x) => JSON.parse(JSON.stringify(x))
 const setup = (seed, extra = {}) => newGame({ seed, teamName: 'Test GP', supplier: 'ferrari', driverIds: ['herta', 'doohan'], options: { decisions: false, targets: false }, involvement: 'live', ...extra })
 
 let failures = 0
@@ -23,7 +23,6 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  ' + detail : ''}`)
 }
 const expectThrow = (fn) => { try { fn(); return false } catch { return true } }
-const mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0)
 const finish = (res) => res.race.filter((r) => r.teamId === PLAYER).map((r) => (r.status === 'dnf' ? 23 : r.pos))
 
 // Plays one live weekend: `policy(call, game)` picks each option, `beforeLap` can change orders.

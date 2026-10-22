@@ -11,9 +11,9 @@ import {
 import { staffApproaches } from '../src/engine/world.js'
 import { buildFacility } from '../src/engine/hq.js'
 import { passive, steady, pickTargets, decide } from './bot.js'
+import { clone, mean } from '../src/engine/util.js'
 
 const SEASONS = Number(process.argv[2] || 30)
-const clone = (x) => JSON.parse(JSON.stringify(x))
 const setup = (seed, extra = {}) => newGame({ seed, teamName: 'Test GP', supplier: 'ferrari', driverIds: ['herta', 'doohan'], options: { decisions: false, targets: false }, ...extra })
 
 let failures = 0
@@ -22,7 +22,6 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  ' + detail : ''}`)
 }
 const expectThrow = (fn) => { try { fn(); return false } catch { return true } }
-const mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0)
 
 function hasBadNumber(x, path = '') {
   if (typeof x === 'number') return Number.isFinite(x) ? null : path

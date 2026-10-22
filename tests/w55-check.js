@@ -8,11 +8,11 @@
 //   5. Teammates boxing on the same lap queue in the box.
 // Usage: node tests/w55-check.js
 
-import { newGame, startSeason, buildEntries, PLAYER } from '../src/engine/game.js'
+import { newGame, startSeason, buildEntries } from '../src/engine/game.js'
 import { beginWeekend, beginPractice, runPractice, toQualifying, startRace, handOver, finishWeekend, incidentDue, resolveIncident } from '../src/engine/live.js'
 import { forceDecision, optionValue } from '../src/engine/decisions.js'
 import { fridayWeather, practiceRun, setRunKind, SETUP } from '../src/engine/practice.js'
-import { createRace, runToEnd, raceResult } from '../src/engine/weekend.js'
+import { createRace, runToEnd } from '../src/engine/weekend.js'
 import { currentTrack } from '../src/engine/core.js'
 import { streamRng } from '../src/engine/rng.js'
 

@@ -11,9 +11,9 @@ import {
   quickFinish,
 } from '../src/engine/live.js'
 import { objectiveStatus } from '../src/engine/highlights.js'
+import { clone } from '../src/engine/util.js'
 
 const SEASONS = Number(process.argv[2] || 30)
-const clone = (x) => JSON.parse(JSON.stringify(x))
 const setup = (seed, extra = {}) => newGame({ seed, teamName: 'Test GP', supplier: 'ferrari', driverIds: ['herta', 'doohan'], options: { decisions: false, targets: false }, involvement: 'live', ...extra })
 const MIDFIELD = { aero: 77, chassis: 77 }
 

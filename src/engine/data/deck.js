@@ -12,6 +12,7 @@
 import { diminishing, SIZES, AREAS } from '../development.js'
 import { COST_CAP, projectedCapSpend } from '../economy.js'
 import { overall } from './drivers.js'
+import { clamp, money as moneyText } from '../util.js'
 
 const both = (mods) => ({ weekend: { car: 'both', mods } })
 const one = (car, mods) => ({ weekend: { car, mods } })
@@ -21,8 +22,7 @@ const one = (car, mods) => ({ weekend: { car, mods } })
 // the moment it happens. `{name}` is the driver. `share` is how much of the
 // race `extra.mods` covers on average, for the scripted managers.
 const timed = (car, at, text, extra = {}, mods = {}) => ({ weekend: { car, mods, timed: { at, text, ...extra } } })
-const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x))
-const money = (x) => `£${x.toFixed(2)}m`
+const money = (x) => moneyText(x, 2) // the cards give sums to two decimals
 const nm = (c, i) => c.drivers[i].name
 const scale = (c) => 1 + c.rep / 40 // commercial sums grow with the team's standing
 const lowest = (c, attr) => (c.drivers[0][attr] <= c.drivers[1][attr] ? 0 : 1)

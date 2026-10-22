@@ -3,8 +3,8 @@
 import { PLAYER } from '../engine/game.js'
 import { TRACK_BY_ID } from '../engine/data/tracks.js'
 import { driverColor, secondColor, teamColor } from './format.js'
+import { surname, ordinal as ordinalText } from '../engine/util.js'
 
-const surname = (name) => name.split(' ').slice(-1)[0]
 const POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
 
 export const lightsMoment = (round) => ({ key: `lights-${round}`, size: 'medium', kind: 'lights' })
@@ -88,7 +88,6 @@ function reviewMoment(r) {
   lines.push(`Owner confidence: ${r.confidence} of 100`)
   return { key: `review-${r.year}`, size: 'big', kind: 'review', kicker: `${r.year} season review`, title: `${ordinalText(r.pos)} place`, sub: move, stats: stats.map(([label, value]) => ({ label, value })), lines, confetti: [] }
 }
-const ordinalText = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th'}`
 
 function raceResultMoments(game, res) {
   const track = TRACK_BY_ID[res.trackId]

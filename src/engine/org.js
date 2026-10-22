@@ -1,3 +1,4 @@
+import { clamp } from './util.js'
 // The player's organisation: facilities, departments and key staff, and what
 // they produce (race operations quality and engineering capacity).
 
@@ -68,7 +69,6 @@ export function initialOrg(rng) {
   return { facilities, staff, keyStaff }
 }
 
-const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x))
 
 export function headcountCap(org, dept) {
   const f = org.facilities
