@@ -37,6 +37,7 @@ The checks run side by side, one per processor core (`tests/run.js`); `node test
 | `w55-check` | Incident outcomes, practice crashes, wet Fridays, lapped cars, double-stacking |
 | `w6-check` | The race lap by lap, qualifying as it happens, and old saves |
 | `w5-strategist` | What the pit wall is worth: an expert, the strategist and a random player on the same races |
+| `v1-check` | Drivers' faces: fixed looks, every trait combination drawn, variety |
 
 `npm run test:m5` runs the balance harness (scripted managers over many seasons).
 
@@ -44,8 +45,9 @@ The checks run side by side, one per processor core (`tests/run.js`); `node test
 
 - `DESIGN.md`: how the game works, and the numbers behind it.
 - `RACE_WEEKEND.md`: how the race weekend was built, step by step, and what is still to do.
+- `VISUALS.md`: the plan for the game's pictures (faces, the 3D car, charts), step by step.
 - `src/engine/`: the game itself, with no UI. `weekend.js` is the race simulation (with `qualifying.js`), `live.js` the race weekend played live, `game.js` the season, `util.js` small shared helpers.
-- `src/ui/`: the React screens. The race weekend is `LiveWeekend.jsx`, which shows `BriefingScreen.jsx`, `PracticeScreen.jsx`, `QualiScreen.jsx`, `GridScreen.jsx` or `RaceScreen.jsx` (shared pieces in `weekendParts.jsx`); `RaceMap.jsx` and `speedProfile.js` draw the live track map.
+- `src/ui/`: the React screens. The race weekend is `LiveWeekend.jsx`, which shows `BriefingScreen.jsx`, `PracticeScreen.jsx`, `QualiScreen.jsx`, `GridScreen.jsx` or `RaceScreen.jsx` (shared pieces in `weekendParts.jsx`); `RaceMap.jsx` and `speedProfile.js` draw the live track map; `faces.js` and `Face.jsx` draw drivers' faces, with real drivers' looks in `data/looks.js`. Add `?faces` to the game's address to see every face.
 - `tests/`: the checks above.
 
 Circuit outlines are from [bacinger/f1-circuits](https://github.com/bacinger/f1-circuits), used under the MIT licence.

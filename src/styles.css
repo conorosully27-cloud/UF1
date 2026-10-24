@@ -373,3 +373,9 @@ fieldset.controls { border: 0; border-top: 1px solid var(--line); margin: 0; min
 fieldset.controls:disabled button { opacity: .45; cursor: not-allowed; }
 .panel.incident { border-color: var(--sc); box-shadow: 0 0 0 1px color-mix(in srgb, var(--sc) 40%, transparent); }
 .panel.incident h2 { color: var(--sc); }
+
+/* Drivers' faces (VISUALS.md) */
+.face { display: block; flex: none; }
+.faces-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 14px 10px; }
+.face-card { font-size: 12.5px; text-align: center; overflow-wrap: anywhere; }
+.face-card .face { margin: 0 auto 4px; }

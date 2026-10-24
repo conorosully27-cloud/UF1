@@ -659,6 +659,7 @@ World health with no player (30 seasons, six saves): the front-to-back gap stays
 | M4 People and world (built) | Driver market in three stages, the hidden personal factor, loans and recalls, academy, ageing and regression, rival driver reviews, new drivers, rival form events, poaching, supplier drift, honours board | An endless save |
 | M5 Balance (built) | Bot managers and harness, tuning to sections 6 and 9 | A save that hits the target curve |
 | W1–W7 Race weekend (built) | The race weekend played live: a lap-by-lap race, knockout qualifying as it happens, practice, incidents, the live track map. Step by step in RACE_WEEKEND.md | The player runs every weekend from the pit wall |
+| V1–V5 Visuals (V1 built) | Drivers' faces, a rotatable 3D car tied to the ratings and upgrades, circuit outlines, charts, HQ as a building, a team badge and livery. Step by step in VISUALS.md | The game shows what the tables say |
 
 ## 11. Flaws checked
 

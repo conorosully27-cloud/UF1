@@ -17,6 +17,7 @@
     "test:w55": "node tests/w55-check.js",
     "test:w6": "node tests/w6-check.js",
     "test:w2": "node tests/w2-check.js",
+    "test:v1": "node tests/v1-check.js",
     "test:weekend": "node tests/run.js w2-check w3-check w4-check w5-check w55-check w6-check w5-strategist"
   },
   "dependencies": {
