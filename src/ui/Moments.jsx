@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo } from 'react'
+import Face from './Face.jsx'
 
 // Moments: the big things that happen on a race weekend, shown over the
 // screen. Big ones fill the screen and wait for a tap; banners sweep across
@@ -18,14 +19,19 @@ function Lights() {
   )
 }
 
-function Drivers({ list }) {
+// A driver in a moment: their face (`d.face`, from faceOf in raceMoments.js)
+// where the moment has one, otherwise a dot in their colour.
+function Drivers({ list, size }) {
   if (!list?.length) return null
   return (
     <div className="m-drivers">
-      {list.map((d) => <span key={d.name} className="m-driver" style={{ '--dc': d.color }}><i />{d.name}{d.text ? <b>{d.text}</b> : null}</span>)}
+      {list.map((d) => <span key={d.name} className="m-driver" style={{ '--dc': d.color }}>{d.face && size ? <Face driver={d.face} color={d.face.color} mood={d.face.mood} size={size} /> : <i />}{d.name}{d.text ? <b>{d.text}</b> : null}</span>)}
     </div>
   )
 }
+
+// One driver's face, large, for a moment about them alone.
+const OneFace = ({ f, size }) => (f ? <div className="m-face"><Face driver={f} color={f.color} mood={f.mood} size={size} /></div> : null)
 
 function Banner({ m }) {
   return (
@@ -34,10 +40,11 @@ function Banner({ m }) {
       <div className="m-strip">
         {m.kind === 'lights' ? <><Lights /><div className="m-title m-go">Lights out</div></> : (
           <div className="m-inner">
+            <OneFace f={m.face} size={52} />
             {m.kicker && <div className="m-kicker">{m.kicker}</div>}
             <div className="m-title">{m.title}</div>
             {m.sub && <div className="m-sub">{m.sub}</div>}
-            <Drivers list={m.drivers} />
+            <Drivers list={m.drivers} size={30} />
           </div>
         )}
       </div>
@@ -60,9 +67,11 @@ function Big({ m, onDone }) {
         {m.ribbon && <div className="m-ribbon">{m.ribbon}</div>}
         {m.kicker && <div className="m-kicker">{m.kicker}</div>}
         {m.place && <div className={`m-place ${PLACE[m.place] ?? ''}`}>P{m.place}</div>}
+        {m.drivers?.length === 1 && <OneFace f={m.drivers[0].face} size={112} />}
+        <OneFace f={m.face} size={112} />
         <div className="m-title">{m.title}</div>
         {m.sub && <div className="m-sub">{m.sub}</div>}
-        <Drivers list={m.drivers} />
+        <Drivers list={m.drivers} size={m.drivers?.length === 1 ? null : 44} />
         {m.stats && <div className="m-stats" style={{ '--cols': m.stats.length <= 4 ? m.stats.length : Math.ceil(m.stats.length / 2) }}>{m.stats.map((x) => <div key={x.label} className="m-stat"><b>{x.value}</b><span>{x.label}</span></div>)}</div>}
         {m.lines?.length > 0 && <ul className="m-lines">{m.lines.map((x) => <li key={x}>{x}</li>)}</ul>}
         <button className="primary" autoFocus onClick={onDone}>Continue</button>

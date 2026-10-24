@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { qualiDrop, QUALI_MINUTES } from '../engine/weekend.js'
 import { runQualifying, setQualiPlan, setTow, qualiOutlook, startSession, finishSession, setLateRun, doneWatching, incidentDue } from '../engine/live.js'
 import { carCode, teamColor, lapTime } from './format.js'
-import { COND, Seg, Help, DriverTag, myCars, dc, Head, Incident } from './weekendParts.jsx'
+import { COND, Seg, Help, DriverTag, TowerFace, myCars, dc, Head, Incident } from './weekendParts.jsx'
 
 const PLAN_OPTS = [[2, 'Two runs'], [1, 'One late run']]
 
@@ -23,7 +23,7 @@ function SessionTower({ game, ses }) {
         return (
           <React.Fragment key={r.id}>
             <li className={`trow${c.e.isPlayer ? ' me' : ''}${r.out ? ' out' : ''}`} style={c.e.isPlayer ? dc(game, c) : undefined}>
-              <span className="p">{r.pos}</span><span className="bar" style={{ background: c.e.isPlayer ? 'var(--dc)' : teamColor(game, c.e.teamId) }} />
+              <span className="p">{r.pos}</span><span className="bar" style={{ background: c.e.isPlayer ? 'var(--dc)' : teamColor(game, c.e.teamId) }} /><TowerFace game={game} id={r.id} teamId={c.e.teamId} />
               <span className="code">{carCode(name(r.id))}</span><span className="team">{c.e.teamName}{note ? ` · ${note}` : ''}</span>
               <span className="g">{r.time === null ? 'No time' : r.pos === 1 ? lapTime(st.track.baseLap + r.time) : `+${(r.time - best).toFixed(3)}`}</span><span /><span />
             </li>
@@ -79,7 +79,7 @@ function LiveSessionTower({ game, st, rows, tau, drop }) {
       {list.map((x, i) => (
         <React.Fragment key={x.r.id}>
           <li className={`trow${x.c.e.isPlayer ? ' me' : ''}${x.fresh ? ' fresh' : ''}${drop && i >= cut && x.time !== null ? ' danger' : ''}`} style={x.c.e.isPlayer ? dc(game, x.c) : undefined}>
-            <span className="p">{i + 1}</span><span className="bar" style={{ background: x.c.e.isPlayer ? 'var(--dc)' : teamColor(game, x.c.e.teamId) }} />
+            <span className="p">{i + 1}</span><span className="bar" style={{ background: x.c.e.isPlayer ? 'var(--dc)' : teamColor(game, x.c.e.teamId) }} /><TowerFace game={game} id={x.r.id} teamId={x.c.e.teamId} />
             <span className="code">{carCode(name(x.r.id))}</span><span className="team">{x.c.e.teamName}{x.note ? ` · ${x.note}` : ''}</span>
             <span className="g">{x.time === null ? <span className="muted">{x.r.note === 'damaged' ? 'No car' : '—'}</span> : i === 0 ? lapTime(st.track.baseLap + x.time) : `+${(x.time - best).toFixed(3)}`}</span><span /><span />
           </li>

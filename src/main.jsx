@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import './styles.css'
@@ -18,4 +18,8 @@ class Boundary extends React.Component {
   }
 }
 
-createRoot(document.getElementById('root')).render(<Boundary><App /></Boundary>)
+// ?faces opens the gallery of drivers' faces (VISUALS.md, V1) instead of the game.
+const FaceGallery = lazy(() => import('./ui/FaceGallery.jsx'))
+const page = new URLSearchParams(window.location.search).has('faces') ? <Suspense fallback={null}><FaceGallery /></Suspense> : <App />
+
+createRoot(document.getElementById('root')).render(<Boundary>{page}</Boundary>)

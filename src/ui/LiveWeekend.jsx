@@ -2,7 +2,9 @@
 
 import React, { useEffect, useRef } from 'react'
 import { PLAYER } from '../engine/game.js'
-import { carCode, driverColor, ordinal } from './format.js'
+import { carCode, driverColor, ordinal, teamColor } from './format.js'
+import { FaceName } from './Face.jsx'
+import { ratingMood } from './faces.js'
 import { useMoments } from './Moments.jsx'
 import { qualiMoments } from './raceMoments.js'
 import { surname } from '../engine/util.js'
@@ -50,7 +52,7 @@ export function Debrief({ game, result }) {
           const pace = result.detail[r.id]?.paceRank
           return (
             <div className="tile dtile" key={r.id} style={{ '--dc': driverColor(game, r.id) }}>
-              <DriverTag game={game} id={r.id} name={surname(name(r.id))} />
+              <FaceName driver={game.drivers[r.id] ?? { id: r.id }} color={teamColor(game, PLAYER)} size={44} mood={ratingMood(rating?.score)}><DriverTag game={game} id={r.id} name={surname(name(r.id))} /></FaceName>
               <div className="big">{r.status === 'dnf' ? 'DNF' : `P${r.pos}`}{rating?.score != null && <span className="rating">{rating.score}</span>}</div>
               <span className="muted small">from P{r.grid}{pace ? ` · ${ordinal(pace)}-fastest car` : ''}{r.points ? ` · ${r.points} pts` : ''}</span>
             </div>

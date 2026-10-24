@@ -5,7 +5,9 @@ import {
   rivalOffers, releaseFee, MARKET_STAGES, APPROACHES_PER_WINTER, SIGNS_AT, STAGE_DISCOUNT,
 } from '../engine/people.js'
 import { backingBase } from '../engine/contracts.js'
-import { money } from './format.js'
+import { money, teamColor } from './format.js'
+import Face, { FaceName } from './Face.jsx'
+import { interestMood } from './faces.js'
 
 const trend = (d) => {
   const x = overall(d) - d.lastOverall
@@ -38,8 +40,13 @@ function OfferForm({ game, d, act, onDone }) {
   const lo = est.estimate - 10
   const hi = est.estimate + 10
   const verdict = lo >= SIGNS_AT ? 'will sign' : hi < SIGNS_AT ? 'will refuse' : 'might sign'
+  // The driver's face shows how the offer lands, from the interest you can see.
+  const mood = interestMood(est.estimate)
+  const look = est.estimate >= SIGNS_AT + 10 ? 'Keen' : est.estimate >= SIGNS_AT ? 'Interested' : est.estimate >= SIGNS_AT - 10 ? 'Unsure' : 'Not interested'
   return (
-    <div className="panel">
+    <div className="panel offer">
+      <div className="offer-face"><Face driver={d} color={teamColor(game, PLAYER)} mood={mood} size={96} /><span className={`muted small ${mood >= 0.6 ? 'good' : mood < -0.6 ? 'bad' : ''}`}>{look}</span></div>
+      <div>
       <b>Offer to {d.name}</b>{d.loanFrom ? <span className="muted"> · one-season loan from {game.teams[d.loanFrom]?.name}</span> : null}
       <p>
         <label>Role <select value={role} onChange={(e) => setRole(e.target.value)}><option value="race">Race seat</option><option value="reserve">Reserve</option></select></label>
@@ -62,6 +69,7 @@ function OfferForm({ game, d, act, onDone }) {
       }}>Make the offer</button>{' '}
       <button onClick={onDone}>Cancel</button>
       {msg && <p className="bad">{msg}</p>}
+      </div>
     </div>
   )
 }
@@ -112,7 +120,7 @@ export default function DriversTab({ game, act }) {
     return (
       <React.Fragment key={d.id}>
         <tr>
-          <td>{d.name}{extra}</td><td className="n">{d.age}</td><td className="n">{overall(d)}</td><td className="n">{trend(d)}</td><Attrs d={d} />
+          <td><FaceName driver={d} color={teamColor(game, d.teamId ?? '')}>{d.name}{extra}</FaceName></td><td className="n">{d.age}</td><td className="n">{overall(d)}</td><td className="n">{trend(d)}</td><Attrs d={d} />
           <td className="n">{d.prefYears}</td><td className="n">{money(marketDemand(game, d), 2)}</td>
           <td className="n">{Math.round(est - 10)}–{Math.round(est + 10)}</td><td className="n">{rivalOffers(game, d) || ''}</td>
           <td>{backingRange(game, d)}</td><td className="n">{APPROACHES_PER_WINTER - (game.market.tries[d.id] || 0)}</td>
@@ -134,7 +142,7 @@ export default function DriversTab({ game, act }) {
             {mine.map((d) => (
               <React.Fragment key={d.id}>
                 <tr className={d.contract.expired ? '' : 'me'}>
-                  <td>{d.name}</td><td>{d.contract.role === 'reserve' ? 'Reserve' : 'Race'}{d.contract.loan ? `, loan from ${game.teams[d.loanFrom]?.name ?? d.loanFrom}` : ''}</td>
+                  <td><FaceName driver={d} color={teamColor(game, PLAYER)} size={40} /></td><td>{d.contract.role === 'reserve' ? 'Reserve' : 'Race'}{d.contract.loan ? `, loan from ${game.teams[d.loanFrom]?.name ?? d.loanFrom}` : ''}</td>
                   <td className="n">{d.age}</td><td className="n">{overall(d)}</td><td className="n">{trend(d)}</td>
                   <td className="n">{money(d.contract.salary, 2)}</td><td className="n">{d.contract.backing ? money(d.contract.backing, 2) : '—'}</td>
                   <td>{d.contract.expired ? <b className="bad">Out of contract</b> : `${d.contract.years} season${d.contract.years > 1 ? 's' : ''} left`}</td>

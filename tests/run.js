@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
 // Longest first, so the slow ones are not left running alone at the end.
-const ALL = ['m3-check', 'w5-strategist', 'm1-check', 'w2-check', 'm4-check', 'w6-check', 'm2-check', 'w3-check', 'w55-check', 'w4-check', 'w5-check']
+const ALL = ['m3-check', 'w5-strategist', 'm1-check', 'w2-check', 'm4-check', 'w6-check', 'm2-check', 'w3-check', 'w55-check', 'w4-check', 'w5-check', 'v1-check', 'v2-check']
 const FAST_SKIPS = new Set(['w5-strategist'])
 
 const args = process.argv.slice(2)

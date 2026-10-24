@@ -1,12 +1,13 @@
 // Pieces shared by the race-weekend screens: the tyre badge, segmented
-// controls, help, driver tags, the heading with the weekend objectives, and
+// controls, help, driver tags, faces on the timing tower, the heading with the weekend objectives, and
 // the incident panel.
 
 import React, { useEffect, useRef } from 'react'
 import { TYRES } from '../engine/weekend.js'
 import { objectivesNow, incidentDue, resolveIncident } from '../engine/live.js'
 import { DecisionPanel } from './M3Ui.jsx'
-import { carCode, driverColor } from './format.js'
+import { carCode, driverColor, teamColor } from './format.js'
+import Face from './Face.jsx'
 
 export const SLICKS = ['S', 'M', 'H']
 
@@ -42,6 +43,11 @@ export function DriverTag({ game, id, slot, name, code }) {
   const col = driverColor(game, id, slot)
   const full = name ?? game.drivers[id]?.name ?? id
   return <span className="dtag" style={{ '--dc': col }}><i />{code ? carCode(full) : full}</span>
+}
+
+// A small head on the timing tower, in the team's colours.
+export function TowerFace({ game, id, teamId }) {
+  return <span className="hd"><Face driver={game.drivers[id] ?? { id }} color={teamColor(game, teamId)} size={20} /></span>
 }
 
 export const myCars = (st) => st.cars.filter((c) => c.e.isPlayer)
