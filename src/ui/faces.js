@@ -55,10 +55,12 @@ export const MOODS = [[-1, 'Angry'], [-0.5, 'Unhappy'], [0, 'Neutral'], [0.5, 'P
 
 const pickW = (rng, table) => rng.weightedPick(Object.keys(table), Object.values(table))
 
-// A look rolled from the id alone. Facial hair is left to looks.js.
-function rolled(id) {
+// A look rolled from the id, around any traits looks.js sets: hair and eye
+// colour follow the skin tone. Facial hair is left to looks.js.
+function rolled(id, set) {
   const rng = makeRng(hashString(`face|${id}`))
-  const skin = rng.weightedPick([0, 1, 2, 3, 4, 5, 6, 7], [2, 3, 3, 2, 2, 2, 1.5, 1])
+  const rolledSkin = rng.weightedPick([0, 1, 2, 3, 4, 5, 6, 7], [2, 3, 3, 2, 2, 2, 1.5, 1])
+  const skin = set.skin ?? rolledSkin
   const hair = pickW(rng, skin <= 2
     ? { black: 1.5, darkBrown: 4, brown: 4, lightBrown: 3, blond: 2, platinum: 0.4, ginger: 0.6, auburn: 1 }
     : skin <= 4 ? { black: 4, darkBrown: 4, brown: 2, lightBrown: 0.8 } : { black: 7, darkBrown: 3 })
@@ -79,7 +81,8 @@ function rolled(id) {
 }
 
 export function faceTraits(driver) {
-  return { ...rolled(driver.id), ...(LOOKS[driver.id] ?? {}) }
+  const set = LOOKS[driver.id] ?? {}
+  return { ...rolled(driver.id, set), ...set }
 }
 
 const rgb = (c) => { const n = parseInt(c.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255] }
