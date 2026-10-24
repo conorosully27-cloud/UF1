@@ -38,6 +38,7 @@ The checks run side by side, one per processor core (`tests/run.js`); `node test
 | `w6-check` | The race lap by lap, qualifying as it happens, and old saves |
 | `w5-strategist` | What the pit wall is worth: an expert, the strategist and a random player on the same races |
 | `v1-check` | Drivers' faces: fixed looks, every trait combination drawn, variety |
+| `v2-check` | Faces in place: moods from contract interest and race ratings, faces in moments |
 
 `npm run test:m5` runs the balance harness (scripted managers over many seasons).
 

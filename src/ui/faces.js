@@ -53,6 +53,13 @@ const RECEDES = new Set(['buzz', 'short', 'side', 'quiff', 'curly', 'slick', 'me
 
 export const MOODS = [[-1, 'Angry'], [-0.5, 'Unhappy'], [0, 'Neutral'], [0.5, 'Pleased'], [1, 'Delighted']]
 
+// Moods from the game (VISUALS.md, V2). In contract talks, from the interest
+// the player can see (60 signs, so a driver who might sign looks undecided);
+// after a race, from the driver's rating out of 10, and unhappy after a
+// retirement that was not their fault.
+export const interestMood = (interest) => clamp((interest - 60) / 15, -1, 1)
+export const ratingMood = (score) => (score == null ? -0.5 : clamp((score - 6.5) / 2.5, -1, 1))
+
 const pickW = (rng, table) => rng.weightedPick(Object.keys(table), Object.values(table))
 
 // A look rolled from the id, around any traits looks.js sets: hair and eye

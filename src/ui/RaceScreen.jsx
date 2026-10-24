@@ -7,7 +7,7 @@ import { TrackMap, usePlayback, frameSnapshot, gridSnapshot, stateSnapshot } fro
 import { carCode, teamColor, gap } from './format.js'
 import { useMoments } from './Moments.jsx'
 import { lightsMoment, scMoment, redFlagMoment, outMoment, flagMoment, resultMoments, podiumRunMoment, rainMoment, clashMoment, doubleOutMoment } from './raceMoments.js'
-import { SLICKS, CALL_KINDS, COND, SPEEDS, LIGHTS_OUT_MS, Tyre, Seg, Help, DriverTag, myCars, stintAge, dc, Head } from './weekendParts.jsx'
+import { SLICKS, CALL_KINDS, COND, SPEEDS, LIGHTS_OUT_MS, Tyre, Seg, Help, DriverTag, TowerFace, myCars, stintAge, dc, Head } from './weekendParts.jsx'
 
 // The timing tower. While a lap plays back the order and gaps come from the
 // playback; otherwise from the race as it stands.
@@ -28,7 +28,7 @@ function Tower({ game, st, snap, lastOrder }) {
         return (
           <React.Fragment key={c.id}>
             <li className={`trow${c.e.isPlayer ? ' me' : ''}${r.retiring ? ' out' : ''}`} style={c.e.isPlayer ? dc(game, c) : undefined}>
-              <span className="p">{i + 1}</span><span className="bar" style={{ background: c.e.isPlayer ? 'var(--dc)' : teamColor(game, c.e.teamId) }} />
+              <span className="p">{i + 1}</span><span className="bar" style={{ background: c.e.isPlayer ? 'var(--dc)' : teamColor(game, c.e.teamId) }} /><TowerFace game={game} id={c.id} teamId={c.e.teamId} />
               <span className="code">{carCode(c.e.name)}{moved > 0 && <span className="up">▲{moved}</span>}{moved < 0 && <span className="down">▼{-moved}</span>}</span>
               <span className="team">{r.pit ? 'In the pits' : c.e.teamName}</span>
               <span className="g">{g}</span>
@@ -40,7 +40,7 @@ function Tower({ game, st, snap, lastOrder }) {
       })}
       {out.map((c) => (
         <li key={c.id} className={`trow out${c.e.isPlayer ? ' me' : ''}`} style={c.e.isPlayer ? dc(game, c) : undefined}>
-          <span className="p">—</span><span className="bar" style={{ background: c.e.isPlayer ? 'var(--dc)' : teamColor(game, c.e.teamId) }} />
+          <span className="p">—</span><span className="bar" style={{ background: c.e.isPlayer ? 'var(--dc)' : teamColor(game, c.e.teamId) }} /><TowerFace game={game} id={c.id} teamId={c.e.teamId} />
           <span className="code">{carCode(c.e.name)}</span><span className="team">{c.reason}</span><span className="g">DNF</span><span /><span />
         </li>
       ))}

@@ -6,7 +6,7 @@ import { TYRES, ORDERS, planRest } from '../engine/weekend.js'
 import { setStartTyre, setOrders, startRace, incidentDue } from '../engine/live.js'
 import { TrackMap, gridSnapshot } from './RaceMap.jsx'
 import { carCode, teamColor, ordinal, gap, lapTime } from './format.js'
-import { SLICKS, COND, Seg, Help, DriverTag, myCars, dc, Head, Incident } from './weekendParts.jsx'
+import { SLICKS, COND, Seg, Help, DriverTag, TowerFace, myCars, dc, Head, Incident } from './weekendParts.jsx'
 
 function planText(st, c, comp) {
   const p = planRest(st, c, 0, comp, 0, false)
@@ -24,7 +24,7 @@ function QualiTower({ game, st }) {
         return (
           <React.Fragment key={q.id}>
             <li className={`trow${me ? ' me' : ''}`} style={me ? dc(game, c) : undefined}>
-              <span className="p">{q.pos}</span><span className="bar" style={{ background: me ? 'var(--dc)' : teamColor(game, q.teamId) }} />
+              <span className="p">{q.pos}</span><span className="bar" style={{ background: me ? 'var(--dc)' : teamColor(game, q.teamId) }} /><TowerFace game={game} id={q.id} teamId={q.teamId} />
               <span className="code">{carCode(name(q.id))}</span><span className="team">{game.teams[q.teamId].name}{q.session && q.session < 3 ? ` · Q${q.session}` : ''}</span>
               <span className="g">{q.noTime ? 'No time' : q.pos === 1 ? 'Pole' : q.session && q.session < 3 ? <span className="muted">{lapTime(q.time)}</span> : gap(q.gap)}</span><span className="stops">{q.grid !== q.pos ? `→${q.grid}` : ''}</span><span />
             </li>
