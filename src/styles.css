@@ -391,3 +391,26 @@ fieldset.controls:disabled button { opacity: .45; cursor: not-allowed; }
 .m-face .face { border-radius: 16px; box-shadow: 0 6px 24px rgba(0, 0, 0, .35); }
 /* An offer opens in a row of a wide table: it stays in view however far the table is scrolled. */
 .scroll .offer { position: sticky; left: 0; max-width: min(1130px, calc(100vw - 64px)); white-space: normal; }
+
+/* The car on the Car tab (VISUALS.md, V3 and V4) */
+.carview { padding: 0 0 10px; overflow: hidden; }
+.car-stage { position: relative; height: 320px; background: radial-gradient(ellipse at 50% 60%, color-mix(in srgb, var(--accent) 10%, var(--panel-2)), var(--panel) 70%); }
+@media (min-width: 900px) { .car-stage { height: 400px; } }
+.car3d { position: absolute; inset: 0; touch-action: none; }
+.car3d canvas { display: block; cursor: grab; }
+.carflat { position: absolute; inset: 0; width: 100%; height: 100%; padding: 24px; }
+.car-hint { position: absolute; left: 12px; bottom: 8px; pointer-events: none; }
+.car-parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; padding: 10px 12px 0; }
+.part-chip { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; text-align: left; padding: 6px 10px; border-left: 3px solid var(--line); }
+.part-chip span { font-weight: 600; }
+.part-chip b { font-size: 15px; }
+.part-chip small { grid-column: 1 / -1; color: var(--muted); font-weight: 400; font-size: 11.5px; }
+.part-chip.on { outline: 2px solid var(--text); outline-offset: -1px; }
+.part-chip.s-new { border-left-color: #ffc23a; } .part-chip.s-new small { color: #ffc23a; }
+.part-chip.s-dud { border-left-color: var(--muted); } .part-chip.s-dud small { color: var(--bad); }
+.part-chip.s-build { border-left-color: var(--accent); }
+.part-chip.s-design { border-left-style: dashed; border-left-color: var(--accent); }
+.part-detail { padding: 10px 12px 0; }
+.part-detail ul { margin: 6px 0 0; }
+.bar-track { display: block; height: 4px; border-radius: 2px; background: var(--line); margin: 3px 0 6px; max-width: 320px; }
+.bar-track span { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
