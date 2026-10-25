@@ -2,6 +2,10 @@
 // the parts of the car it stands for and where its upgrades are. Kept apart
 // from the drawing so the checks can run it.
 //
+// The car also shows how far each rating has come (more detail at 60, 75 and
+// 88, `detailTier` in carModel.js) and the team's sponsors (`carLook`), and a
+// rival's car can stand alongside for comparison.
+//
 // A rating's parts show one state at a time, the most recent first:
 //   new     an upgrade fitted for the last race (it glows)
 //   dud     the last upgrade fitted gave nothing (greyed out)
@@ -48,4 +52,30 @@ export function partStates(game) {
   const s = game.suppliers[game.teams[PLAYER].supplier]
   out.power = { area: 'power', ...CAR_AREAS.power, rating: raced.power, raced: raced.power, supplier: s.name, state: null, last: null, progress: null, queue: [] }
   return out
+}
+
+// What a team's car looks like: its colours, how far each rating has come,
+// and the names on it. Your car carries your sponsors, the title sponsor on
+// the sidepods and rear wing (or the team's name, without one), principal and
+// partner sponsors on the nose and front wing. A rival's car carries its name.
+export const DETAIL_AT = [60, 75, 88]
+export const detailTier = (rating) => DETAIL_AT.filter((r) => rating >= r).length
+const TIER_ORDER = { title: 0, principal: 1, partner: 2 }
+
+export function carLook(game, teamId) {
+  const team = game.teams[teamId]
+  const tiers = Object.fromEntries(Object.keys(AREAS).map((a) => [a, detailTier(team.car[a])]))
+  const name = team.name.toUpperCase()
+  if (teamId !== PLAYER) return { tiers, decals: { pods: name, rear: name } }
+  const deals = [...game.sponsors.deals].sort((a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier])
+  const title = deals.find((d) => d.tier === 'title')
+  const rest = deals.filter((d) => d !== title).map((d) => d.name.toUpperCase())
+  return { tiers, decals: { pods: title ? title.name.toUpperCase() : name, rear: title ? title.name.toUpperCase() : name, nose: rest[0], front: rest[1] ?? (title ? name : null) } }
+}
+
+// Each rating against another team's, as raced.
+export function compareCars(game, teamId) {
+  const mine = effectiveCar(game, PLAYER)
+  const theirs = effectiveCar(game, teamId)
+  return Object.fromEntries(Object.keys(CAR_AREAS).map((a) => [a, { mine: mine[a], theirs: theirs[a], gap: mine[a] - theirs[a] }]))
 }

@@ -1,13 +1,18 @@
 import React, { Suspense, lazy, useMemo, useState } from 'react'
 import { PLAYER } from '../engine/core.js'
-import { partStates, CAR_AREAS, STATE_TEXT } from './carParts.js'
-import { teamColor, pct } from './format.js'
+import { rivalTracker } from '../engine/highlights.js'
+import { partStates, CAR_AREAS, STATE_TEXT, carLook, compareCars } from './carParts.js'
+import { teamColor, secondColor, onColor, pct } from './format.js'
 import { livery } from './livery.js'
+import { Seg } from './weekendParts.jsx'
 
-// The car at the top of the Car tab (VISUALS.md, V3 and V4): the 3D car
-// where the browser can draw it, a flat drawing where it cannot (and while
-// the 3D code loads), then each rating with where its upgrades are. Tap a
-// part, or a rating, for the detail.
+// The car at the top of the Car tab (VISUALS.md, V3 to V5 and the car's third
+// stage): the 3D car where the browser can draw it, a flat drawing where it
+// cannot (and while the 3D code loads), then each rating with where its
+// upgrades are. Tap a part, or a rating, for the detail. Set views, and a
+// rival's car alongside to compare.
+
+const CAR_VIEWS = [['three', '¾'], ['side', 'Side'], ['front', 'Front'], ['top', 'Top']]
 
 const Car3D = lazy(() => import('./Car3D.jsx'))
 
@@ -92,24 +97,43 @@ function Detail({ p }) {
 export default function CarView({ game }) {
   const states = partStates(game)
   const [selected, setSelected] = useState(null)
+  const [view, setView] = useState('three')
+  const [rivalId, setRivalId] = useState('')
   const color = teamColor(game, PLAYER)
   const accent = livery(game.teams[PLAYER]).accent
   const webgl = useMemo(hasWebGL, [])
+  const rival = rivalId && game.teams[rivalId] ? rivalId : null
+  const rc = rival ? teamColor(game, rival) : null
+  const rivalCar = rival ? { color: rc, accent: secondColor(rc), ink: onColor(rc), ...carLook(game, rival) } : null
+  const cmp = rival ? compareCars(game, rival) : null
+  const suggested = rivalTracker(game)?.rival
+  const teams = Object.values(game.teams).filter((t) => t.id !== PLAYER).sort((a, b) => (a.id === suggested ? -1 : b.id === suggested ? 1 : a.name.localeCompare(b.name)))
   const props = { color, accent, states, selected, onSelect: setSelected }
   const flat = <CarFlat {...props} />
   return (
     <div className="panel carview">
       <div className="car-stage">
-        {webgl ? <Suspense fallback={flat}><Car3D {...props} /></Suspense> : flat}
-        <span className="car-hint muted small">{webgl ? 'Drag to turn · tap a part' : 'Tap a part'}</span>
+        {webgl ? <Suspense fallback={flat}><Car3D {...props} ink={onColor(color)} look={carLook(game, PLAYER)} rival={rivalCar} view={view} /></Suspense> : flat}
+        <span className="car-hint muted small">{webgl ? `Drag to turn · tap a part${rival ? ` · ${game.teams[rival].name} behind` : ''}` : 'Tap a part'}</span>
+      </div>
+      <div className="car-tools">
+        {webgl && <Seg value={view} options={CAR_VIEWS} onPick={setView} />}
+        <label>Alongside{' '}
+          <select value={rivalId} onChange={(e) => setRivalId(e.target.value)}>
+            <option value="">No one</option>
+            {teams.map((t) => <option key={t.id} value={t.id}>{t.name}{t.id === suggested ? ' (your rival)' : ''}</option>)}
+          </select>
+        </label>
       </div>
       <div className="car-parts">
         {Object.keys(CAR_AREAS).map((id) => {
           const p = states[id]
+          const c = cmp?.[id]
           return (
             <button key={id} className={`part-chip${selected === id ? ' on' : ''}${p.state ? ` s-${p.state}` : ''}`} onClick={() => setSelected(selected === id ? null : id)}>
               <span>{p.label}</span><b>{p.raced.toFixed(1)}</b>
               <small>{p.state ? `${STATE_TEXT[p.state]}${p.state === 'build' || p.state === 'design' ? ` ${pct(p.progress ?? 0)}` : ''}` : '—'}</small>
+              {c && <small className={c.gap >= 0 ? 'good' : 'bad'}>{game.teams[rival].name} {c.theirs.toFixed(1)} ({c.gap >= 0 ? '+' : '−'}{Math.abs(c.gap).toFixed(1)})</small>}
             </button>
           )
         })}

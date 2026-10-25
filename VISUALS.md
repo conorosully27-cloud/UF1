@@ -19,7 +19,7 @@ The game's pictures, planned and built in steps, V1 to V5, the way the race week
 | V4 Car, stage 2 | Parts tied to the ratings: wings and floor for Aero, bodywork for Chassis, suspension for Tyre Care, cooling for Reliability. A part in design shows as a ghost in outline, a new part glows for a race, a dud is greyed out; tap a part for its rating | The Car tab shows what you are building |
 | V5 Smaller wins | Circuit outlines on the calendar and briefing, championship progress as a line, the cash forecast as a chart, HQ as a building that grows, a team badge and livery picked at the start | Builds on what is already there |
 
-After V5: the car's third stage (more detail as ratings rise, sponsor logos, set camera views, a rival's car alongside).
+After V5: the car's third stage (more detail as ratings rise, sponsor logos, set camera views, a rival's car alongside), built.
 
 ## Built, in order
 
@@ -31,8 +31,8 @@ After V5: the car's third stage (more detail as ratings rise, sponsor logos, set
 
 - **V5, the smaller pieces**: each circuit's outline on the calendar strip, and on the briefing a larger one coloured by speed (`TrackOutline.jsx`, from the track map's outlines and speed profile). On the Standings tab, the constructors' championship round by round: your team and your rival stand out, the rest of the field in grey (`Charts.jsx`). On the Finance tab, cash after each round so far and the forecast to the season's end, against zero and the overdraft limit; each race now files the cash after it (`result.cash`), which changes no result. The HQ tab draws the headquarters as a building, a block for each facility that grows with its level, a dashed outline for one not yet built and scaffolding and a crane for one being built (`HqBuilding.jsx`). A team badge in the team colour with a band in a second livery colour and the team's initials, in one of four shapes, picked when the team is founded and changeable in the settings; it sits beside the team's name at the top of every screen, and the second colour is the 3D car's accent (`Badge.jsx`, `livery.js`). The charts are drawn at the width they have, so their text is the same size on a phone as on a wide screen, with a crosshair and tooltip on hover or touch. Checks: `tests/v5-check.js`.
 
-## Not built yet
+- **The car's third stage** (`carModel.js`, `carParts.js`, `Car3D.jsx`, `CarView.jsx`): each rating adds detail at 60, 75 and 88. Aero: a second and third front-wing flap, edge wings along the floor, then canards, diffuser strakes and a Gurney flap. Chassis: slimmer sidepods and engine cover, then a T-wing. Tyre Care: thicker faired suspension arms, brake ducts, then wheel covers in the second colour. Reliability: more louvres, then gills on the engine cover. A new team's car is plain; a front-runner's is busy. The sponsors' names are on the car: the title sponsor on the sidepods and rear wing (the team's name without one), principal and partner sponsors on the nose and front wing. Set views (three-quarters, side, front, top), the camera gliding to each; it turns on its own only from three-quarters. Any team's car can stand alongside, in its colours, with its name and its own detail, and each rating's tile shows theirs and the gap. Checks: `tests/v3-check.js`.
 
-- **The car's third stage**: more detail as ratings rise, sponsor logos on the livery, set camera views, a rival's car alongside.
+## Not built yet
 
 - **Real drivers' looks.** Each real driver has only a skin tone and hair colour in `looks.js`, from memory; the rest of their look is rolled. The full traits are to be set from labelled photos (Wikimedia Commons), which the build environment could not reach; each line will note its photo and date.
