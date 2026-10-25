@@ -3,6 +3,7 @@ import { PLAYER } from '../engine/game.js'
 import { rivalTracker } from '../engine/highlights.js'
 import { TRACK_BY_ID } from '../engine/data/tracks.js'
 import { teamColor, ordinal } from './format.js'
+import TrackOutline from './TrackOutline.jsx'
 
 // The season so far, round by round: best finish, or what is still to come.
 export function CalendarStrip({ game }) {
@@ -14,7 +15,7 @@ export function CalendarStrip({ game }) {
         const next = i === game.round && game.phase === 'season'
         return (
           <span key={id} className={`chip${best && best <= 10 ? ' ok' : ''}`} style={next ? { borderColor: 'var(--accent)', color: 'var(--text)' } : undefined} title={TRACK_BY_ID[id].name}>
-            {TRACK_BY_ID[id].name} {res ? <b>{best === 99 ? 'DNF' : `P${best}`}</b> : next ? '◀ next' : ''}
+            <TrackOutline id={id} size={16} title={TRACK_BY_ID[id].name} />{TRACK_BY_ID[id].name} {res ? <b>{best === 99 ? 'DNF' : `P${best}`}</b> : next ? '◀ next' : ''}
           </span>
         )
       })}

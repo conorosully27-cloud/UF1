@@ -22,6 +22,9 @@ import { deferredIncident } from './engine/decisions.js'
 import { overall } from './engine/game.js'
 import { seatsReady } from './engine/people.js'
 import { ordinal, money, onColor } from './ui/format.js'
+import Badge from './ui/Badge.jsx'
+import { livery } from './ui/livery.js'
+import { LiveryPicker } from './ui/NewGame.jsx'
 
 const KEY = 'uf1-save'
 
@@ -205,6 +208,7 @@ function SettingsTab({ game, act, theme, setTheme }) {
         <div className="swatches">
           {PLAYER_COLORS.map((c) => <button key={c} aria-label={`Team colour ${c}`} className={game.teams[PLAYER].color === c ? 'on' : ''} style={{ background: c }} onClick={() => act((g) => { g.teams[PLAYER].color = c })} />)}
         </div>
+        <LiveryPicker team={game.teams[PLAYER]} onPick={(l) => act((g) => { g.teams[PLAYER].livery = { ...livery(g.teams[PLAYER]), ...l } })} />
       </div>
     </div>
   )
@@ -315,6 +319,7 @@ export default function App() {
         <NewGame onStart={(opts) => {
           try {
             const g = newGame(opts)
+            if (opts.livery) g.teams[PLAYER].livery = opts.livery
             setGame(g)
             writeSave(g)
             setError('')
@@ -348,7 +353,7 @@ export default function App() {
     <MomentLayer queue={moments} onDone={momentDone} />
     <div className="app">
       <div className="top">
-        <h1>{team.name}</h1>
+        <h1 className="badged"><Badge team={team} size={26} />{team.name}</h1>
         <span className="stat"><b>{year(game)}</b></span>
         <span className="stat">{game.phase === 'season' ? <>Round <b>{game.round + 1}</b>/{game.calendar.length}</> : game.phase === 'seasonEnd' ? 'Season complete' : 'Pre-season'}</span>
         <span className="stat">Champ. <b>{game.results.length ? ordinal(playerPosition(game)) : '—'}</b></span>

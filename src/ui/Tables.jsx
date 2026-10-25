@@ -3,10 +3,13 @@ import { getStandings, paceTable, PLAYER, overall } from '../engine/game.js'
 import { TRACK_BY_ID } from '../engine/data/tracks.js'
 import WeekendReport from './Weekend.jsx'
 import { ordinal } from './format.js'
+import { ChampionshipChart } from './Charts.jsx'
 
 export function Standings({ game }) {
   const st = getStandings(game)
   return (
+    <>
+    <ChampionshipChart game={game} />
     <div className="row">
       <div className="scroll">
         <h2>Constructors</h2>
@@ -36,6 +39,7 @@ export function Standings({ game }) {
         </table>
       </div>
     </div>
+    </>
   )
 }
 

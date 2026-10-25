@@ -5,6 +5,28 @@ import { signingTerms } from '../engine/contracts.js'
 import { START_REPUTATION } from '../engine/game.js'
 import { PLAYER_COLORS } from '../engine/data/teams.js'
 import { money } from './format.js'
+import Badge from './Badge.jsx'
+import { BADGE_SHAPES, LIVERY_ACCENTS, livery } from './livery.js'
+
+// The livery's second colour and the badge's shape, with the badge as it will look.
+export function LiveryPicker({ team, onPick }) {
+  const l = livery(team)
+  return (
+    <div className="livery">
+      <Badge team={team} size={64} />
+      <div>
+        <p>Second colour</p>
+        <div className="swatches">
+          {LIVERY_ACCENTS.map((c) => <button key={c} aria-label={`Second colour ${c}`} className={l.accent === c ? 'on' : ''} disabled={c === team.color} style={{ background: c }} onClick={() => onPick({ accent: c })} />)}
+        </div>
+        <p>Badge</p>
+        <div className="swatches">
+          {Object.keys(BADGE_SHAPES).map((b) => <button key={b} aria-label={`Badge: ${b}`} className={`shape${l.badge === b ? ' on' : ''}`} onClick={() => onPick({ badge: b })}><Badge team={team} size={26} shape={b} /></button>)}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function NewGame({ onStart }) {
   const [seed] = useState(() => (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0)
@@ -15,6 +37,7 @@ export default function NewGame({ onStart }) {
   const [d2, setD2] = useState('')
   const [reserve, setReserve] = useState('')
   const [color, setColor] = useState(PLAYER_COLORS[0])
+  const [look, setLook] = useState({ accent: '#ffffff', badge: 'shield' })
   const [involvement, setInvolvement] = useState('live')
 
   const pool = useMemo(() => POOL_DRIVERS
@@ -38,6 +61,7 @@ export default function NewGame({ onStart }) {
         <div className="swatches">
           {PLAYER_COLORS.map((c) => <button key={c} aria-label={`Team colour ${c}`} className={color === c ? 'on' : ''} style={{ background: c }} onClick={() => { setColor(c); document.documentElement.style.setProperty('--accent', c) }} />)}
         </div>
+        <LiveryPicker team={{ name: teamName || 'Your team', color, livery: look }} onPick={(l) => setLook({ ...look, ...l })} />
         <p>
           <label>Power unit{' '}
             <select value={supplier} onChange={(e) => setSupplier(e.target.value)}>
@@ -65,7 +89,7 @@ export default function NewGame({ onStart }) {
           </label>
         </p>
         <p><label>Race driver 1 {pick(d1, setD1)}</label><label>Race driver 2 {pick(d2, setD2)}</label><label>Reserve (optional, a fifth of the salary) {pick(reserve, setReserve, true)}</label></p>
-        <button className="primary" disabled={!ready} onClick={() => onStart({ seed, teamName: teamName.trim(), color, involvement, supplier, driverIds: [d1, d2], reserveId: reserve || null, difficulty })}>Start</button>
+        <button className="primary" disabled={!ready} onClick={() => onStart({ seed, teamName: teamName.trim(), color, livery: look.accent === color ? { ...look, accent: '#ffffff' } : look, involvement, supplier, driverIds: [d1, d2], reserveId: reserve || null, difficulty })}>Start</button>
       </div>
       <h2>Available drivers</h2>
       <p className="muted">Interest of 60 signs at the asking salary. Below that the driver wants more money. Backing is an estimate until signed. Loan drivers come for one season at a reduced salary.</p>

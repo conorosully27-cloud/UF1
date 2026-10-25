@@ -8,6 +8,7 @@ import { plannedSpendPerRound } from '../engine/development.js'
 import { changeSupplier, setPartsPackage } from '../engine/game.js'
 import { PARTS_PACKAGE_PRICE } from '../engine/data/suppliers.js'
 import { money, pct } from './format.js'
+import { CashChart } from './Charts.jsx'
 
 const LABELS = {
   prize: 'Prize money', sponsors: 'Sponsor fees', backing: 'Driver backing', merchandise: 'Merchandise', owner: 'Owner funding',
@@ -105,6 +106,7 @@ export function FinanceTab({ game }) {
         recurring net {money(pr.net - planned, 2)} a round{planned > 0 && <> (including {money(planned, 2)} of repeating upgrades)</>}
       </p>
       {inOverdraft(game) && <OverdraftNotice game={game} />}
+      <CashChart game={game} planned={planned} />
       <p className="muted">
         The forecast leaves out sponsor bonuses and crash damage. There is no borrowing: cash can dip into an overdraft of up to {money(OVERDRAFT, 0)}, but while
         the team is in the red no new spending can start (upgrades, facilities, hiring, pay rises, buyouts) until cash is back above zero. Two rounds in a row below

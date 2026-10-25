@@ -4,6 +4,8 @@ import React from 'react'
 import { beginPractice, toQualifying, playsPractice, playsQualifying, incidentDue } from '../engine/live.js'
 import { TRACK_BY_ID } from '../engine/data/tracks.js'
 import { TrackLine } from './Weekend.jsx'
+import TrackOutline from './TrackOutline.jsx'
+import { SPEED_RANGE } from './speedProfile.js'
 import { Tyre, Objectives, Head, Incident } from './weekendParts.jsx'
 
 export function Briefing({ game, act }) {
@@ -18,7 +20,13 @@ export function Briefing({ game, act }) {
     <div>
       <Head title={track.name} chip={`Round ${game.round + 1} of ${game.calendar.length}`} right="Briefing" />
       <Incident game={game} act={act} />
-      <p><TrackLine track={track} /></p>
+      <div className="brief-track">
+        <TrackOutline id={track.id} size={150} speed title={`${track.name}, coloured by speed`} />
+        <div>
+          <p><TrackLine track={track} /></p>
+          <p className="muted small"><span className="speed-key" /> Slow corners to fast straights ({SPEED_RANGE[0]} to {SPEED_RANGE[1]} km/h)</p>
+        </div>
+      </div>
       <div className="tiles">
         {f.practice != null && <div className="tile"><div className="kicker">Rain · practice</div><div className="big">{f.practice}%</div></div>}
         <div className="tile"><div className="kicker">Rain · qualifying</div><div className="big">{f.quali}%</div></div>

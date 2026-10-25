@@ -5,6 +5,7 @@ import {
   tighteningPlan, rollWidth, TIGHTENING,
 } from '../engine/development.js'
 import { money, pct } from './format.js'
+import CarView from './CarView.jsx'
 
 const describe = (p) => `${SIZES[p.size].label} ${AREAS[p.area].label}, ${APPROACHES[p.approach].label.toLowerCase()}${p.rush ? ', rushed' : ''}`
 
@@ -28,6 +29,7 @@ export default function CarTab({ game, act }) {
   return (
     <div>
       <h2>Car</h2>
+      <CarView game={game} />
       <table>
         <thead><tr><th>Rating</th><th className="n">Now</th><th className="n">As raced</th><th className="n">Gain per unit of work</th><th>Winter loss</th></tr></thead>
         <tbody>
