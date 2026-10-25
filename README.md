@@ -39,7 +39,7 @@ The checks run side by side, one per processor core (`tests/run.js`); `node test
 | `w5-strategist` | What the pit wall is worth: an expert, the strategist and a random player on the same races |
 | `v1-check` | Drivers' faces: fixed looks, every trait combination drawn, variety |
 | `v2-check` | Faces in place: moods from contract interest and race ratings, faces in moments |
-| `v3-check` | The car on the Car tab: each rating's upgrades in design, in the factory, new or a dud |
+| `v3-check` | The car on the Car tab: each rating's upgrades in design, in the factory, new or a dud; detail by rating, sponsors' names, a rival to compare |
 | `v5-check` | Circuit outlines, the cash filed after each race, the livery and badge |
 
 `npm run test:m5` runs the balance harness (scripted managers over many seasons).

@@ -4,13 +4,22 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { buildCar, styleCar, disposeCar } from './carModel.js'
 
 // The 3D car (carModel.js), loaded only with the Car tab. Drag to turn it,
-// pinch or scroll to zoom, tap a part to pick its rating. It turns slowly on
-// its own until touched, and again a few seconds after; it only draws while
-// on screen.
-export default function Car3D({ color, accent, states, selected, onSelect }) {
+// pinch or scroll to zoom, tap a part to pick its rating, or pick a set view.
+// From three-quarters it turns slowly on its own until touched, and again a
+// few seconds after; it only draws while on screen. A rival's car can stand
+// alongside, in its own colours and detail.
+
+// Where the camera sits for each set view (CAR_VIEWS in CarView.jsx), from
+// the point it looks at.
+const VIEWS = { three: [4.5, 1.85, 5.1], side: [0, 0.55, 7], front: [7, 0.75, 0], top: [0.01, 8, 0.01] }
+const RIVAL_Z = -2.9
+
+export default function Car3D({ color, accent, ink, look, rival, states, selected, onSelect, view = 'three' }) {
   const box = useRef(null)
   const live = useRef({})
   live.current = { states, selected, onSelect }
+  const api = useRef(null)
+  const key = JSON.stringify({ color, accent, ink, look, rival })
 
   useEffect(() => {
     const el = box.current
@@ -19,7 +28,6 @@ export default function Car3D({ color, accent, states, selected, onSelect }) {
     el.appendChild(renderer.domElement)
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100)
-    camera.position.set(4.5, 2.2, 5.1)
     scene.add(new THREE.HemisphereLight('#ffffff', '#3a3f48', 1.7))
     const sun = new THREE.DirectionalLight('#ffffff', 2.3)
     sun.position.set(4, 8, 5)
@@ -27,17 +35,39 @@ export default function Car3D({ color, accent, states, selected, onSelect }) {
     const rim = new THREE.DirectionalLight('#ffffff', 0.8)
     rim.position.set(-5, 3, -4)
     scene.add(rim)
-    const car = buildCar({ color, accent })
+    const car = buildCar({ color, accent, ink, ...look })
     scene.add(car.group)
+    const other = rival ? buildCar(rival) : null
+    if (other) {
+      other.group.position.z = RIVAL_Z
+      scene.add(other.group)
+    }
 
     const controls = new OrbitControls(camera, renderer.domElement)
-    controls.target.set(0, 0.35, 0)
-    Object.assign(controls, { enablePan: false, enableDamping: true, minDistance: 3.5, maxDistance: 11, maxPolarAngle: Math.PI * 0.48, autoRotate: true, autoRotateSpeed: 1.2 })
+    const target = new THREE.Vector3(0, 0.35, other ? RIVAL_Z / 2 : 0)
+    controls.target.copy(target)
+    Object.assign(controls, { enablePan: false, enableDamping: true, minDistance: 3.5, maxDistance: other ? 16 : 11, maxPolarAngle: Math.PI * 0.48, autoRotateSpeed: 1.2 })
     let idle = null
-    const start = () => { controls.autoRotate = false; clearTimeout(idle) }
-    const end = () => { idle = setTimeout(() => { controls.autoRotate = true }, 5000) }
+    let current = view
+    const start = () => { controls.autoRotate = false; clearTimeout(idle); move = null }
+    const end = () => { if (current === 'three') idle = setTimeout(() => { controls.autoRotate = true }, 5000) }
     controls.addEventListener('start', start)
     controls.addEventListener('end', end)
+
+    // A set view: the camera glides there, and turns on its own only from three-quarters.
+    let move = null
+    // With a rival alongside, the side view looks down a little so both cars show.
+    const spot = (v) => new THREE.Vector3(...(other && v === 'side' ? [0, 2.6, 6.4] : VIEWS[v])).multiplyScalar(other ? 1.45 : 1).add(target)
+    api.current = {
+      setView: (v) => {
+        current = v
+        clearTimeout(idle)
+        controls.autoRotate = false
+        move = { from: camera.position.clone(), to: spot(v), t0: performance.now(), v }
+      },
+    }
+    camera.position.copy(spot(view))
+    controls.autoRotate = view === 'three'
 
     // A tap (not a drag) picks the part under it, or clears the pick.
     const ray = new THREE.Raycaster()
@@ -72,6 +102,14 @@ export default function Car3D({ color, accent, states, selected, onSelect }) {
 
     renderer.setAnimationLoop((ms) => {
       if (!onScreen || document.hidden) return
+      if (move) {
+        const k = Math.min(1, (performance.now() - move.t0) / 700)
+        camera.position.lerpVectors(move.from, move.to, 1 - (1 - k) ** 3)
+        if (k >= 1) {
+          controls.autoRotate = move.v === 'three'
+          move = null
+        }
+      }
       controls.update()
       styleCar(car, live.current.states, live.current.selected, ms / 1000)
       renderer.render(scene, camera)
@@ -79,6 +117,7 @@ export default function Car3D({ color, accent, states, selected, onSelect }) {
     return () => {
       renderer.setAnimationLoop(null)
       clearTimeout(idle)
+      api.current = null
       sizes.disconnect()
       seen.disconnect()
       controls.removeEventListener('start', start)
@@ -87,10 +126,14 @@ export default function Car3D({ color, accent, states, selected, onSelect }) {
       renderer.domElement.removeEventListener('pointerdown', onDown)
       renderer.domElement.removeEventListener('pointerup', onUp)
       disposeCar(car)
+      if (other) disposeCar(other)
       renderer.dispose()
       renderer.domElement.remove()
     }
-  }, [color, accent])
+    // The scene is rebuilt only when the cars change; `view` is followed below.
+  }, [key])
+
+  useEffect(() => { api.current?.setView(view) }, [view])
 
   return <div ref={box} className="car3d" />
 }

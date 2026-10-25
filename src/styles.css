@@ -431,3 +431,5 @@ fieldset.controls:disabled button { opacity: .45; cursor: not-allowed; }
 .livery p { margin: 6px 0 4px; }
 .swatches button.shape { background: none; border-color: transparent; display: grid; place-items: center; }
 .swatches button:disabled { opacity: .25; }
+.car-tools { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 10px 12px 0; }
+.part-chip small.good { color: var(--good); } .part-chip small.bad { color: var(--bad); }
