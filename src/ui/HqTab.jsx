@@ -3,6 +3,7 @@ import { FACILITIES, FACILITY_COST, FACILITY_TIME, DEPTS, ROLES, PAY, headcountC
 import { buildFacility, hire, fire, setPay, hireKeyStaff } from '../engine/hq.js'
 import { headCost } from '../engine/economy.js'
 import { money } from './format.js'
+import HqBuilding from './HqBuilding.jsx'
 
 export default function HqTab({ game, act }) {
   const o = game.org
@@ -12,6 +13,7 @@ export default function HqTab({ game, act }) {
     <div>
       {frozen && <div className="err">Austerity: building and hiring are frozen for {game.finance.austerity} more rounds.</div>}
       <h2>Facilities</h2>
+      <HqBuilding game={game} />
       <p className="muted">Paid in equal instalments over the build. Two builds can run at once. Upkeep is currently {money(facilityUpkeep(o))} a season.</p>
       <div className="scroll">
         <table>

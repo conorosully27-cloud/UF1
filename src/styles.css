@@ -414,3 +414,20 @@ fieldset.controls:disabled button { opacity: .45; cursor: not-allowed; }
 .part-detail ul { margin: 6px 0 0; }
 .bar-track { display: block; height: 4px; border-radius: 2px; background: var(--line); margin: 3px 0 6px; max-width: 320px; }
 .bar-track span { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+
+/* V5: circuit outlines, charts, HQ, the team badge (VISUALS.md) */
+.outline { display: inline-block; vertical-align: -3px; flex: none; }
+.chip .outline { margin-right: 5px; }
+.brief-track { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.brief-track > div { flex: 1 1 220px; }
+.speed-key { display: inline-block; width: 46px; height: 6px; border-radius: 3px; vertical-align: 1px; margin-right: 4px; background: linear-gradient(90deg, hsl(0 85% 52%), hsl(60 85% 52%), hsl(120 85% 52%), hsl(220 85% 52%)); }
+.legend span.dashed::before { background: repeating-linear-gradient(90deg, var(--c) 0 5px, transparent 5px 8px); }
+.hq-scroll { overflow-x: auto; margin: 4px 0 10px; }
+.hq { display: block; width: 100%; min-width: 560px; max-width: 880px; height: auto; }
+.hq-label { fill: var(--muted); font-size: 13px; font-family: inherit; }
+.badge { display: block; flex: none; }
+.top h1.badged::before { display: none; }
+.livery { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.livery p { margin: 6px 0 4px; }
+.swatches button.shape { background: none; border-color: transparent; display: grid; place-items: center; }
+.swatches button:disabled { opacity: .25; }

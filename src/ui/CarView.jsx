@@ -1,7 +1,8 @@
 import React, { Suspense, lazy, useMemo, useState } from 'react'
 import { PLAYER } from '../engine/core.js'
 import { partStates, CAR_AREAS, STATE_TEXT } from './carParts.js'
-import { teamColor, secondColor, pct } from './format.js'
+import { teamColor, pct } from './format.js'
+import { livery } from './livery.js'
 
 // The car at the top of the Car tab (VISUALS.md, V3 and V4): the 3D car
 // where the browser can draw it, a flat drawing where it cannot (and while
@@ -92,7 +93,7 @@ export default function CarView({ game }) {
   const states = partStates(game)
   const [selected, setSelected] = useState(null)
   const color = teamColor(game, PLAYER)
-  const accent = secondColor(color)
+  const accent = livery(game.teams[PLAYER]).accent
   const webgl = useMemo(hasWebGL, [])
   const props = { color, accent, states, selected, onSelect: setSelected }
   const flat = <CarFlat {...props} />

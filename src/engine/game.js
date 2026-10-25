@@ -305,6 +305,8 @@ export function postRace(game, result, objectives = []) {
   }
   applyRoundFinance(game, result)
   sponsorsRound(game)
+  // Cash after the round, for the chart on the Finance tab.
+  result.cash = game.finance.cash
   if (game.round === ROUNDS / 2) {
     // Mid-season: ratings move, the winter's rule change is announced and the aero allowance is reset.
     game.news.push(...peopleMidSeason(game))
