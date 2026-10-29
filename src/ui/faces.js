@@ -180,7 +180,18 @@ export function faceParts(t, { age = 25, mood = 0, suit = '#8b93a3' } = {}) {
     p` C${X - wch * 1.3},${chin} ${X - wj + 1},${mid} ${X - wj},${jaw}` +
     p` C${X - wj - 1},${jaw - 5} ${L},${CHEEK + 7} ${L},${CHEEK}` +
     p` C${L + 3},${ny + 1} ${X - 6},${ny + 0.5} ${X - 2.5},${ny + 1.2} L${X + 2.5},${ny + 1.2} C${X + 6},${ny + 0.5} ${R - 3},${ny + 1} ${R},${CHEEK} Z`
-  if (t.facial === 'stubble') P(lowerFace, mix(shade(base, 0.3), '#5a6470', 0.3), { o: 0.3 })
+  // Stubble: a light shadow along the jaw and chin and over the lip, leaving
+  // the cheeks clear, a shade darker than the skin.
+  if (t.facial === 'stubble') {
+    const shadow = mix(skin, shade(base, 0.6), 0.35)
+    P(p`M${R},${CHEEK} C${R},${CHEEK + 7} ${X + wj + 1},${jaw - 5} ${X + wj},${jaw}` +
+      p` C${X + wj - 1},${mid} ${X + wch * 1.3},${chin} ${X},${chin}` +
+      p` C${X - wch * 1.3},${chin} ${X - wj + 1},${mid} ${X - wj},${jaw}` +
+      p` C${X - wj - 1},${jaw - 5} ${L},${CHEEK + 7} ${L},${CHEEK}` +
+      p` C${L + 2.5},${CHEEK + 10} ${X - mw - 2},${my} ${X - mw + 0.5},${my + 2.8} Q${X},${my + 4.4} ${X + mw - 0.5},${my + 2.8}` +
+      p` C${X + mw + 2},${my} ${R - 2.5},${CHEEK + 10} ${R},${CHEEK} Z`, shadow, { o: 0.55 })
+    P(p`M${X - mw},${my - 1.1} Q${X},${my - 3.6} ${X + mw},${my - 1.1} Q${X},${my - 2.1} ${X - mw},${my - 1.1} Z`, shadow, { o: 0.5 })
+  }
   if (t.facial === 'short') P(lowerFace, facialCol, { o: 0.75 })
   if (t.facial === 'beard') P(lowerFace, facialCol)
   if (t.facial === 'goatee') P(p`M${X - 4.2},${my + 2} C${X - 4.6},${chin - 0.5} ${X + 4.6},${chin - 0.5} ${X + 4.2},${my + 2} Q${X},${my + 3.4} ${X - 4.2},${my + 2} Z`, facialCol)

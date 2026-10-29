@@ -42,7 +42,7 @@ export default function FaceGallery() {
         <h1>Faces</h1>
         <span className="menu"><button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? 'Light' : 'Dark'}</button> <a href="./">Back to the game</a></span>
       </div>
-      <Row title="Race drivers" note="Skin tone and hair colour only, from memory, with the rest rolled, until each look is set from photos in src/ui/data/looks.js.">
+      <Row title="Race drivers" note="Set from labelled photos on Wikimedia Commons (src/ui/data/looks.js names each file).">
         {RACE_DRIVERS.map((d) => <Card key={d.id} driver={d} color={teamColor(d.team)} sub={`${d.age}`} />)}
       </Row>
       <Row title="Free agents and juniors">
