@@ -26,7 +26,9 @@
 // For example:  someid: seen({ shape: 'square', skin: 2, hair: 'brown', style: 'side', facial: 'stubble' }), // photo file
 
 // A look from a photo: the hairline recedes only if a line says so, and grey
-// starts at 40 unless the photo shows it sooner.
+// starts at 40 unless the photo shows it sooner. A beard or moustache only for
+// a driver known for one (Hamilton, Bottas); a driver with a beard in a
+// photo but not usually known for it gets stubble.
 const seen = (traits) => ({ recedeAge: null, greyAge: 40, ...traits })
 
 export const LOOKS = {
@@ -37,19 +39,19 @@ export const LOOKS = {
   antonelli: seen({ shape: 'oval', skin: 1, hair: 'brown', style: 'curly', brows: 'arched', eyes: 'almond', eyeColor: 'brown', nose: 'straight', facial: 'none' }), // Kimi_Antonelli_at_the_Melbourne_Walk_during_the_2026_Australian_Grand_Prix_(028A7923)_cropped.jpg
   norris: seen({ shape: 'oval', skin: 1, hair: 'brown', style: 'curly', brows: 'straight', eyes: 'narrow', eyeColor: 'hazel', nose: 'straight', facial: 'stubble' }), // 2024-08-25_Motorsport,_Formel_1,_Großer_Preis_der_Niederlande_2024_STP_4016_by_Stepro_(cropped).jpg
   piastri: seen({ shape: 'long', skin: 0, hair: 'brown', style: 'short', brows: 'straight', eyes: 'hooded', eyeColor: 'brown', nose: 'long', facial: 'none' }), // Oscar_Piastri_2025_(cropped).jpg
-  leclerc: seen({ shape: 'long', skin: 1, hair: 'darkBrown', style: 'side', brows: 'thick', eyes: 'almond', eyeColor: 'green', nose: 'straight', facial: 'goatee' }), // 2024-08-25_Motorsport,_Formel_1,_Großer_Preis_der_Niederlande_2024_STP_3978_by_Stepro_(cropped2).jpg
+  leclerc: seen({ shape: 'long', skin: 1, hair: 'darkBrown', style: 'side', brows: 'thick', eyes: 'almond', eyeColor: 'green', nose: 'straight', facial: 'stubble' }), // 2024-08-25_Motorsport,_Formel_1,_Großer_Preis_der_Niederlande_2024_STP_3978_by_Stepro_(cropped2).jpg
   hamilton: seen({ shape: 'oval', skin: 5, hair: 'black', style: 'bun', brows: 'thick', eyes: 'almond', eyeColor: 'darkBrown', nose: 'wide', facial: 'beard', greyAge: 44 }), // Prime_Minister_Keir_Starmer_meets_Sir_Lewis_Hamilton_(54566928382)_(cropped).jpg
   lawson: seen({ shape: 'square', skin: 1, hair: 'lightBrown', style: 'messy', brows: 'straight', eyes: 'almond', eyeColor: 'blue', nose: 'straight', facial: 'stubble' }), // Liam_Lawson_at_the_Red_Bull_Fan_Zone_–_Crown_Riverwalk,_Melbourne_(028A7795).jpg
   lindblad: seen({ shape: 'oval', skin: 3, hair: 'black', style: 'curly', brows: 'thick', eyes: 'almond', eyeColor: 'darkBrown', nose: 'wide', facial: 'none' }), // Arvid_Lindblad_at_the_Red_Bull_Fan_Zone_–_Crown_Riverwalk,_Melbourne_(028A7869).jpg
-  gasly: seen({ shape: 'long', skin: 1, hair: 'darkBrown', style: 'short', brows: 'straight', eyes: 'almond', nose: 'straight', facial: 'short' }), // 2022_French_Grand_Prix_(52279066548)_(cropped)_(cropped).png
+  gasly: seen({ shape: 'long', skin: 1, hair: 'darkBrown', style: 'short', brows: 'straight', eyes: 'almond', nose: 'straight', facial: 'stubble' }), // 2022_French_Grand_Prix_(52279066548)_(cropped)_(cropped).png
   colapinto: seen({ shape: 'oval', skin: 1, hair: 'brown', style: 'messy', brows: 'straight', eyes: 'almond', eyeColor: 'brown', nose: 'straight', facial: 'none' }), // Franco_Colapinto_at_the_Melbourne_Walk_during_the_2026_Australian_Grand_Prix_(028A8689).jpg
   ocon: seen({ shape: 'long', skin: 1, hair: 'darkBrown', style: 'short', brows: 'thick', eyes: 'hooded', eyeColor: 'brown', nose: 'long', facial: 'stubble' }), // Esteban_Ocon_2024_Suzuka_(cropped).jpg
   bearman: seen({ shape: 'oval', skin: 1, hair: 'darkBrown', style: 'short', brows: 'straight', eyes: 'narrow', eyeColor: 'brown', nose: 'straight', facial: 'none' }), // 2025_Japan_GP_-_Haas_-_Oliver_Bearman_-_Thursday_(cropped02).jpg
   hulkenberg: seen({ shape: 'square', skin: 0, hair: 'lightBrown', style: 'quiff', brows: 'straight', eyes: 'almond', eyeColor: 'blue', nose: 'straight', facial: 'stubble' }), // 2019_Formula_One_tests_Barcelona,_Hulkenberg_(40287128313)_(headshot).jpg
   bortoleto: seen({ shape: 'long', skin: 2, hair: 'black', style: 'curly', brows: 'thick', eyes: 'almond', eyeColor: 'brown', nose: 'long', facial: 'none' }), // Gabriel_Bortoleto_(cropped).jpg
-  sainz: seen({ shape: 'long', skin: 2, hair: 'darkBrown', style: 'short', brows: 'thick', eyes: 'almond', eyeColor: 'brown', nose: 'straight', facial: 'short' }), // Formula1Gabelhofen2022_(04)_(cropped2).jpg
+  sainz: seen({ shape: 'long', skin: 2, hair: 'darkBrown', style: 'short', brows: 'thick', eyes: 'almond', eyeColor: 'brown', nose: 'straight', facial: 'stubble' }), // Formula1Gabelhofen2022_(04)_(cropped2).jpg
   albon: seen({ shape: 'oval', skin: 2, hair: 'black', style: 'short', brows: 'straight', eyes: 'almond', eyeColor: 'darkBrown', nose: 'small', facial: 'none' }), // Alex_Albon_at_the_Melbourne_Walk_during_the_2026_Australian_Grand_Prix_(028A8626)_(cropped).jpg
-  alonso: seen({ shape: 'long', skin: 2, hair: 'darkBrown', style: 'short', brows: 'thick', eyes: 'hooded', eyeColor: 'darkBrown', nose: 'long', facial: 'short', greyAge: 41 }), // Fernando_Alonso_racing_at_the_2024_F1_in_Schools_World_Finals_(cropped).jpg
+  alonso: seen({ shape: 'long', skin: 2, hair: 'darkBrown', style: 'short', brows: 'thick', eyes: 'hooded', eyeColor: 'darkBrown', nose: 'long', facial: 'stubble', greyAge: 41 }), // Fernando_Alonso_racing_at_the_2024_F1_in_Schools_World_Finals_(cropped).jpg
   stroll: seen({ shape: 'long', skin: 1, hair: 'darkBrown', style: 'quiff', brows: 'thick', eyes: 'almond', eyeColor: 'brown', nose: 'long', facial: 'stubble' }), // FIA_F1_Austria_2022_Lance_Stroll_(cropped_2).jpg
   perez: seen({ shape: 'round', skin: 3, hair: 'black', style: 'short', brows: 'thick', eyes: 'almond', eyeColor: 'darkBrown', nose: 'wide', facial: 'none' }), // 2021_US_GP_driver_parade_(cropped2).jpg
   bottas: seen({ shape: 'square', skin: 0, hair: 'blond', style: 'messy', brows: 'straight', eyes: 'almond', eyeColor: 'blue', nose: 'straight', facial: 'moustache' }), // Valtteri_Bottas_at_the_2026_Adelaide_Motorsport_Festival_(028A7556).jpg
@@ -59,7 +61,7 @@ export const LOOKS = {
   zhou: seen({ shape: 'long', skin: 2, hair: 'black', style: 'short', brows: 'straight', eyes: 'narrow', eyeColor: 'darkBrown', nose: 'straight', facial: 'none' }), // Zhou_Guanyu_at_the_2022_Austrian_Grand_Prix.jpg
   herta: seen({ shape: 'square', skin: 1, hair: 'brown', style: 'long', brows: 'straight', eyes: 'almond', eyeColor: 'brown', nose: 'straight', facial: 'stubble' }), // Colton_Herta_(2021).jpg
   drugovich: seen({ shape: 'long', skin: 1, hair: 'darkBrown', style: 'side', brows: 'thick', eyes: 'almond', eyeColor: 'brown', nose: 'long', facial: 'stubble' }), // 2023_Fala,_Drugovich_(interview)_01.jpg
-  magnussen: seen({ shape: 'square', skin: 0, hair: 'blond', style: 'side', brows: 'straight', eyes: 'almond', eyeColor: 'blue', nose: 'straight', facial: 'short' }), // Kevin_Magnussen,_2019_Formula_One_Tests_Barcelona_(cropped).jpg
+  magnussen: seen({ shape: 'square', skin: 0, hair: 'blond', style: 'side', brows: 'straight', eyes: 'almond', eyeColor: 'blue', nose: 'straight', facial: 'stubble' }), // Kevin_Magnussen,_2019_Formula_One_Tests_Barcelona_(cropped).jpg
   fornaroli: { skin: 1, hair: 'darkBrown' }, // no portrait on Commons (only car photos): from memory
   camara: seen({ shape: 'oval', skin: 2, hair: 'darkBrown', style: 'side', brows: 'thick', eyes: 'almond', eyeColor: 'brown', nose: 'straight', facial: 'none' }), // Rafael_Câmara_in_2022.jpg
   schumacher: seen({ shape: 'square', skin: 0, hair: 'lightBrown', style: 'side', brows: 'straight', eyes: 'almond', eyeColor: 'blue', nose: 'straight', facial: 'none' }), // Mick_Schumacher_in_2022.JPG
@@ -67,7 +69,7 @@ export const LOOKS = {
   browning: seen({ shape: 'oval', skin: 1, hair: 'brown', style: 'short', facial: 'none' }), // Luke_Browning.jpg
   tsolov: seen({ shape: 'oval', skin: 1, hair: 'blond', style: 'messy', brows: 'straight', eyes: 'almond', nose: 'straight', facial: 'none' }), // Nikola_Tsolov_Monza_2025.jpg
   doohan: seen({ shape: 'long', skin: 1, hair: 'darkBrown', style: 'short', brows: 'straight', eyes: 'almond', eyeColor: 'brown', nose: 'straight', facial: 'none' }), // Jack_Doohan_Austria_2022.jpg
-  crawford: seen({ shape: 'long', skin: 1, hair: 'brown', style: 'curly', brows: 'straight', eyes: 'almond', nose: 'straight', facial: 'short' }), // Jak_Crawford_2026.png
+  crawford: seen({ shape: 'long', skin: 1, hair: 'brown', style: 'curly', brows: 'straight', eyes: 'almond', nose: 'straight', facial: 'stubble' }), // Jak_Crawford_2026.png
   aron: seen({ shape: 'oval', skin: 0, hair: 'blond', style: 'messy', brows: 'straight', nose: 'straight', facial: 'none' }), // Paul-Aron-F2-2024.jpg
   iwasa: seen({ shape: 'oval', skin: 2, hair: 'black', style: 'messy', brows: 'straight', eyes: 'narrow', eyeColor: 'darkBrown', nose: 'small', facial: 'none' }), // Ayumu_Iwasa_Austria_2022.jpg
   vesti: seen({ shape: 'long', skin: 0, hair: 'lightBrown', style: 'side', brows: 'straight', eyes: 'almond', eyeColor: 'blue', nose: 'straight', facial: 'none' }), // Frederik_Vesti_-_Singapore_Adidas_Orchard_Ignition_(A)_(cropped).jpg
