@@ -27,7 +27,7 @@
 
 // A look from a photo: the hairline recedes only if a line says so, and grey
 // starts at 40 unless the photo shows it sooner. A beard or moustache only for
-// a driver known for one (Hamilton, Bottas); a driver with a beard in a
+// a driver known for one (Bottas's moustache); a driver with a beard in a
 // photo but not usually known for it gets stubble.
 const seen = (traits) => ({ recedeAge: null, greyAge: 40, ...traits })
 
@@ -40,7 +40,7 @@ export const LOOKS = {
   norris: seen({ shape: 'oval', skin: 1, hair: 'brown', style: 'curly', brows: 'straight', eyes: 'narrow', eyeColor: 'hazel', nose: 'straight', facial: 'stubble' }), // 2024-08-25_Motorsport,_Formel_1,_Großer_Preis_der_Niederlande_2024_STP_4016_by_Stepro_(cropped).jpg
   piastri: seen({ shape: 'long', skin: 0, hair: 'brown', style: 'short', brows: 'straight', eyes: 'hooded', eyeColor: 'brown', nose: 'long', facial: 'none' }), // Oscar_Piastri_2025_(cropped).jpg
   leclerc: seen({ shape: 'long', skin: 1, hair: 'darkBrown', style: 'side', brows: 'thick', eyes: 'almond', eyeColor: 'green', nose: 'straight', facial: 'stubble' }), // 2024-08-25_Motorsport,_Formel_1,_Großer_Preis_der_Niederlande_2024_STP_3978_by_Stepro_(cropped2).jpg
-  hamilton: seen({ shape: 'oval', skin: 5, hair: 'black', style: 'bun', brows: 'thick', eyes: 'almond', eyeColor: 'darkBrown', nose: 'wide', facial: 'beard', greyAge: 44 }), // Prime_Minister_Keir_Starmer_meets_Sir_Lewis_Hamilton_(54566928382)_(cropped).jpg
+  hamilton: seen({ shape: 'oval', skin: 5, hair: 'black', style: 'bun', brows: 'thick', eyes: 'almond', eyeColor: 'darkBrown', nose: 'wide', facial: 'stubble' }), // Prime_Minister_Keir_Starmer_meets_Sir_Lewis_Hamilton_(54566928382)_(cropped).jpg
   lawson: seen({ shape: 'square', skin: 1, hair: 'lightBrown', style: 'messy', brows: 'straight', eyes: 'almond', eyeColor: 'blue', nose: 'straight', facial: 'stubble' }), // Liam_Lawson_at_the_Red_Bull_Fan_Zone_–_Crown_Riverwalk,_Melbourne_(028A7795).jpg
   lindblad: seen({ shape: 'oval', skin: 3, hair: 'black', style: 'curly', brows: 'thick', eyes: 'almond', eyeColor: 'darkBrown', nose: 'wide', facial: 'none' }), // Arvid_Lindblad_at_the_Red_Bull_Fan_Zone_–_Crown_Riverwalk,_Melbourne_(028A7869).jpg
   gasly: seen({ shape: 'long', skin: 1, hair: 'darkBrown', style: 'short', brows: 'straight', eyes: 'almond', nose: 'straight', facial: 'stubble' }), // 2022_French_Grand_Prix_(52279066548)_(cropped)_(cropped).png
