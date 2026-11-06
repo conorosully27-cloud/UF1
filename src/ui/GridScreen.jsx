@@ -4,7 +4,8 @@ import React from 'react'
 import { PLAYER } from '../engine/game.js'
 import { TYRES, ORDERS, planRest } from '../engine/weekend.js'
 import { setStartTyre, setOrders, startRace, incidentDue } from '../engine/live.js'
-import { TrackMap, gridSnapshot } from './RaceMap.jsx'
+import { gridSnapshot } from './RaceMap.jsx'
+import RaceView from './RaceView.jsx'
 import { carCode, teamColor, ordinal, gap, lapTime } from './format.js'
 import { SLICKS, COND, Seg, Help, DriverTag, TowerFace, myCars, dc, Head, Incident } from './weekendParts.jsx'
 
@@ -48,7 +49,7 @@ export function GridScreen({ game, act }) {
         <section className="panel flush"><h3>Qualifying</h3><QualiTower game={game} st={st} /></section>
         <div className="race-side">
           <section className="panel">
-            <TrackMap game={game} st={st} snap={gridSnapshot(st)} />
+            <RaceView game={game} st={st} snap={gridSnapshot(st)} />
           </section>
           <section className="panel">
             <div className="cars">

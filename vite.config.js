@@ -10,8 +10,8 @@ export default defineConfig({
       // cached across releases, and neither file passes Vite's 500 kB warning.
       output: { manualChunks: { react: ['react', 'react-dom'] } },
     },
-    // The 3D car's file (Car3D, with three.js) is about 550 kB, but it loads
-    // only when the Car tab is opened, so it doesn't slow the game's start.
+    // three.js, in a file of its own, is about 540 kB, but it loads only with
+    // the Car tab or the race in 3D, so it doesn't slow the game's start.
     chunkSizeWarningLimit: 600,
   },
 })

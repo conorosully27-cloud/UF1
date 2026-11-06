@@ -3,7 +3,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { TYRES, ORDERS, tyreLife, wearRate } from '../engine/weekend.js'
 import { setOrders, answerCall, followStrategist, nextLap, playToMoment, setAutoCalls, finishWeekend, boxCar } from '../engine/live.js'
-import { TrackMap, usePlayback, frameSnapshot, gridSnapshot, stateSnapshot } from './RaceMap.jsx'
+import { usePlayback, frameSnapshot, gridSnapshot, stateSnapshot } from './RaceMap.jsx'
+import RaceView from './RaceView.jsx'
 import { carCode, teamColor, gap } from './format.js'
 import { useMoments } from './Moments.jsx'
 import { lightsMoment, scMoment, redFlagMoment, outMoment, flagMoment, resultMoments, podiumRunMoment, rainMoment, clashMoment, doubleOutMoment } from './raceMoments.js'
@@ -200,6 +201,12 @@ export function RaceScreen({ game, act }) {
     const res = act((g) => finishWeekend(g))
     if (res) for (const m of resultMoments(game, res, { live: true })) moments.show(m)
   }
+  const controls = <>
+    <button className={`primary playbtn`} disabled={waiting} onClick={play}>{pb.playing ? '❚❚ Pause' : '▶ Play'}</button>
+    <button className="speed" onClick={() => pb.setSpeed(SPEEDS[(SPEEDS.indexOf(pb.speed) + 1) % SPEEDS.length])} title="Playback speed">{pb.speed}×</button>
+    <button disabled={waiting || w.phase !== 'race'} onClick={skip} title="Jump to the next call, safety car, change in the weather or trouble for your cars">⏭ Key moment</button>
+    <button className={w.autoCalls ? 'on' : 'ghost'} aria-pressed={!!w.autoCalls} onClick={() => act((g) => setAutoCalls(g, !w.autoCalls))} title="The strategist makes the pit-wall calls while the race plays on">{w.autoCalls ? '✓ Strategist on the calls' : 'Strategist'}</button>
+  </>
   return (
     <div>
       <Head title={st.track.name} chip={COND[cnd]} right={flag ? 'FINISH' : lap ? `LAP ${lap}/${st.laps}` : 'START'} game={game}>
@@ -210,7 +217,7 @@ export function RaceScreen({ game, act }) {
         <section className="panel flush tower-panel"><h3>Timing</h3><Tower game={game} st={st} snap={playingBack ? snap : null} lastOrder={playingBack ? null : w.lastOrder} /></section>
         <div className="race-side">
           <section className="panel mappanel">
-            <TrackMap game={game} st={st} snap={snap} />
+            <RaceView game={game} st={st} snap={snap} controls={flag ? null : controls} />
           </section>
           {pb.caughtUp && w.calls.map((call) => <CallCard key={call.id} game={game} act={act} call={call} answered={w.answered[call.id]} />)}
           {waiting && open.length > 1 && <button onClick={() => act((g) => followStrategist(g))}>Do what the strategist says on all of these</button>}
@@ -224,12 +231,7 @@ export function RaceScreen({ game, act }) {
       <div className="controls">
         {flag ? (
           <button className="primary" onClick={finish}>To the debrief</button>
-        ) : <>
-          <button className={`primary playbtn`} disabled={waiting} onClick={play}>{pb.playing ? '❚❚ Pause' : '▶ Play'}</button>
-          <button className="speed" onClick={() => pb.setSpeed(SPEEDS[(SPEEDS.indexOf(pb.speed) + 1) % SPEEDS.length])} title="Playback speed">{pb.speed}×</button>
-          <button disabled={waiting || w.phase !== 'race'} onClick={skip} title="Jump to the next call, safety car, change in the weather or trouble for your cars">⏭ Key moment</button>
-          <button className={w.autoCalls ? 'on' : 'ghost'} aria-pressed={!!w.autoCalls} onClick={() => act((g) => setAutoCalls(g, !w.autoCalls))} title="The strategist makes the pit-wall calls while the race plays on">{w.autoCalls ? '✓ Strategist on the calls' : 'Strategist'}</button>
-        </>}
+        ) : controls}
       </div>
       {waiting && <p className="waiting">The pit wall needs a decision.</p>}
     </div>

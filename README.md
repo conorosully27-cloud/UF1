@@ -36,6 +36,7 @@ The checks run side by side, one per processor core (`tests/run.js`); `node test
 | `w5-check` | Weekend incidents from the decision deck |
 | `w55-check` | Incident outcomes, practice crashes, wet Fridays, lapped cars, double-stacking |
 | `w6-check` | The race lap by lap, qualifying as it happens, and old saves |
+| `w8-check` | Where the race in 3D puts each car: the grid, side by side, the pit lane, retirements |
 | `w5-strategist` | What the pit wall is worth: an expert, the strategist and a random player on the same races |
 | `v1-check` | Drivers' faces: fixed looks, every trait combination drawn, variety |
 | `v2-check` | Faces in place: moods from contract interest and race ratings, faces in moments |
@@ -50,7 +51,7 @@ The checks run side by side, one per processor core (`tests/run.js`); `node test
 - `RACE_WEEKEND.md`: how the race weekend was built, step by step, and what is still to do.
 - `VISUALS.md`: the plan for the game's pictures (faces, the 3D car, charts), step by step.
 - `src/engine/`: the game itself, with no UI. `weekend.js` is the race simulation (with `qualifying.js`), `live.js` the race weekend played live, `game.js` the season, `util.js` small shared helpers.
-- `src/ui/`: the React screens. The race weekend is `LiveWeekend.jsx`, which shows `BriefingScreen.jsx`, `PracticeScreen.jsx`, `QualiScreen.jsx`, `GridScreen.jsx` or `RaceScreen.jsx` (shared pieces in `weekendParts.jsx`); `RaceMap.jsx` and `speedProfile.js` draw the live track map; `faces.js` and `Face.jsx` draw drivers' faces, with real drivers' looks in `data/looks.js`. Add `?faces` to the game's address to see every face. The 3D car on the Car tab is `CarView.jsx`, `Car3D.jsx` and `carModel.js` (three.js, loaded only with that tab), with what it shows in `carParts.js`. `Charts.jsx` draws the championship and cash charts, `HqBuilding.jsx` the headquarters, `TrackOutline.jsx` circuit outlines and `Badge.jsx` the team badge (`livery.js`).
+- `src/ui/`: the React screens. The race weekend is `LiveWeekend.jsx`, which shows `BriefingScreen.jsx`, `PracticeScreen.jsx`, `QualiScreen.jsx`, `GridScreen.jsx` or `RaceScreen.jsx` (shared pieces in `weekendParts.jsx`); `RaceMap.jsx` and `speedProfile.js` draw the live track map, and `RaceView.jsx` switches it for the race in 3D (`Race3D.jsx`, `raceScene.js`, `racePlace.js`); `faces.js` and `Face.jsx` draw drivers' faces, with real drivers' looks in `data/looks.js`. Add `?faces` to the game's address to see every face. The 3D car on the Car tab is `CarView.jsx`, `Car3D.jsx` and `carModel.js` (three.js, loaded only with that tab), with what it shows in `carParts.js`. `Charts.jsx` draws the championship and cash charts, `HqBuilding.jsx` the headquarters, `TrackOutline.jsx` circuit outlines and `Badge.jsx` the team badge (`livery.js`).
 - `tests/`: the checks above.
 
 Circuit outlines are from [bacinger/f1-circuits](https://github.com/bacinger/f1-circuits), used under the MIT licence.

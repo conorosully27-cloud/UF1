@@ -4,6 +4,7 @@ import { rivalTracker } from '../engine/highlights.js'
 import { partStates, CAR_AREAS, STATE_TEXT, carLook, compareCars } from './carParts.js'
 import { teamColor, secondColor, onColor, pct } from './format.js'
 import { livery } from './livery.js'
+import { hasWebGL } from './webgl.js'
 import { Seg } from './weekendParts.jsx'
 
 // The car at the top of the Car tab (VISUALS.md, V3 to V5 and the car's third
@@ -15,15 +16,6 @@ import { Seg } from './weekendParts.jsx'
 const CAR_VIEWS = [['three', '¾'], ['side', 'Side'], ['front', 'Front'], ['top', 'Top']]
 
 const Car3D = lazy(() => import('./Car3D.jsx'))
-
-function hasWebGL() {
-  try {
-    const c = document.createElement('canvas')
-    return !!(c.getContext('webgl2') || c.getContext('webgl'))
-  } catch {
-    return false
-  }
-}
 
 // The car from above, for browsers without 3D. The same parts, the same states.
 const FLAT = [

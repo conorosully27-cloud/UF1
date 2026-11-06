@@ -433,3 +433,38 @@ fieldset.controls:disabled button { opacity: .45; cursor: not-allowed; }
 .swatches button:disabled { opacity: .25; }
 .car-tools { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 10px 12px 0; }
 .part-chip small.good { color: var(--good); } .part-chip small.bad { color: var(--bad); }
+
+/* The race in 3D (RACE_WEEKEND.md, W8) */
+.rv-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: -4px 0 8px; }
+.rv-full { font-size: 12.5px; padding: 4px 10px; }
+.r3d { position: relative; height: 340px; border-radius: 10px; overflow: hidden; background: #0b0e14; }
+@media (max-width: 600px) { .r3d { height: 260px; } }
+.r3d-canvas { position: absolute; inset: 0; }
+.r3d-canvas canvas { display: block; cursor: pointer; }
+.r3d-top { position: absolute; left: 10px; top: 10px; display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; font: 700 12px/1 'Titillium Web', system-ui, sans-serif; letter-spacing: .06em; }
+.r3d-top > span { background: rgba(10, 12, 18, .78); color: #fff; padding: 5px 8px; border-radius: 4px; }
+.r3d-live { background: #e10600 !important; }
+.r3d-flag.sc, .r3d-flag.vsc { background: #ffcc00 !important; color: #111 !important; }
+.r3d-flag.red { background: #e10600 !important; }
+.r3d-flag.wet { background: #2f8cff !important; }
+.r3d-card { position: absolute; left: 10px; bottom: 44px; display: flex; align-items: center; gap: 10px; background: rgba(10, 12, 18, .82); color: #fff; border-left: 5px solid var(--dc); border-radius: 4px; padding: 6px 12px 6px 8px; pointer-events: none; max-width: calc(100% - 20px); }
+.r3d-card .pos { font-size: 22px; min-width: 26px; text-align: center; }
+.r3d-card .name { display: flex; flex-direction: column; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.r3d-card .name small { color: #aab2c0; font-weight: 600; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; }
+.r3d-card .gap { font-size: 12px; color: #d6dbe4; white-space: nowrap; }
+.r3d-card .kmh { font-size: 12px; color: #aab2c0; white-space: nowrap; } .r3d-card .kmh b { color: #fff; font-size: 16px; }
+@media (max-width: 600px) { .r3d-card .gap, .r3d-card .name small { display: none; } }
+.r3d-cams { position: absolute; left: 10px; right: 10px; bottom: 8px; display: flex; gap: 4px; flex-wrap: wrap; }
+.r3d-cams button { background: rgba(10, 12, 18, .7); color: #dfe3ea; border: 1px solid rgba(255, 255, 255, .15); padding: 3px 9px; font-size: 12px; border-radius: 4px; }
+.r3d-cams button.on { background: #fff; color: #111; }
+.r3d-tower { position: absolute; right: 10px; top: 10px; list-style: none; margin: 0; padding: 4px 0; background: rgba(10, 12, 18, .82); border-radius: 6px; color: #fff; font: 600 13px/1 'Titillium Web', system-ui, sans-serif; min-width: 150px; }
+.r3d-tower li { display: grid; grid-template-columns: 22px 4px 40px 1fr; gap: 6px; align-items: center; padding: 4px 10px; cursor: pointer; }
+.r3d-tower li b { text-align: right; color: #aab2c0; } .r3d-tower li i { height: 14px; border-radius: 2px; }
+.r3d-tower li em { font-style: normal; text-align: right; color: #c9cfd9; font-size: 12px; }
+.r3d-tower li.me { background: rgba(255, 255, 255, .1); } .r3d-tower li.on { outline: 1px solid #fff; outline-offset: -1px; }
+.raceview.full { position: fixed; inset: 0; z-index: 60; background: #000; padding: 0; display: flex; flex-direction: column; }
+.raceview.full .rv-bar { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 2; margin: 0; }
+.raceview.full .r3d { flex: 1; height: auto; border-radius: 0; }
+.raceview.full .r3d-card { bottom: 92px; } .raceview.full .r3d-cams { bottom: 56px; }
+.rv-controls { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; justify-content: center; padding: 8px; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); flex-wrap: wrap; }
+body.noscroll { overflow: hidden; }
